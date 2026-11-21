@@ -49,6 +49,7 @@ Rule count is limited to 100 per profile, conditions to four filters per rule, a
 ## Evaluation semantics
 
 1. Evaluate only enabled rules against the privacy-screened record. Evaluate categories against the record's effective category.
+   Rules run when a new notification record is first created. A subsequent update to the same active Android notification retains the first evaluation; editing a rule never silently reprocesses stored history.
 2. Rules run in their stored order. Each rule's conditions are ANDed; every matching rule runs. A non-match has no effects.
 3. Actions within one rule run in listed order. Actions are idempotent assignments. `save` is a one-way set-to-true action; this schema does not define an automatic unsave action.
 4. When multiple matching rules set a value for the same field, the later action in stored evaluation order wins. All distinct group labels are retained once, in first-seen order.

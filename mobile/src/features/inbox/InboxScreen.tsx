@@ -228,6 +228,9 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           <Text style={[styles.time, { color: theme.colors.textSecondary }]}>{new Date(item.receivedAt).toLocaleString()}</Text>
           <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text</Text>
           <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{categoryLabel(item.category)}{item.categoryOverride ? ' · changed by you' : ''} · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
+          {item.important ? <Text style={[styles.hint, { color: theme.colors.brand }]}>Marked important by a rule</Text> : null}
+          {item.includeInDigest !== null ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.includeInDigest ? 'Included in digest by a rule' : 'Excluded from digest by a rule'}</Text> : null}
+          {item.ruleGroups.length ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Groups: {item.ruleGroups.join(', ')}</Text> : null}
           {item.duplicateCount > 1 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Repeated {item.duplicateCount} times in this app within 30 minutes. All source notifications are kept.</Text> : null}
           <Pressable accessibilityRole="button" accessibilityLabel="View notification details" onPress={() => setSelectedItem(item)}>
             <Text style={{ color: theme.colors.brand }}>Details</Text>
@@ -272,6 +275,10 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Notification content</Text>
                   <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{categoryLabel(selectedItem.category)} · {selectedItem.priority} priority</Text>
                   <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{selectedItem.analysisExplanation} ({selectedItem.analysisMethod}, {selectedItem.analysisVersion})</Text>
+                  {selectedItem.matchedRuleIds.length ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Matched rules: {selectedItem.matchedRuleIds.join(', ')}</Text> : null}
+                  {selectedItem.important ? <Text style={[styles.hint, { color: theme.colors.brand }]}>Marked important by a rule.</Text> : null}
+                  {selectedItem.includeInDigest !== null ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{selectedItem.includeInDigest ? 'Included' : 'Excluded'} in digest by a rule.</Text> : null}
+                  {selectedItem.ruleGroups.length ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Rule groups: {selectedItem.ruleGroups.join(', ')}</Text> : null}
                   {selectedItem.confidence > 0 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Rule score is a heuristic, not a measured probability.</Text> : null}
                   <Pressable accessibilityRole="button" accessibilityLabel="Open category correction" onPress={() => setCategoryEditor(selectedItem)} style={styles.closeButton}>
                     <Text style={[styles.closeText, { color: theme.colors.brand }]}>Correct category</Text>

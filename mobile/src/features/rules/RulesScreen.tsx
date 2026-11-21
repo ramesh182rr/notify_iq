@@ -25,6 +25,11 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   const [ruleSet, setRuleSet] = useState<RuleSet>(emptyRules);
   const [phrase, setPhrase] = useState('');
   const [categoryIndex, setCategoryIndex] = useState(1);
+  const [saveMatch, setSaveMatch] = useState(false);
+  const [digestMatch, setDigestMatch] = useState(false);
+  const [importantMatch, setImportantMatch] = useState(false);
+  const [groupMatch, setGroupMatch] = useState(false);
+  const [groupName, setGroupName] = useState('');
   const [previewText, setPreviewText] = useState('');
   const [previewResult, setPreviewResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,12 +63,18 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   const addRule = () => {
     const trimmed = phrase.trim();
     if (!trimmed) { setError('Enter text the notification must contain.'); return; }
+    const actions: RuleAction[] = [{ type: 'setCategory', value: categories[categoryIndex] }];
+    if (saveMatch) actions.push({ type: 'save' });
+    if (digestMatch) actions.push({ type: 'includeInDigest', value: true });
+    if (importantMatch) actions.push({ type: 'markImportant', value: true });
+    if (groupMatch && groupName.trim()) actions.push({ type: 'addGroup', value: groupName.trim() });
+    if (groupMatch && !groupName.trim()) { setError('Enter a group label or turn off Add to group.'); return; }
     const rule: Rule = {
       id: `${Date.now()}`,
       name: `Contains “${trimmed.slice(0, 48)}”`,
       enabled: true,
       conditions: { match: 'all', containsText: trimmed },
-      actions: [{ type: 'setCategory', value: categories[categoryIndex] }],
+      actions,
     };
     void persist({ schemaVersion: 1, rules: [...ruleSet.rules, rule] });
     setPhrase('');
@@ -71,8 +82,13 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   const preview = async () => {
     try {
       const sample = { packageName: 'com.notifyiq.preview', title: previewText, body: null, subtext: null, category: 'other', priority: 'normal' };
-      const result = JSON.parse(await previewUserRules(JSON.stringify(ruleSet), JSON.stringify(sample))) as { matchedRuleIds: string[]; category: string };
-      setPreviewResult(result.matchedRuleIds.length ? `Matched ${result.matchedRuleIds.length} rule(s); category becomes ${result.category}.` : 'No rules match this sample.');
+      const result = JSON.parse(await previewUserRules(JSON.stringify(ruleSet), JSON.stringify(sample))) as {
+        matchedRuleIds: string[]; category: string; save: boolean; includeInDigest: boolean | null;
+        important: boolean | null; groups: string[];
+      };
+      setPreviewResult(result.matchedRuleIds.length
+        ? `Matched ${result.matchedRuleIds.length} rule(s): category ${result.category}; ${result.save ? 'save' : 'leave save state'}; digest ${result.includeInDigest === null ? 'unchanged' : result.includeInDigest ? 'included' : 'excluded'}; importance ${result.important === null ? 'unchanged' : result.important ? 'important' : 'normal'}; groups ${result.groups.length ? result.groups.join(', ') : 'none'}.`
+        : 'No rules match this sample.');
       setError(null);
     } catch {
       setError('Preview is unavailable. Check the Android native bridge and rule data.');
@@ -83,7 +99,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: colors.textPrimary }]}>Rules</Text>
-      <Text style={[styles.copy, { color: colors.textSecondary }]}>Organise NotifyIQ history on this device. Rules never change Android notification delivery.</Text>
+      <Text style={[styles.copy, { color: colors.textSecondary }]}>Organise new notifications on this device. Rules never change Android delivery or automatically reprocess older history.</Text>
       {error ? <Text accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Text> : null}
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Add a rule</Text>
@@ -92,6 +108,19 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
         <Pressable accessibilityRole="button" accessibilityLabel={`Category ${categories[categoryIndex]}; tap to change`} onPress={() => setCategoryIndex(index => (index + 1) % categories.length)} style={[styles.action, { backgroundColor: colors.surfaceMuted }]}>
           <Text style={{ color: colors.textPrimary }}>Category: {categories[categoryIndex]} · change</Text>
         </Pressable>
+        <View style={styles.options}>
+          {([
+            ['Save matches', saveMatch, setSaveMatch],
+            ['Include in digest', digestMatch, setDigestMatch],
+            ['Mark important', importantMatch, setImportantMatch],
+            ['Add to group', groupMatch, setGroupMatch],
+          ] as const).map(([label, checked, setChecked]) => (
+            <Pressable key={label} accessibilityRole="checkbox" accessibilityState={{ checked }} onPress={() => setChecked(value => !value)} style={[styles.option, { borderColor: colors.border, backgroundColor: checked ? colors.brandSoft : colors.surface }]}>
+              <Text style={{ color: colors.textPrimary }}>{checked ? '✓ ' : '□ '}{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {groupMatch ? <TextInput accessibilityLabel="Rule group label" maxLength={40} placeholder="Group label" placeholderTextColor={colors.textSecondary} value={groupName} onChangeText={setGroupName} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} /> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={addRule} style={[styles.primary, { backgroundColor: colors.brand }]}>
           <Text style={styles.primaryText}>{busy ? 'Saving…' : 'Add rule'}</Text>
         </Pressable>
@@ -109,7 +138,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
           <View key={rule.id} style={[styles.rule, { borderTopColor: colors.border }]}>
             <View style={styles.ruleText}>
               <Text style={[styles.ruleName, { color: colors.textPrimary }]}>{rule.name}</Text>
-              <Text style={[styles.copy, { color: colors.textSecondary }]}>Category: {rule.actions.find((action): action is Extract<RuleAction, { type: 'setCategory' }> => action.type === 'setCategory')?.value ?? 'unchanged'}</Text>
+              <Text style={[styles.copy, { color: colors.textSecondary }]}>{rule.actions.map(action => action.type === 'setCategory' ? `Category: ${action.value}` : action.type === 'save' ? 'Save' : action.type === 'includeInDigest' ? 'Digest' : action.type === 'markImportant' ? 'Important' : `Group: ${action.value}`).join(' · ')}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`${rule.enabled ? 'Pause' : 'Enable'} ${rule.name}`} disabled={busy} onPress={() => void persist({ ...ruleSet, rules: ruleSet.rules.map(item => item.id === rule.id ? { ...item, enabled: !item.enabled } : item) })} style={styles.action}>
               <Text style={{ color: colors.brand }}>{rule.enabled ? 'Pause' : 'Enable'}</Text>
@@ -132,6 +161,8 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 12 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   action: { padding: 10, alignSelf: 'flex-start' },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: { paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderRadius: 10 },
   primary: { borderRadius: 10, padding: 12, alignItems: 'center' },
   primaryText: { color: '#FFFFFF', fontWeight: '700' },
   rule: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },

@@ -74,6 +74,10 @@ test('renders source content and save, archive, and delete actions', async () =>
     categoryOverride: null,
     duplicateGroupId: null,
     duplicateCount: 1,
+    includeInDigest: null,
+    important: null,
+    ruleGroups: [],
+    matchedRuleIds: [],
   }]);
 
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
@@ -123,6 +127,10 @@ test('offers an undo action after archiving', async () => {
     categoryOverride: null,
     duplicateGroupId: null,
     duplicateCount: 1,
+    includeInDigest: null,
+    important: null,
+    ruleGroups: [],
+    matchedRuleIds: [],
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {
@@ -166,6 +174,10 @@ test('filters classified items and lets the user correct a category', async () =
     categoryOverride: null,
     duplicateGroupId: null,
     duplicateCount: 1,
+    includeInDigest: null,
+    important: null,
+    ruleGroups: [],
+    matchedRuleIds: [],
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {

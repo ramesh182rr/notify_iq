@@ -27,6 +27,10 @@ export type NotificationItem = {
   categoryOverride: string | null;
   duplicateGroupId: number | null;
   duplicateCount: number;
+  includeInDigest: boolean | null;
+  important: boolean | null;
+  ruleGroups: ReadonlyArray<string>;
+  matchedRuleIds: ReadonlyArray<string>;
 };
 
 export type OverviewCount = { label: string; count: number };
@@ -72,7 +76,7 @@ export interface Spec extends TurboModule {
 }
 
 export function getNativeNotifyIQ(): Spec | null {
-  return TurboModuleRegistry.get<Spec>('NotifyIQ')
-    ?? (NativeModules.NotifyIQ as Spec | undefined)
-    ?? null;
+  const turbo = TurboModuleRegistry.get<Spec>('NotifyIQ');
+  const legacy = NativeModules.NotifyIQ as Spec | undefined;
+  return turbo ?? legacy ?? null;
 }

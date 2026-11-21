@@ -34,6 +34,10 @@ data class NotificationRecord(
   val categoryOverride: String?,
   val duplicateGroupId: Long?,
   val duplicateCount: Int,
+  val includeInDigest: Boolean? = null,
+  val important: Boolean? = null,
+  val ruleGroups: List<String> = emptyList(),
+  val matchedRuleIds: List<String> = emptyList(),
 )
 
 internal data class OverviewCount(val label: String, val count: Int)

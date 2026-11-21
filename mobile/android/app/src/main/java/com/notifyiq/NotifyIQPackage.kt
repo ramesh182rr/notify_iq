@@ -22,7 +22,7 @@ class NotifyIQPackage : BaseReactPackage() {
         canOverrideExistingModule = false,
         needsEagerInit = false,
         isCxxModule = false,
-        isTurboModule = true,
+        isTurboModule = false,
       ),
     )
   }

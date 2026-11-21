@@ -12,10 +12,10 @@
 - Graphics property: `emulation`; this is not a phone GPU backend result.
 - Battery: 100%, not charging; emulator reported 25°C at the snapshot.
 - Debug APK installed and the React Native home screen rendered when Metro was running.
-- `./gradlew --no-daemon testDebugUnitTest connectedDebugAndroidTest` — passed; 8 unit tests and 11 instrumentation tests, including Android notification-access API and synthetic rule evaluation/persistence cases.
+- `./gradlew --no-daemon testDebugUnitTest connectedDebugAndroidTest` — passed; 8 unit tests and 12 instrumentation tests, including Android notification-access API and synthetic rule evaluation/persistence cases.
 - `npm run typecheck` — passed.
 
-The native notification-access status is still unavailable from the React Native screen, even though an instrumentation test can call Android's `isNotificationListenerAccessGranted()` API without an exception. The app currently cannot resolve `NotifyIQ` from `TurboModuleRegistry` at runtime; see the latest filtered emulator log and the native-module registration code. Do not treat screen rendering as a completed capture lifecycle test.
+The native notification-access status and user-rules storage/preview calls now resolve through `NativeModules` legacy interop. The module is intentionally not advertised as a TurboModule because this RN 0.88.1 bridgeless runtime exposed no `global.__turboModuleProxy`. Emulator smoke check queried access-off, granted listener access with Android's shell command, confirmed service connection, captured a synthetic “Payment/payment” notification as Finance, cleared NotifyIQ history, then restored access-off. This did not exercise the Settings permission UI, UI-closed capture, sensitive/exclusion behavior, or physical-device lifecycle.
 
 ## Model benchmark disposition
 
@@ -25,7 +25,7 @@ The current emulator is a useful smoke-test target, but it has about 0.85 GiB av
 
 ## Next steps
 
-1. Fix and verify React Native native-module discovery on the emulator; then confirm access-off and access-on states.
+1. Exercise the Settings permission UI and UI-closed capture flow on the emulator; then verify sensitive-content discard, app exclusion, removal semantics and reconnect handling.
 2. The benchmark prompt and strict output contract are recorded in `MODEL_BENCHMARK_PROMPT.md`.
 3. Add a benchmark-only adapter or standalone harness for the two pinned runtimes, without bundling model weights in Git or the production APK.
 4. Attempt a single emulator inference only after the runtime loads successfully; capture failures and memory use, and label results emulator-only.

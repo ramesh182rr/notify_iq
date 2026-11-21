@@ -2,6 +2,7 @@ package com.notifyiq
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -52,5 +53,34 @@ class UserRulesTest {
 
     assertTrue(failure.isFailure)
     assertEquals("[]", org.json.JSONObject(repository.getUserRules()).getJSONArray("rules").toString())
+  }
+
+  @Test
+  fun newCaptureAppliesRulesButUserEditsRemainAuthoritative() {
+    val repository = NotificationRepository(temporaryFolder.newFile("capture-rules.db"))
+    repository.setUserRules("""{"schemaVersion":1,"rules":[{"id":"money","name":"Money","enabled":true,"conditions":{"match":"all","containsText":"payment"},"actions":[{"type":"setCategory","value":"finance"},{"type":"save"},{"type":"includeInDigest","value":true},{"type":"markImportant","value":true},{"type":"addGroup","value":"money"}]}]}""")
+    val item = CapturedNotification(
+      NotificationIdentity("com.bank", "event-1"), "Payment received", "Salary", null, 100L, 200L,
+    )
+
+    repository.upsert(item)
+    val created = repository.notifications(NotificationFilters(category = "finance")).single()
+    assertTrue(created.saved)
+    assertEquals(true, created.includeInDigest)
+    assertEquals(true, created.important)
+    assertEquals(listOf("money"), created.ruleGroups)
+    assertEquals(listOf("money"), created.matchedRuleIds)
+    val effects = org.json.JSONObject(repository.ruleResults(created.id)!!)
+    assertEquals(true, effects.getBoolean("includeInDigest"))
+    assertEquals(true, effects.getBoolean("important"))
+    assertEquals("[\"money\"]", effects.getString("groups"))
+    assertEquals("[\"money\"]", effects.getString("matchedRuleIds"))
+
+    repository.setSaved(created.id, false)
+    repository.setCategoryOverride(created.id, "personal")
+    repository.upsert(item.copy(title = "Payment updated"))
+    val updated = repository.notifications(NotificationFilters()).single()
+    assertFalse(updated.saved)
+    assertEquals("personal", updated.category)
   }
 }

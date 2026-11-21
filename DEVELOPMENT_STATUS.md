@@ -37,8 +37,8 @@
 - Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
-- Added a constrained Kotlin rule codec/evaluator with ordered matching, validation, local JSON preference storage, and a preview endpoint. The Rules screen now supports category rule creation, preview, pause/enable, and delete. Rule actions are not yet applied to notification records, and the unresolved native bridge prevents runtime UI verification.
-- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and eleven instrumentation tests pass, including synthetic rule precedence, Unicode matching, persistence round-trip, preview and invalid-set rejection. A separate instrumentation test confirms Android's notification-listener access API is callable.
+- Added a constrained Kotlin rule codec/evaluator with ordered matching, validation, local JSON preference storage, and a preview endpoint. The Rules screen supports category rule creation, preview, pause/enable, and delete. New privacy-screened captures now apply category/save actions and persist digest/importance/group results separately; applying results to existing records is not implemented.
+- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and twelve instrumentation tests pass, including synthetic rule precedence, Unicode matching, persistence round-trip, preview, invalid-set rejection, and action application to a new capture while preserving user edits. A separate instrumentation test confirms Android's notification-listener access API is callable.
 
 ## Current state
 
@@ -49,14 +49,14 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 ### Planned phases
 
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
-- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
+- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Emulator shell grant/revoke and one synthetic capture pass; Settings UI, UI-closed capture, exclusion/sensitive cases and physical device lifecycle checks remain.
 - [x] Phase 2 — inbox actions, retention, filters and FTS search are implemented; manual visual theme QA remains for release verification.
 - [x] Phase 3 — deterministic classification, separate analysis persistence, focused fixtures, repeat grouping, daily overview and aggregate insights are implemented.
 - [x] Phase 4 task 1 — 108-case synthetic evaluation set and deterministic baseline established. No production model dependency is selected.
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
-- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions. **In progress:** evaluator, local storage, preview API, and category rule editor/controls are implemented; automatic action application and JS bridge verification remain.
+- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions. **In progress:** capture evaluation, all v1 action controls, persisted outcomes and Inbox reporting are implemented. Reminder scheduling and explicit re-evaluation of older records remain deferred.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
@@ -70,10 +70,10 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 
 ## Blockers and follow-up
 
-- Physical-device capture lifecycle verification remains outstanding. Notification access was not enabled during emulator testing.
+- Physical-device capture lifecycle verification remains outstanding. The emulator capture check used Android shell commands rather than the Settings permission flow.
 - The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
-- Emulator smoke test found that the React Native app cannot resolve the `NotifyIQ` native module; its access status remains “unavailable”. Android's underlying access-status API works in instrumentation, so native-module discovery is the current fault to fix before listener lifecycle verification.
-- Reinstalled the current debug APK on the Pixel 8 API 35 emulator and rechecked through Metro; logcat still reports `NOTIFYIQ_NATIVE_MODULE_UNAVAILABLE`. Build/install succeeds, but this bridge blocker remains open.
+- The first bridgeless registration path marked `NotifyIQ` as a TurboModule, but the RN 0.88.1 JS runtime exposed no `global.__turboModuleProxy`. Switched to a plain `ReactContextBaseJavaModule` through legacy interop. Pixel 8 API 35 verified access status, rule persistence across reinstall, preview output, and deletion of the synthetic test rule. The test rule was removed after the smoke check.
+- Emulator listener smoke check: queried access-off, granted listener access through `cmd notification allow_listener`, confirmed the service became live, posted a synthetic “Payment/payment” shell notification, and verified the Inbox captured it as Finance. Cleared local test history and restored access-off with `cmd notification disallow_listener`. This does not verify the Settings UI grant flow or UI-closed capture.
 - Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. A temporary `ReactPackage` fallback did not resolve the module and was reverted; React Native 0.88 keeps the New Architecture enabled. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
 
 ## Checks performed

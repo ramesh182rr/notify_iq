@@ -79,6 +79,13 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 4
     }
+    if (version == 4) {
+      transaction {
+        connection.execSQL("CREATE TABLE notification_rule_results (event_id INTEGER PRIMARY KEY NOT NULL REFERENCES notification_events(id) ON DELETE CASCADE, category TEXT, include_in_digest INTEGER, important INTEGER, groups_json TEXT NOT NULL, matched_rule_ids_json TEXT NOT NULL)")
+        connection.execSQL("PRAGMA user_version = 5")
+      }
+      version = 5
+    }
     check(version == SCHEMA_VERSION)
   }
 
@@ -97,6 +104,38 @@ internal class NotificationRepository private constructor(private val connection
   fun setUserRules(json: String) = synchronized(connection) {
     val canonical = UserRuleCodec.parse(json).toJson()
     execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('user_rules_v1', ?)", canonical)
+  }
+
+  private fun applyUserRules(id: Long, item: CapturedNotification, analysis: NotificationAnalysis) {
+    val ruleJson = scalarText("SELECT value FROM app_preferences WHERE key = 'user_rules_v1'") ?: return
+    val result = UserRuleCodec.parse(ruleJson).evaluate(
+      RuleSubject(item.identity.packageName, item.title, item.body, item.subtext, analysis.category.wireValue, analysis.priority),
+    )
+    if (result.matchedRuleIds.isEmpty()) return
+    execute(
+      "INSERT OR REPLACE INTO notification_rule_results(event_id, category, include_in_digest, important, groups_json, matched_rule_ids_json) VALUES (?, ?, ?, ?, ?, ?)",
+      id,
+      result.category.takeIf { it != analysis.category.wireValue },
+      result.includeInDigest?.let { if (it) 1L else 0L },
+      result.important?.let { if (it) 1L else 0L },
+      org.json.JSONArray(result.groups).toString(),
+      org.json.JSONArray(result.matchedRuleIds).toString(),
+    )
+    if (result.save) execute("UPDATE notification_events SET is_saved = 1 WHERE id = ?", id)
+  }
+
+  internal fun ruleResults(id: Long): String? = synchronized(connection) {
+    connection.prepare("SELECT category, include_in_digest, important, groups_json, matched_rule_ids_json FROM notification_rule_results WHERE event_id = ?").use { statement ->
+      statement.bindLong(1, id)
+      if (!statement.step()) return@synchronized null
+      JSONObject()
+        .put("category", statement.nullableText(0) ?: JSONObject.NULL)
+        .put("includeInDigest", statement.nullableLong(1)?.let { it == 1L } ?: JSONObject.NULL)
+        .put("important", statement.nullableLong(2)?.let { it == 1L } ?: JSONObject.NULL)
+        .put("groups", statement.getText(3))
+        .put("matchedRuleIds", statement.getText(4))
+        .toString()
+    }
   }
 
   fun previewUserRules(ruleJson: String, sampleJson: String): String = synchronized(connection) {
@@ -138,7 +177,9 @@ internal class NotificationRepository private constructor(private val connection
       )
       val id = scalarLong("SELECT id FROM notification_events WHERE package_name = ? AND notification_key = ? AND removed_at IS NULL", item.identity.packageName, item.identity.notificationKey)
         ?: error("Unable to resolve stored notification identity")
-      saveAnalysis(id, NotificationAnalyzer.analyze(item.title, item.body, item.subtext))
+      val analysis = NotificationAnalyzer.analyze(item.title, item.body, item.subtext)
+      saveAnalysis(id, analysis)
+      if (existingId == null) applyUserRules(id, item, analysis)
       val newGroupKey = duplicateGroupKey(item)
       if (oldGroupKey != null && oldGroupKey != newGroupKey) rebuildDuplicateGroup(oldGroupKey)
       if (newGroupKey != null) rebuildDuplicateGroup(newGroupKey)
@@ -166,7 +207,7 @@ internal class NotificationRepository private constructor(private val connection
       args += queryExpression
     }
     if (filters.packageName.isNotBlank()) { where += "e.package_name = ?"; args += filters.packageName.trim() }
-    if (filters.category.isNotBlank()) { where += "COALESCE(a.category_override, a.category) = ?"; args += filters.category }
+    if (filters.category.isNotBlank()) { where += "COALESCE(a.category_override, rr.category, a.category) = ?"; args += filters.category }
     if (filters.from > 0) { where += "e.received_at >= ?"; args += filters.from }
     if (filters.to > 0) { where += "e.received_at < ?"; args += filters.to }
     if (!filters.includeArchived) where += "e.archived_at IS NULL"
@@ -176,9 +217,9 @@ internal class NotificationRepository private constructor(private val connection
     }
     args += filters.limit.coerceIn(1, 100)
     val sql = "SELECT e.id, e.package_name, e.title, e.body, e.subtext, e.posted_at, e.received_at, e.removed_at, e.is_saved, e.archived_at, " +
-    "COALESCE(a.category_override, a.category), COALESCE(a.priority_override, a.priority), a.confidence, a.explanation, a.method, a.version, a.category_override, m.group_id, " +
-      "CASE WHEN m.group_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM duplicate_group_members gm WHERE gm.group_id = m.group_id) END " +
-      "FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id = e.id LEFT JOIN duplicate_group_members m ON m.event_id = e.id ${if (where.isEmpty()) "" else "WHERE ${where.joinToString(" AND ")}"} " +
+    "COALESCE(a.category_override, rr.category, a.category), COALESCE(a.priority_override, a.priority), a.confidence, a.explanation, a.method, a.version, a.category_override, m.group_id, " +
+      "CASE WHEN m.group_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM duplicate_group_members gm WHERE gm.group_id = m.group_id) END, rr.include_in_digest, rr.important, rr.groups_json, rr.matched_rule_ids_json " +
+      "FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id = e.id LEFT JOIN notification_rule_results rr ON rr.event_id = e.id LEFT JOIN duplicate_group_members m ON m.event_id = e.id ${if (where.isEmpty()) "" else "WHERE ${where.joinToString(" AND ")}"} " +
       "ORDER BY e.received_at DESC, e.id DESC LIMIT ?"
     val records = mutableListOf<NotificationRecord>()
     connection.prepare(sql).use { statement ->
@@ -200,7 +241,7 @@ internal class NotificationRepository private constructor(private val connection
     val total = scalarLong("SELECT COUNT(*) FROM notification_events WHERE received_at >= ? AND received_at < ?", start, end)?.toInt() ?: 0
     val appCount = scalarLong("SELECT COUNT(DISTINCT package_name) FROM notification_events WHERE received_at >= ? AND received_at < ?", start, end)?.toInt() ?: 0
     val categories = overviewCounts(
-      "SELECT COALESCE(a.category_override, a.category), COUNT(*) FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id=e.id WHERE e.received_at >= ? AND e.received_at < ? GROUP BY COALESCE(a.category_override, a.category) ORDER BY COUNT(*) DESC, 1 ASC",
+      "SELECT COALESCE(a.category_override, rr.category, a.category), COUNT(*) FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id=e.id LEFT JOIN notification_rule_results rr ON rr.event_id=e.id WHERE e.received_at >= ? AND e.received_at < ? GROUP BY COALESCE(a.category_override, rr.category, a.category) ORDER BY COUNT(*) DESC, 1 ASC",
       start, end,
     )
     val apps = overviewCounts(
@@ -396,14 +437,19 @@ internal class NotificationRepository private constructor(private val connection
     category = nullableText(10) ?: NotificationCategory.OTHER.wireValue, priority = nullableText(11) ?: "normal", confidence = getDouble(12),
     analysisExplanation = nullableText(13) ?: "No classification is available.", analysisMethod = nullableText(14) ?: "deterministic_rules",
     analysisVersion = nullableText(15) ?: NotificationAnalysis.VERSION, categoryOverride = nullableText(16), duplicateGroupId = nullableLong(17), duplicateCount = getLong(18).toInt(),
+    includeInDigest = nullableLong(19)?.let { it == 1L }, important = nullableLong(20)?.let { it == 1L },
+    ruleGroups = jsonArrayStrings(21), matchedRuleIds = jsonArrayStrings(22),
   )
 
   private fun SQLiteStatement.nullableText(index: Int): String? = if (getColumnType(index) == SQLITE_NULL) null else getText(index)
   private fun SQLiteStatement.nullableLong(index: Int): Long? = if (getColumnType(index) == SQLITE_NULL) null else getLong(index)
+  private fun SQLiteStatement.jsonArrayStrings(index: Int): List<String> = nullableText(index)?.let { raw ->
+    runCatching { org.json.JSONArray(raw).let { array -> (0 until array.length()).map(array::getString) } }.getOrDefault(emptyList())
+  } ?: emptyList()
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 4
+    private const val SCHEMA_VERSION = 5
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5
