@@ -10,6 +10,7 @@ import java.io.File
 internal data class NotificationFilters(
   val query: String = "",
   val packageName: String = "",
+  val category: String = "",
   val from: Long = 0,
   val to: Long = 0,
   val beforeReceivedAt: Long = 0,
@@ -25,6 +26,7 @@ internal class NotificationRepository private constructor(private val connection
   init { synchronized(connection) { migrate() } }
 
   private fun migrate() {
+    connection.execSQL("PRAGMA foreign_keys = ON")
     var version = pragmaInt("user_version")
     if (version > SCHEMA_VERSION) error("Database version is newer than this application.")
 
@@ -53,6 +55,15 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 2
     }
+    if (version == 2) {
+      transaction {
+        connection.execSQL("CREATE TABLE notification_analysis (event_id INTEGER PRIMARY KEY NOT NULL REFERENCES notification_events(id) ON DELETE CASCADE, category TEXT NOT NULL, priority TEXT NOT NULL, confidence REAL NOT NULL, explanation TEXT NOT NULL, method TEXT NOT NULL, version TEXT NOT NULL, category_override TEXT, priority_override TEXT, corrected_at INTEGER)")
+        backfillAnalysis()
+        connection.execSQL("CREATE INDEX idx_analysis_category ON notification_analysis(category, priority)")
+        connection.execSQL("PRAGMA user_version = 3")
+      }
+      version = 3
+    }
     check(version == SCHEMA_VERSION)
   }
 
@@ -73,11 +84,16 @@ internal class NotificationRepository private constructor(private val connection
   }
 
   fun upsert(item: CapturedNotification) = synchronized(connection) {
-    execute(
-      "INSERT INTO notification_events(package_name, notification_key, title, body, subtext, posted_at, received_at) VALUES (?, ?, ?, ?, ?, ?, ?) " +
-        "ON CONFLICT(package_name, notification_key) WHERE removed_at IS NULL DO UPDATE SET title=excluded.title, body=excluded.body, subtext=excluded.subtext, posted_at=excluded.posted_at, received_at=excluded.received_at",
-      item.identity.packageName, item.identity.notificationKey, item.title, item.body, item.subtext, item.postedAt, item.receivedAt,
-    )
+    transaction {
+      execute(
+        "INSERT INTO notification_events(package_name, notification_key, title, body, subtext, posted_at, received_at) VALUES (?, ?, ?, ?, ?, ?, ?) " +
+          "ON CONFLICT(package_name, notification_key) WHERE removed_at IS NULL DO UPDATE SET title=excluded.title, body=excluded.body, subtext=excluded.subtext, posted_at=excluded.posted_at, received_at=excluded.received_at",
+        item.identity.packageName, item.identity.notificationKey, item.title, item.body, item.subtext, item.postedAt, item.receivedAt,
+      )
+      val id = scalarLong("SELECT id FROM notification_events WHERE package_name = ? AND notification_key = ? AND removed_at IS NULL", item.identity.packageName, item.identity.notificationKey)
+        ?: error("Unable to resolve stored notification identity")
+      saveAnalysis(id, NotificationAnalyzer.analyze(item.title, item.body, item.subtext))
+    }
   }
 
   fun deleteActive(packageName: String, key: String) = synchronized(connection) {
@@ -98,6 +114,7 @@ internal class NotificationRepository private constructor(private val connection
       args += queryExpression
     }
     if (filters.packageName.isNotBlank()) { where += "e.package_name = ?"; args += filters.packageName.trim() }
+    if (filters.category.isNotBlank()) { where += "COALESCE(a.category_override, a.category) = ?"; args += filters.category }
     if (filters.from > 0) { where += "e.received_at >= ?"; args += filters.from }
     if (filters.to > 0) { where += "e.received_at < ?"; args += filters.to }
     if (!filters.includeArchived) where += "e.archived_at IS NULL"
@@ -106,8 +123,9 @@ internal class NotificationRepository private constructor(private val connection
       args += filters.beforeReceivedAt; args += filters.beforeReceivedAt; args += filters.beforeId
     }
     args += filters.limit.coerceIn(1, 100)
-    val sql = "SELECT e.id, e.package_name, e.title, e.body, e.subtext, e.posted_at, e.received_at, e.removed_at, e.is_saved, e.archived_at " +
-      "FROM notification_events e ${if (where.isEmpty()) "" else "WHERE ${where.joinToString(" AND ")}"} " +
+    val sql = "SELECT e.id, e.package_name, e.title, e.body, e.subtext, e.posted_at, e.received_at, e.removed_at, e.is_saved, e.archived_at, " +
+      "COALESCE(a.category_override, a.category), COALESCE(a.priority_override, a.priority), a.confidence, a.explanation, a.method, a.version, a.category_override " +
+      "FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id = e.id ${if (where.isEmpty()) "" else "WHERE ${where.joinToString(" AND ")}"} " +
       "ORDER BY e.received_at DESC, e.id DESC LIMIT ?"
     val records = mutableListOf<NotificationRecord>()
     connection.prepare(sql).use { statement ->
@@ -127,6 +145,11 @@ internal class NotificationRepository private constructor(private val connection
   }
 
   fun delete(id: Long) = synchronized(connection) { execute("DELETE FROM notification_events WHERE id = ?", id) }
+
+  fun setCategoryOverride(id: Long, category: String?) = synchronized(connection) {
+    require(category == null || NotificationCategory.fromWireValue(category) != null)
+    execute("UPDATE notification_analysis SET category_override = ?, corrected_at = ? WHERE event_id = ?", category, System.currentTimeMillis(), id)
+  }
 
   fun getRetentionDays(): Int = synchronized(connection) {
     scalarText("SELECT value FROM app_preferences WHERE key = 'retention_days'")?.toIntOrNull() ?: DEFAULT_RETENTION_DAYS
@@ -157,6 +180,24 @@ internal class NotificationRepository private constructor(private val connection
 
   private fun deleteExpired(cutoff: Long) = execute("DELETE FROM notification_events WHERE received_at < ? AND is_saved = 0", cutoff)
 
+  private fun saveAnalysis(id: Long, analysis: NotificationAnalysis) {
+    execute(
+      "INSERT INTO notification_analysis(event_id, category, priority, confidence, explanation, method, version) VALUES (?, ?, ?, ?, ?, ?, ?) " +
+        "ON CONFLICT(event_id) DO UPDATE SET category=excluded.category, priority=excluded.priority, confidence=excluded.confidence, explanation=excluded.explanation, method=excluded.method, version=excluded.version",
+      id, analysis.category.wireValue, analysis.priority, analysis.confidence, analysis.explanation, analysis.method, analysis.version,
+    )
+  }
+
+  private fun backfillAnalysis() {
+    val existing = mutableListOf<Pair<Long, NotificationAnalysis>>()
+    connection.prepare("SELECT id, title, body, subtext FROM notification_events").use { statement ->
+      while (statement.step()) {
+        existing += statement.getLong(0) to NotificationAnalyzer.analyze(statement.nullableText(1), statement.nullableText(2), statement.nullableText(3))
+      }
+    }
+    existing.forEach { (id, analysis) -> saveAnalysis(id, analysis) }
+  }
+
   private fun toFtsExpression(query: String): String = Regex("[\\p{L}\\p{N}]+").findAll(query)
     .take(MAX_SEARCH_TERMS).map { "\"${it.value}\"" }.joinToString(" AND ")
 
@@ -177,6 +218,11 @@ internal class NotificationRepository private constructor(private val connection
     if (statement.step() && statement.getColumnType(0) != SQLITE_NULL) statement.getText(0) else null
   }
 
+  private fun scalarLong(sql: String, vararg values: Any?): Long? = connection.prepare(sql).use { statement ->
+    values.forEachIndexed { index, value -> statement.bindValue(index + 1, value) }
+    if (statement.step() && statement.getColumnType(0) != SQLITE_NULL) statement.getLong(0) else null
+  }
+
   private fun pragmaInt(name: String): Int = connection.prepare("PRAGMA $name").use { statement ->
     if (statement.step()) statement.getLong(0).toInt() else 0
   }
@@ -195,6 +241,9 @@ internal class NotificationRepository private constructor(private val connection
   private fun SQLiteStatement.toNotificationRecord() = NotificationRecord(
     id = getLong(0), packageName = getText(1), title = nullableText(2), body = nullableText(3), subtext = nullableText(4),
     postedAt = getLong(5), receivedAt = getLong(6), removedAt = nullableLong(7), saved = getLong(8) != 0L, archivedAt = nullableLong(9),
+    category = nullableText(10) ?: NotificationCategory.OTHER.wireValue, priority = nullableText(11) ?: "normal", confidence = getDouble(12),
+    analysisExplanation = nullableText(13) ?: "No classification is available.", analysisMethod = nullableText(14) ?: "deterministic_rules",
+    analysisVersion = nullableText(15) ?: NotificationAnalysis.VERSION, categoryOverride = nullableText(16),
   )
 
   private fun SQLiteStatement.nullableText(index: Int): String? = if (getColumnType(index) == SQLITE_NULL) null else getText(index)
@@ -202,7 +251,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 2
+    private const val SCHEMA_VERSION = 3
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5

@@ -90,7 +90,7 @@ function App() {
         <View style={styles.flex}>
           <ScreenContainer theme={theme}>
             {activeScreen === 'inbox' || activeScreen === 'search' ? (
-              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} />
+              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} listenerStatus={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
             ) : activeScreen === 'privacy' ? (
               <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={handleOpenSettings} />
             ) : <FoundationScreen

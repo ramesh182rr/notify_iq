@@ -74,7 +74,13 @@ This log distinguishes decisions already present in the supplied development kit
 **Status:** Approved by user, 2026-11-21  
 **Recommendation:** Use numbered Kotlin-owned migrations and transactional FTS insert/update/delete/retention/clear behavior with a driver that guarantees FTS5. Define stable event identity, update/removal semantics, and saved-item retention first.
 **Reason:** The platform SQLite available through `SQLiteOpenHelper` does not provide an app-level FTS5 guarantee. AndroidX documents that FTS5 depends on the selected SQLite driver and that its bundled driver supports it ([AndroidX FTS5 API](https://developer.android.com/reference/androidx/room3/Fts5), [bundled driver API](https://developer.android.com/reference/kotlin/androidx/sqlite/driver/bundled/BundledSQLiteDriver)).
-**Implementation:** The Kotlin repository now uses AndroidX `BundledSQLiteDriver`. Schema version 1 stores preferences and notification events with active identity `(package_name, notification_key)`; migration 2 adds saved/archive state, an external-content FTS5 index and transactional maintenance triggers. Posts update active rows, removal marks them removed, and a later post creates a new row. Retention cleanup and history clearing delete corresponding FTS entries through triggers. Saved rows are exempt from age-based cleanup until unsaved or explicitly deleted. Instrumentation tests cover migration and FTS maintenance.
+**Implementation:** The Kotlin repository now uses AndroidX `BundledSQLiteDriver`. Schema version 1 stores preferences and notification events with active identity `(package_name, notification_key)`; migration 2 adds saved/archive state, an external-content FTS5 index and transactional maintenance triggers. Migration 3 stores classification separately with a foreign key to the source event. Posts update active rows, removal marks them removed, and a later post creates a new row. Retention cleanup and history clearing delete corresponding FTS/analysis rows consistently. Saved rows are exempt from age-based cleanup until unsaved or explicitly deleted. Instrumentation tests cover migrations and index maintenance.
+
+### R-008 — Keep deterministic classification local, explainable and correctable
+
+**Status:** Implementation choice, 2026-11-21
+**Decision:** Run deterministic category/priority rules only after sensitive-content screening. Store results separately from notification source fields with rule version, explanation, heuristic confidence score and user category override. Explicit phrases are required for urgent/high priority; unmatched priority remains normal. The numeric score is not a calibrated probability and must not be displayed as one.
+**Reason:** Enables category filtering without coupling analysis to the source event or overstating what keyword rules know. Synthetic multilingual and ambiguity fixtures remain the next validation task.
 
 ### R-005 — Separate daily overview from generated digest in scope
 

@@ -66,13 +66,15 @@ class NotificationRepositoryTest {
   }
 
   @Test
-  fun migratesSchemaVersionOneToFtsVersionTwo() {
+  fun migratesSchemaVersionOneToAnalysisAndFtsVersionThree() {
     val file = temporaryFolder.newFile("migration.db")
     val connection = BundledSQLiteDriver().open(file.absolutePath)
     connection.execSQL("CREATE TABLE app_preferences (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)")
     connection.execSQL("CREATE TABLE notification_events (id INTEGER PRIMARY KEY AUTOINCREMENT, package_name TEXT NOT NULL, notification_key TEXT NOT NULL, title TEXT, body TEXT, subtext TEXT, posted_at INTEGER NOT NULL, received_at INTEGER NOT NULL, removed_at INTEGER)")
     connection.execSQL("CREATE UNIQUE INDEX idx_active_event ON notification_events(package_name, notification_key) WHERE removed_at IS NULL")
     connection.execSQL("CREATE INDEX idx_events_received ON notification_events(received_at DESC, id DESC)")
+    val now = System.currentTimeMillis()
+    connection.execSQL("INSERT INTO notification_events(package_name, notification_key, title, body, posted_at, received_at) VALUES ('example.app', 'legacy', 'Package', 'Your package was delivered', $now, $now)")
     connection.execSQL("PRAGMA user_version = 1")
     connection.close()
 
@@ -80,7 +82,27 @@ class NotificationRepositoryTest {
     repository.upsert(captured("Migrated invoice"))
 
     assertEquals(1, repository.notifications(NotificationFilters(query = "migrated")).size)
+    assertEquals("delivery_shopping", repository.notifications(NotificationFilters(query = "package")).single().category)
     assertEquals(30, repository.getRetentionDays())
+  }
+
+  @Test
+  fun classificationIsStoredSeparatelyFilterableAndUserCorrectable() {
+    val repository = NotificationRepository(temporaryFolder.newFile("analysis.db"))
+    repository.upsert(captured("Payment failed: emergency alert"))
+
+    val original = repository.notifications(NotificationFilters(category = "finance")).single()
+    assertEquals("urgent", original.priority)
+    assertEquals("finance", original.category)
+    assertEquals("deterministic_rules", original.analysisMethod)
+    assertEquals(0.82, original.confidence, 0.0)
+
+    repository.setCategoryOverride(original.id, "travel")
+    assertTrue(repository.notifications(NotificationFilters(category = "finance")).isEmpty())
+    assertEquals("travel", repository.notifications(NotificationFilters(category = "travel")).single().category)
+
+    repository.setCategoryOverride(original.id, null)
+    assertEquals("finance", repository.notifications(NotificationFilters(category = "finance")).single().category)
   }
 
   private fun captured(

@@ -1,6 +1,6 @@
 # NotifyIQ Implementation Plan
 
-**Status:** Implementation in progress; Phases 0–1 baseline is implemented, with physical capture verification outstanding; Phase 2 is underway.
+**Status:** Implementation in progress; Phases 0–2 are implemented, Phase 3 classification is underway, and physical capture verification remains outstanding.
 **Source of truth:** `NotifyIQ-Development-Kit/` and accepted decisions recorded in `DECISIONS_LOG.md`.
 
 ## 1. Product and architecture understanding
@@ -99,10 +99,10 @@ Tasks:
 
 1. Implement notification list/detail with source identity, timestamp, permitted original content and provenance labels. **Implemented in the inbox and detail modal.**
 2. Add save/archive/delete actions and confirmation/undo behavior; keep Android shade behavior untouched. **Implemented:** save/archive changes offer a five-second undo; delete requires confirmation and intentionally has no undo after deletion.
-3. Add app/category/date filters and stable pagination. **App/date/archive filters and keyset pagination are implemented; category filters remain until classification exists.**
+3. Add app/category/date filters and stable pagination. **Implemented:** app/category/date/archive filters and keyset pagination. Categories come from the separate local analysis table and user overrides persist.
 4. Add FTS5 search and transactional maintenance for all CRUD, retention cleanup and history clear paths. **Implemented and covered by Android instrumentation tests.**
 5. Add configurable retention and Privacy Centre controls; document local delete limitations. **Implemented:** dedicated Privacy Centre manages retention, notification access, app exclusions and local history deletion. Exclusions currently require entering the exact Android package name; an installed-app picker remains a usability improvement.
-6. Complete accessible light/dark/system UI states and offline/permission/stale-coverage cues.
+6. Complete accessible light/dark/system UI states and offline/permission/stale-coverage cues. **Implemented in components:** semantic themes, screen-reader labels/state, offline copy and capture coverage/error cues. Manual visual checks on device remain part of release QA.
 
 **Definition of done:** Search/filter results match retained rows; deleting/expiring/clearing rows removes derived and FTS rows consistently; saved/archive states survive restart; core workflows work offline and are manually checked in both themes.
 
@@ -110,9 +110,9 @@ Tasks:
 
 Tasks:
 
-1. Implement category and conservative priority rules on privacy-screened content.
-2. Store analysis separately from source events with reason code, confidence, method/version and user correction.
-3. Build synthetic gold fixtures and test ambiguous, multilingual/code-mixed, malicious-looking and false-urgent cases.
+1. Implement category and conservative priority rules on privacy-screened content. **Implemented:** deterministic Kotlin rules run only after the sensitive-content gate; urgent/high rules require explicit phrases and defaults stay normal.
+2. Store analysis separately from source events with reason code, confidence, method/version and user correction. **Implemented:** schema v3 `notification_analysis` stores derived results separately, backfills retained v2 records, and supports a user category override.
+3. Build synthetic gold fixtures and test ambiguous, multilingual/code-mixed, malicious-looking and false-urgent cases. **Implemented:** focused English/Hindi/code-mixed, ambiguous, prompt-like and false-urgent fixtures cover initial rule behavior; this is not a broad accuracy benchmark.
 4. Add duplicate detection/grouping without deleting source records.
 5. Add deterministic daily overview/digest templates with source links and listener-coverage caveats.
 6. Add aggregate volume/app/category/peak-time insights with non-judgemental copy.
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Complete category filtering after classification exists and accessible light/dark/system plus offline/permission/stale-coverage QA. The FTS5-capable bundled SQLite driver and migration 2 are implemented. Phase 1 physical-device capture verification remains an independent follow-up.
+**Next task:** Continue Phase 3 with duplicate grouping and deterministic daily overview, then aggregate insights. Manual visual QA and Phase 1 physical-device capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Phase 0, Phase 1 tasks 1–8, and Phase 2 tasks 1, 2, 4 and 5 are implemented (16 tasks); 28 remain. Task counts include the optional cloud phase and release-readiness work.
+The roadmap contains 44 numbered tasks total. Phase 0 (4), Phase 1 tasks 1–8 (8), all Phase 2 tasks (6), and Phase 3 tasks 1–3 (3) are implemented (21 tasks); 23 remain. Task counts include the optional cloud phase and release-readiness work.

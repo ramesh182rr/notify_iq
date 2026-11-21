@@ -35,6 +35,7 @@ export function setAppExcluded(packageName: string, excluded: boolean): Promise<
 export function searchNotifications(filters: {
   query?: string;
   packageName?: string;
+  category?: string;
   from?: number;
   to?: number;
   beforeReceivedAt?: number;
@@ -43,7 +44,7 @@ export function searchNotifications(filters: {
   limit?: number;
 }): Promise<ReadonlyArray<NotificationItem>> {
   return requireNativeModule().searchNotifications(
-    filters.query ?? '', filters.packageName ?? '', filters.from ?? 0,
+    filters.query ?? '', filters.packageName ?? '', filters.category ?? '', filters.from ?? 0,
     filters.to ?? 0, filters.beforeReceivedAt ?? 0, filters.beforeId ?? 0,
     filters.includeArchived ?? false, filters.limit ?? 50,
   );
@@ -55,6 +56,10 @@ export function setNotificationSaved(id: number, saved: boolean): Promise<void> 
 
 export function setNotificationArchived(id: number, archived: boolean): Promise<void> {
   return requireNativeModule().setNotificationArchived(id, archived);
+}
+
+export function setNotificationCategoryOverride(id: number, category: string | null): Promise<void> {
+  return requireNativeModule().setNotificationCategoryOverride(id, category);
 }
 
 export function deleteNotification(id: number): Promise<void> {

@@ -37,15 +37,16 @@ class NotifyIQModule(
     } catch (_: Exception) { promise.reject("HISTORY_UNAVAILABLE", "Notification history is unavailable.") }
   }
 
-  override fun searchNotifications(query: String, packageName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
+  override fun searchNotifications(query: String, packageName: String, category: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
     try {
-      val filters = NotificationFilters(query, packageName, from.toLong(), to.toLong(), beforeReceivedAt.toLong(), beforeId.toLong(), includeArchived, limit.toInt())
+      val filters = NotificationFilters(query = query, packageName = packageName, category = category, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())
       promise.resolve(toWritableArray(NotificationRepository(appContext).notifications(filters)))
     } catch (_: Exception) { promise.reject("SEARCH_UNAVAILABLE", "Notification search is unavailable.") }
   }
 
   override fun setNotificationSaved(id: Double, saved: Boolean, promise: Promise) = updateEvent(promise) { it.setSaved(id.toLong(), saved) }
   override fun setNotificationArchived(id: Double, archived: Boolean, promise: Promise) = updateEvent(promise) { it.setArchived(id.toLong(), archived) }
+  override fun setNotificationCategoryOverride(id: Double, category: String?, promise: Promise) = updateEvent(promise) { it.setCategoryOverride(id.toLong(), category) }
   override fun deleteNotification(id: Double, promise: Promise) = updateEvent(promise) { it.delete(id.toLong()) }
 
   override fun getRetentionDays(promise: Promise) {
@@ -69,6 +70,9 @@ class NotifyIQModule(
       putNullableString("title", item.title); putNullableString("body", item.body); putNullableString("subtext", item.subtext)
       putDouble("postedAt", item.postedAt.toDouble()); putDouble("receivedAt", item.receivedAt.toDouble())
       putNullableNumber("removedAt", item.removedAt); putBoolean("saved", item.saved); putNullableNumber("archivedAt", item.archivedAt)
+      putString("category", item.category); putString("priority", item.priority); putDouble("confidence", item.confidence)
+      putString("analysisExplanation", item.analysisExplanation); putString("analysisMethod", item.analysisMethod)
+      putString("analysisVersion", item.analysisVersion); putNullableString("categoryOverride", item.categoryOverride)
     }) }
   }
 

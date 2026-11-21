@@ -25,4 +25,11 @@ data class NotificationRecord(
   val removedAt: Long?,
   val saved: Boolean,
   val archivedAt: Long?,
+  val category: String,
+  val priority: String,
+  val confidence: Double,
+  val analysisExplanation: String,
+  val analysisMethod: String,
+  val analysisVersion: String,
+  val categoryOverride: String?,
 )

@@ -6,21 +6,28 @@ import {
   deleteNotification,
   searchNotifications,
   setNotificationArchived,
+  setNotificationCategoryOverride,
   setNotificationSaved,
 } from '../../native/notifyIQ';
 import type { NotificationItem } from '../../native/NativeNotifyIQ';
+import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 
-type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean };
+type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
 type PendingUndo = { label: string; action: () => Promise<void> };
 
 const PAGE_SIZE = 50;
+const CATEGORY_OPTIONS = [
+  ['personal', 'Personal'], ['finance', 'Finance'], ['delivery_shopping', 'Delivery & shopping'],
+  ['travel', 'Travel'], ['social', 'Social'], ['promotion', 'Promotions'],
+  ['reminder_calendar', 'Reminders'], ['system', 'System'], ['other', 'Other'],
+] as const;
 const ignorePromise = (promise: Promise<unknown>) => {
   promise.catch(() => undefined);
 };
 
-export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
+export function InboxScreen({ theme, refreshKey, searchMode = false, listenerStatus, statusLoading = false, statusError = null }: Props) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
   const [error, setError] = useState(false);
@@ -31,7 +38,9 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
   const [packageName, setPackageName] = useState('');
   const [range, setRange] = useState<DateRange>('all');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [category, setCategory] = useState('');
   const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
+  const [categoryEditor, setCategoryEditor] = useState<NotificationItem | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const requestId = useRef(0);
 
@@ -47,7 +56,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
     setLoading(true);
     try {
       const result = await searchNotifications({
-        query, packageName, from: rangeStart, includeArchived, limit: PAGE_SIZE,
+        query, packageName, category, from: rangeStart, includeArchived, limit: PAGE_SIZE,
       });
       if (requestId.current === id) {
         setItems([...result]);
@@ -59,7 +68,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
     } finally {
       if (requestId.current === id) setLoading(false);
     }
-  }, [includeArchived, packageName, query, rangeStart]);
+  }, [category, includeArchived, packageName, query, rangeStart]);
 
   useEffect(() => {
     const timer = setTimeout(() => { ignorePromise(loadFirstPage()); }, query || packageName ? 250 : 0);
@@ -78,7 +87,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
     setLoading(true);
     try {
       const result = await searchNotifications({
-        query, packageName, from: rangeStart, beforeReceivedAt: last.receivedAt,
+        query, packageName, category, from: rangeStart, beforeReceivedAt: last.receivedAt,
         beforeId: last.id, includeArchived, limit: PAGE_SIZE,
       });
       setItems(current => [...current, ...result]);
@@ -135,8 +144,17 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
   );
 
   return (
-    <View style={styles.content}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{searchMode ? 'Search' : 'Inbox'}</Text>
+      {listenerStatus !== undefined ? (
+        <View accessibilityLiveRegion="polite" style={[styles.coverage, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.coverageTitle, { color: theme.colors.textPrimary }]}>Capture coverage</Text>
+          <Text style={[styles.hint, { color: statusError || listenerStatus?.lastErrorCode ? theme.colors.danger : theme.colors.textSecondary }]}>
+            {statusLoading && listenerStatus === null ? 'Checking notification access…' : statusError ? 'Coverage status is unavailable. Some notifications may not have been saved.' : listenerStatus?.lastErrorCode ? 'A local capture error occurred. Some notifications may be missing.' : !listenerStatus?.accessGranted ? 'Notification access is off. New notifications are not being captured, so history may be incomplete.' : !listenerStatus.connected ? 'The listener is disconnected. History may be incomplete until Android reconnects it.' : 'The listener is connected. Android may still omit or delay notifications.'}
+          </Text>
+        </View>
+      ) : null}
+      <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Saved history is stored on this device and works offline. There is no account or network sync.</Text>
       <TextInput
         accessibilityLabel="Search notification text"
         placeholder="Search saved notification text"
@@ -164,6 +182,16 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
           <Text style={{ color: theme.colors.textPrimary }}>{includeArchived ? 'Archived included' : 'Include archived'}</Text>
         </Pressable>
       </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRail} accessibilityLabel="Filter by category">
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: category === '' }} onPress={() => setCategory('')} style={[styles.chip, { backgroundColor: category === '' ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={{ color: theme.colors.textPrimary }}>All categories</Text>
+        </Pressable>
+        {CATEGORY_OPTIONS.map(([value, label]) => (
+          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: category === value }} onPress={() => setCategory(value)} style={[styles.chip, { backgroundColor: category === value ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={{ color: theme.colors.textPrimary }}>{label}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
       {!searchMode ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Manage retention and app exclusions in Privacy.</Text> : null}
       {actionError ? <Text style={{ color: theme.colors.danger }}>That change could not be saved. Try again.</Text> : null}
       {!loading && items.length > 0 ? (
@@ -199,6 +227,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
           {item.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.subtext}</Text> : null}
           <Text style={[styles.time, { color: theme.colors.textSecondary }]}>{new Date(item.receivedAt).toLocaleString()}</Text>
           <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text</Text>
+          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{categoryLabel(item.category)}{item.categoryOverride ? ' · changed by you' : ''} · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="View notification details" onPress={() => setSelectedItem(item)}>
             <Text style={{ color: theme.colors.brand }}>Details</Text>
           </Pressable>
@@ -240,6 +269,12 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Posted by Android</Text>
                   <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{new Date(selectedItem.postedAt).toLocaleString()}</Text>
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Notification content</Text>
+                  <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{categoryLabel(selectedItem.category)} · {selectedItem.priority} priority</Text>
+                  <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{selectedItem.analysisExplanation} ({selectedItem.analysisMethod}, {selectedItem.analysisVersion})</Text>
+                  {selectedItem.confidence > 0 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Rule score is a heuristic, not a measured probability.</Text> : null}
+                  <Pressable accessibilityRole="button" accessibilityLabel="Open category correction" onPress={() => setCategoryEditor(selectedItem)} style={styles.closeButton}>
+                    <Text style={[styles.closeText, { color: theme.colors.brand }]}>Correct category</Text>
+                  </Pressable>
                   {selectedItem.title ? <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{selectedItem.title}</Text> : null}
                   {selectedItem.body ? <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{selectedItem.body}</Text> : null}
                   {selectedItem.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{selectedItem.subtext}</Text> : null}
@@ -253,12 +288,55 @@ export function InboxScreen({ theme, refreshKey, searchMode = false }: Props) {
           </View>
         </View>
       </Modal>
-    </View>
+      <Modal visible={categoryEditor !== null} transparent animationType="fade" onRequestClose={() => setCategoryEditor(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.detailCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.detailTitle, { color: theme.colors.textPrimary }]}>Choose category</Text>
+            <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>This changes NotifyIQ’s organization for this item only.</Text>
+            <ScrollView contentContainerStyle={styles.detailContent}>
+              {CATEGORY_OPTIONS.map(([value, label]) => (
+                <Pressable key={value} accessibilityRole="button" accessibilityLabel={`Set category to ${label}`} accessibilityState={{ selected: categoryEditor?.category === value }} onPress={() => {
+                  if (categoryEditor) {
+                    const item = categoryEditor;
+                    ignorePromise(reloadAfterAction(() => setNotificationCategoryOverride(item.id, value), {
+                      label: `Category changed to ${label}.`, action: () => setNotificationCategoryOverride(item.id, item.categoryOverride),
+                    }));
+                    setSelectedItem(null);
+                  }
+                  setCategoryEditor(null);
+                }} style={styles.closeButton}>
+                  <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{label}</Text>
+                </Pressable>
+              ))}
+              <Pressable accessibilityRole="button" onPress={() => {
+                if (categoryEditor) {
+                  const item = categoryEditor;
+                  ignorePromise(reloadAfterAction(() => setNotificationCategoryOverride(item.id, null), {
+                    label: 'Category reset to the rule result.', action: () => setNotificationCategoryOverride(item.id, item.categoryOverride),
+                  }));
+                  setSelectedItem(null);
+                }
+                setCategoryEditor(null);
+              }} style={styles.closeButton}>
+                <Text style={[styles.body, { color: theme.colors.brand }]}>Reset to rule result</Text>
+              </Pressable>
+            </ScrollView>
+            <Pressable accessibilityRole="button" onPress={() => setCategoryEditor(null)} style={styles.closeButton}>
+              <Text style={[styles.closeText, { color: theme.colors.brand }]}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
+function categoryLabel(value: string) {
+  return CATEGORY_OPTIONS.find(([category]) => category === value)?.[1] ?? 'Other';
+}
+
 const styles = StyleSheet.create({
-  content: { flex: 1, gap: 14 },
+  content: { flexGrow: 1, gap: 14, paddingBottom: 24 },
   title: { fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.8 },
   card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
   app: { fontSize: 12, fontWeight: '700' },
@@ -267,10 +345,13 @@ const styles = StyleSheet.create({
   time: { fontSize: 11, marginTop: 4 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14 },
   row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
+  chipRail: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8 },
   retention: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 10 },
   undoNotice: { minHeight: 52, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   undoAction: { fontWeight: '700' },
+  coverage: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
+  coverageTitle: { fontSize: 14, fontWeight: '700' },
   sectionLabel: { fontSize: 14, fontWeight: '700' },
   hint: { fontSize: 12, lineHeight: 17 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)', justifyContent: 'center', padding: 20 },

@@ -1,11 +1,11 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-21  
-**Current phase:** Phase 2 — core inbox, retention and search
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre and typed bridge implemented; Phase 2 polish and physical-device capture verification remain
+**Current phase:** Phase 3 — deterministic classification and overview
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, category/priority analysis and typed bridge implemented; broader classification evaluation and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Sixteen are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 4); 28 remain, including optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-one are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 3); 23 remain, including optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -28,7 +28,9 @@
 - Added notification detail modal with source, posted/received timestamps, stored content and provenance; documented local deletion limitations in Inbox.
 - Added a dedicated Privacy Centre for notification access status/settings, retention choices, excluded package management and local history deletion. App exclusions currently use exact package-name entry; an installed-app picker remains a usability improvement.
 - Added a five-second undo affordance for save/archive changes; individual and bulk deletes remain confirmation-gated and irreversible within the app.
-- Added four Android instrumentation tests for migration, FTS maintenance, retention, archive and package exclusion; all pass on the Pixel 8 API 35 emulator.
+- Added deterministic Kotlin category and conservative priority rules behind the privacy gate. Analysis persists separately from source notifications in schema v3, including confidence, explanation, method/version and category correction; FTS/app/category/date filters now use the derived category.
+- Added synthetic English, Hindi and code-mixed classification fixtures covering ambiguous, prompt-like and false-urgent text. These focused fixtures validate known examples; they do not establish broad classification accuracy.
+- Added five Android instrumentation tests for v1→v3 migration/backfill, FTS maintenance, retention, archive, package exclusion, classification and category override; all pass on the Pixel 8 API 35 emulator.
 
 ## Current state
 
@@ -40,8 +42,8 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
 - [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
-- [ ] Phase 2 — inbox actions, retention, filters and FTS search. FTS, detail view, Privacy Centre and save/archive undo are implemented; category filters (pending classification) and accessibility/theme QA remain.
-- [ ] Phase 3 — deterministic classification, grouping, overview/digest and insights.
+- [x] Phase 2 — inbox actions, retention, filters and FTS search are implemented; manual visual theme QA remains for release verification.
+- [ ] Phase 3 — deterministic classification, grouping, overview/digest and insights. Classification, separate analysis persistence and focused synthetic fixtures are implemented; grouping, overview and insights remain.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [ ] Phase 5 — user rules and richer organisation.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
@@ -68,9 +70,11 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 - `fnm exec --using=22.23.4 -- npm install` — completed; npm reported zero vulnerabilities. Template dependencies emitted deprecation notices, including ESLint 8.
 - `npm run typecheck` — passed after Phase 1 changes.
 - `npm run lint` — passed after Phase 1 changes.
-- `npm test -- --runInBand --watchman=false` — passed, 3 suites / 5 tests after Privacy Centre and undo work.
+- `npm test -- --runInBand --watchman=false` — passed, 3 suites / 7 tests after classification filters and coverage cues.
+- `./gradlew --no-daemon testDebugUnitTest` — passed, including three classifier unit tests with synthetic English/Hindi/code-mixed, ambiguous and false-urgent fixtures.
 - `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug` — passed.
 - `./gradlew --no-daemon connectedDebugAndroidTest` — passed, 4 database tests on Pixel 8 API 35.
+- `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug connectedDebugAndroidTest` — passed with schema v3/category analysis; 5 Android database instrumentation tests passed on Pixel 8 API 35.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.

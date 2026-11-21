@@ -18,6 +18,13 @@ export type NotificationItem = {
   removedAt: number | null;
   saved: boolean;
   archivedAt: number | null;
+  category: string;
+  priority: string;
+  confidence: number;
+  analysisExplanation: string;
+  analysisMethod: string;
+  analysisVersion: string;
+  categoryOverride: string | null;
 };
 
 export interface Spec extends TurboModule {
@@ -30,6 +37,7 @@ export interface Spec extends TurboModule {
   searchNotifications(
     query: string,
     packageName: string,
+    category: string,
     from: number,
     to: number,
     beforeReceivedAt: number,
@@ -39,6 +47,7 @@ export interface Spec extends TurboModule {
   ): Promise<ReadonlyArray<NotificationItem>>;
   setNotificationSaved(id: number, saved: boolean): Promise<void>;
   setNotificationArchived(id: number, archived: boolean): Promise<void>;
+  setNotificationCategoryOverride(id: number, category: string | null): Promise<void>;
   deleteNotification(id: number): Promise<void>;
   getRetentionDays(): Promise<number>;
   setRetentionDays(days: number): Promise<void>;

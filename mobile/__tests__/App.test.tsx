@@ -7,7 +7,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { AppHeader } from '../src/components/AppHeader';
 import { BottomTabBar } from '../src/components/BottomTabBar';
 import { FoundationScreen } from '../src/features/foundation/FoundationScreen';
-import { lightTheme } from '../src/theme/tokens';
+import { darkTheme, lightTheme } from '../src/theme/tokens';
 
 test('renders the foundation states, six tabs, and appearance choices', async () => {
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
@@ -55,4 +55,10 @@ test('renders the foundation states, six tabs, and appearance choices', async ()
   expect(renderedTree.match(/"accessibilityRole":"tab"/g) ?? []).toHaveLength(
     6,
   );
+  expect(renderedTree).toContain('"accessibilityRole":"radiogroup"');
+
+  await ReactTestRenderer.act(() => {
+    renderer.update(<BottomTabBar activeScreen="privacy" onSelect={jest.fn()} theme={darkTheme} />);
+  });
+  expect(JSON.stringify(renderer.toJSON())).toContain(darkTheme.colors.surface);
 });
