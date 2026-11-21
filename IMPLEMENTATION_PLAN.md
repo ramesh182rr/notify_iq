@@ -1,6 +1,6 @@
 # NotifyIQ Implementation Plan
 
-**Status:** Implementation in progress; Phases 0–3 are implemented, Phase 4 benchmark preparation is next, and physical capture verification remains outstanding.
+**Status:** Implementation in progress; Phases 0–3 and Phase 5 core rules are implemented. Phase 4 has a completed LiteRT trial and an ONNX graph-load probe; ONNX text inference remains open. Physical capture verification remains outstanding.
 **Source of truth:** `NotifyIQ-Development-Kit/` and accepted decisions recorded in `DECISIONS_LOG.md`.
 
 ## 1. Product and architecture understanding
@@ -125,9 +125,9 @@ Tasks:
 
 1. [x] Create a synthetic, labelled evaluation set (100–300 cases) covering relevant notification types, languages and prompt-injection-like text; never use personal content. **Implemented:** 108 synthetic cases, nine categories, English/Hindi/code-mix, with a JUnit metric reporter and deterministic baseline.
 2. [x] Freeze model revisions, artifact checksums, licence details and runtime versions for the LiteRT-LM and ONNX Runtime Android benchmark candidates. **Implemented:** pins and compatibility caveats are recorded in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
-3. Run the pinned ONNX Runtime Android Qwen path and LiteRT-LM path on the available Android emulator as an explicitly emulator-only trial. Real-device measurements remain a later release gate.
-4. Measure cold load, memory/RSS, prefill/decode speed, battery/thermal behavior, package/download size, JSON validity, category/priority metrics and false-positive urgency.
-5. Decide whether to adopt, defer or reject each runtime based on recorded thresholds and supported devices; keep deterministic fallback.
+3. Run the pinned ONNX Runtime Android Qwen path and LiteRT-LM path on Android as an explicitly emulator-only trial. **Partial:** LiteRT 0.19.0 CPU ran all 108 synthetic cases on a 6 GiB Pixel_8 AVD. ORT 1.29.0 loaded the pinned Q4F16 graph, but its tokenizer and KV-cache generation loop are still needed for text inference. See the two runtime reports in `docs/`. Real-device measurements remain a later release gate.
+4. Measure cold load, memory/RSS, latency, JSON validity, category/priority metrics and urgent false positives. **Partial:** LiteRT load, RSS, end-to-end latency and quality were recorded; ONNX graph load/RSS were recorded. Battery, thermal behavior, token throughput and ONNX generation/quality remain outstanding.
+5. [x] Decide whether to adopt, defer or reject each runtime based on recorded thresholds and supported devices; keep deterministic fallback. **Decision:** reject this LiteRT model/runtime configuration for the current classifier because its emulator quality was far below deterministic rules; defer ONNX because only graph loading has been measured and the Android GenAI Java package is not published. Keep deterministic analysis in production. Reopen only with a runnable tokenizer/cache path and evidence against the same gate.
 
 **Definition of done:** Reproducible benchmark report includes devices/artifact hashes/results/limitations and a product decision. Until accepted, no production model dependency or weights in Git.
 
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Add benchmark-only runtime adapters and attempt both pinned models on the emulator. Record any load failure and the emulator's memory ceiling in `docs/MODEL_BENCHMARK_RUN_TEMPLATE.md`; do not use emulator results as product device-support evidence. Manual visual QA and physical capture verification remain follow-ups.
+**Next task:** Continue Phase 4 by implementing tokenizer and autoregressive KV-cache support for the isolated ONNX harness, then run the 108-case corpus on the 6 GiB AVD. The LiteRT candidate is rejected for this use based on its measured quality; ONNX is deferred pending text-inference evidence. Manual visual QA and physical capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Twenty-seven are implemented (Phases 0–3: 24; Phase 4 evaluation corpus and candidate pins: 2; Phase 5 rule schema and semantics: 1); 17 remain. Task counts include optional cloud and release-readiness work.
+The roadmap contains 44 numbered tasks total. Thirty are implemented (Phases 0–3: 24; Phase 4 corpus, candidate pins and runtime decision: 3; Phase 5 core rules: 3); 14 remain. Task counts include optional cloud and release-readiness work.

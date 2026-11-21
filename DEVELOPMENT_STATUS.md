@@ -1,11 +1,11 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-21  
-**Current phase:** Phase 4 — local-model benchmark preparation
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping, daily overview and basic user rules are implemented; emulator-only model runtime evaluation and physical-device capture verification remain
+**Current phase:** Phase 4 — local-model benchmark spike; LiteRT trial and ONNX graph-load probe complete, ONNX text inference open
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping, daily overview and basic user rules are implemented; ONNX runtime benchmarking and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-nine are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2; Phase 5: 3); 15 remain, including the local-model emulator benchmark, optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 3; Phase 5: 3); 14 remain, including ONNX text-inference benchmarking, optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -35,6 +35,10 @@
 - Added five Android instrumentation tests for v1→v3 migration/backfill, FTS maintenance, retention, archive, package exclusion, classification and category override; all pass on the Pixel 8 API 35 emulator.
 - Added a synthetic multilingual evaluation corpus of 108 unique cases (nine categories, 12 each; English, Hindi and code-mixed examples) and a JUnit evaluator reporting category accuracy/macro-F1, priority accuracy, urgent false positives/negatives and language slices.
 - Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
+- Recorded exact deterministic quality metrics for the 108-case synthetic corpus in `docs/MODEL_BENCHMARK_DETERMINISTIC_BASELINE.md`; the test is JVM-only and does not claim model or emulator inference.
+- Added an isolated Kotlin 2.4.0 LiteRT-LM benchmark app and completed the pinned model's 108-case CPU trial on a temporary 6 GiB API 35 AVD. Results: 0.139 category accuracy, 0.071 macro-F1, 0.713 priority accuracy, two strict-JSON failures, 1.85 GiB process high-water RSS and 2.27 s median latency. It underperformed the deterministic baseline; see `docs/MODEL_BENCHMARK_LITERT_EMULATOR.md`.
+- Added an isolated ONNX Runtime 1.29.0 graph-load probe. The pinned Q4F16 file opened on the 6 GiB AVD in 1.44 s at 1.28 GiB high-water RSS. Its decoder inputs expose a tokenizer and past/present KV-cache loop requirement; text generation and ONNX corpus scoring remain open. See `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
+- Recorded the Phase 4 runtime decision: do not adopt this LiteRT candidate for classification because its measured quality was far below deterministic rules; defer ONNX until text generation and corpus quality can be measured. Production remains deterministic and carries no model runtime or weights.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
 - Added a constrained Kotlin rule codec/evaluator with ordered matching, schema v2 reminder actions, preview, and explicit re-evaluation of stored history. Reminders use inexact alarms, generic lock-screen text, Android 13+ notification permission, and reboot rescheduling. Existing rule effects are replaced only by the explicit user action; manual saved/category overrides remain authoritative, past reminder times are skipped, and alarms are canceled when their record is deleted.
@@ -74,7 +78,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
 - The first bridgeless registration path marked `NotifyIQ` as a TurboModule, but the RN 0.88.1 JS runtime exposed no `global.__turboModuleProxy`. Switched to a plain `ReactContextBaseJavaModule` through legacy interop. Pixel 8 API 35 verified access status, rule persistence across reinstall, preview output, and deletion of the synthetic test rule. The test rule was removed after the smoke check.
 - Emulator listener smoke check: queried access-off, granted listener access through `cmd notification allow_listener`, confirmed the service became live, posted a synthetic “Payment/payment” shell notification, and verified the Inbox captured it as Finance. Cleared local test history and restored access-off with `cmd notification disallow_listener`. This does not verify the Settings UI grant flow or UI-closed capture.
-- Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. A temporary `ReactPackage` fallback did not resolve the module and was reverted; React Native 0.88 keeps the New Architecture enabled. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
+- Production has no model inference runtime or bundled weights. LiteRT and ONNX are only in `mobile/model-benchmark/`; LiteRT failed the quality comparison, and ONNX has only passed graph loading. Physical-device verification remains. See the model benchmark preflight and runtime reports in `docs/`.
 
 ## Checks performed
 
