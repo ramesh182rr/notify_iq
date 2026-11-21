@@ -36,6 +36,7 @@
 - Added a synthetic multilingual evaluation corpus of 108 unique cases (nine categories, 12 each; English, Hindi and code-mixed examples) and a JUnit evaluator reporting category accuracy/macro-F1, priority accuracy, urgent false positives/negatives and language slices.
 - Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
+- Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
 - Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and eight instrumentation tests pass. A new instrumentation test confirms Android's notification-listener access API is callable.
 
 ## Current state
@@ -70,7 +71,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - Physical-device capture lifecycle verification remains outstanding. Notification access was not enabled during emulator testing.
 - The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
 - Emulator smoke test found that the React Native app cannot resolve the `NotifyIQ` native module; its access status remains “unavailable”. Android's underlying access-status API works in instrumentation, so native-module discovery is the current fault to fix before listener lifecycle verification.
-- Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
+- Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. A temporary `ReactPackage` fallback did not resolve the module and was reverted; React Native 0.88 keeps the New Architecture enabled. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
 
 ## Checks performed
 

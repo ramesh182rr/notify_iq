@@ -18,7 +18,7 @@ class NotifyIQPackage : BaseReactPackage() {
     mapOf(
       NotifyIQModule.NAME to ReactModuleInfo(
         name = NotifyIQModule.NAME,
-        className = NotifyIQModule.NAME,
+        className = NotifyIQModule::class.java.name,
         canOverrideExistingModule = false,
         needsEagerInit = false,
         isCxxModule = false,

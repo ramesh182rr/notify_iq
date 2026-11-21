@@ -26,6 +26,7 @@ The current emulator is a useful smoke-test target, but it has about 0.85 GiB av
 ## Next steps
 
 1. Fix and verify React Native native-module discovery on the emulator; then confirm access-off and access-on states.
-2. Add a benchmark-only adapter or standalone harness for the two pinned runtimes, without bundling model weights in Git or the production APK.
-3. Attempt a single emulator inference only after the runtime loads successfully; capture failures and memory use, and label results emulator-only.
-4. Keep physical-device benchmark and release decisions outstanding until real devices are available.
+2. The benchmark prompt and strict output contract are recorded in `MODEL_BENCHMARK_PROMPT.md`.
+3. Add a benchmark-only adapter or standalone harness for the two pinned runtimes, without bundling model weights in Git or the production APK.
+4. Attempt a single emulator inference only after the runtime loads successfully; capture failures and memory use, and label results emulator-only.
+5. Keep physical-device benchmark and release decisions outstanding until real devices are available.
