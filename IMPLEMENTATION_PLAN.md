@@ -135,7 +135,7 @@ Tasks:
 
 Tasks:
 
-1. Define a versioned, constrained rule schema and deterministic evaluation semantics.
+1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V1.md`.
 2. Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important).
 3. Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures.
 4. Add custom rules, saved searches and richer grouping only after basic semantics are stable.
@@ -212,4 +212,4 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Next task:** Fix `NotifyIQ` native-module discovery, then add a benchmark-only runtime adapter and attempt both pinned models on the emulator. Record any load failure and the emulator's memory ceiling in `docs/MODEL_BENCHMARK_RUN_TEMPLATE.md`; do not use emulator results as product device-support evidence. Manual visual QA and physical capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Twenty-six are implemented (Phases 0–3: 24; Phase 4 evaluation corpus and candidate pins: 2); 18 remain. Task counts include optional cloud and release-readiness work.
+The roadmap contains 44 numbered tasks total. Twenty-seven are implemented (Phases 0–3: 24; Phase 4 evaluation corpus and candidate pins: 2; Phase 5 rule schema and semantics: 1); 17 remain. Task counts include optional cloud and release-readiness work.

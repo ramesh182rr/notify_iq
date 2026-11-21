@@ -5,7 +5,7 @@
 **Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping and daily overview implemented; synthetic evaluation is established, while model runtime evaluation, native-module discovery and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-six are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2); 18 remain, including optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-seven are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2; Phase 5: 1); 17 remain, including optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -54,7 +54,8 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 4 task 1 — 108-case synthetic evaluation set and deterministic baseline established. No production model dependency is selected.
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
-- [ ] Phase 5 — user rules and richer organisation.
+- [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
+- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
@@ -71,6 +72,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - Physical-device capture lifecycle verification remains outstanding. Notification access was not enabled during emulator testing.
 - The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
 - Emulator smoke test found that the React Native app cannot resolve the `NotifyIQ` native module; its access status remains “unavailable”. Android's underlying access-status API works in instrumentation, so native-module discovery is the current fault to fix before listener lifecycle verification.
+- Reinstalled the current debug APK on the Pixel 8 API 35 emulator and rechecked through Metro; logcat still reports `NOTIFYIQ_NATIVE_MODULE_UNAVAILABLE`. Build/install succeeds, but this bridge blocker remains open.
 - Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. A temporary `ReactPackage` fallback did not resolve the module and was reverted; React Native 0.88 keeps the New Architecture enabled. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
 
 ## Checks performed
