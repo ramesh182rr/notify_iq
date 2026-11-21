@@ -16,13 +16,14 @@ class SavedSearchesTest {
   @Test
   fun savedSearchesPersistFiltersAndCanBeDeleted() {
     val repository = NotificationRepository(temporaryFolder.newFile("saved-searches.db"))
-    val filters = """{"query":"invoice","packageName":"com.bank","category":"finance","dateRange":"7days","includeArchived":true}"""
+    val filters = """{"query":"invoice","packageName":"com.bank","category":"finance","groupName":"Bills","dateRange":"7days","includeArchived":true}"""
 
     val saved = JSONObject(repository.addSavedSearch("  Recent invoices  ", filters)).getJSONArray("searches").getJSONObject(0)
     assertEquals("Recent invoices", saved.getString("name"))
     assertEquals("invoice", saved.getString("query"))
     assertEquals("com.bank", saved.getString("packageName"))
     assertEquals("finance", saved.getString("category"))
+    assertEquals("Bills", saved.getString("groupName"))
     assertEquals("7days", saved.getString("dateRange"))
     assertEquals(true, saved.getBoolean("includeArchived"))
 

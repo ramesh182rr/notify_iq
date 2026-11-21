@@ -10,6 +10,7 @@ internal data class SavedSearch(
   val query: String,
   val packageName: String,
   val category: String,
+  val groupName: String,
   val dateRange: String,
   val includeArchived: Boolean,
 )
@@ -44,6 +45,7 @@ internal object SavedSearchCodec {
       .put("query", filters.optString("query"))
       .put("packageName", filters.optString("packageName"))
       .put("category", filters.optString("category"))
+      .put("groupName", filters.optString("groupName"))
       .put("dateRange", filters.optString("dateRange", "all"))
       .put("includeArchived", filters.optBoolean("includeArchived")))
     return toJson(searches + added)
@@ -55,6 +57,7 @@ internal object SavedSearchCodec {
     searches.forEach { search -> put(JSONObject()
       .put("id", search.id).put("name", search.name).put("query", search.query)
       .put("packageName", search.packageName).put("category", search.category)
+      .put("groupName", search.groupName)
       .put("dateRange", search.dateRange).put("includeArchived", search.includeArchived)) }
   }).toString()
 
@@ -64,11 +67,12 @@ internal object SavedSearchCodec {
     val query = item.optString("query").trim()
     val packageName = item.optString("packageName").trim()
     val category = item.optString("category")
+    val groupName = item.optString("groupName")
     val dateRange = item.optString("dateRange", "all")
     require(id.length in 1..64 && name.length in 1..40)
-    require(query.length <= 128 && packageName.length <= 255)
+    require(query.length <= 128 && packageName.length <= 255 && groupName.length <= 40)
     require(category.isEmpty() || NotificationCategory.fromWireValue(category) != null)
     require(dateRange in dateRanges)
-    return SavedSearch(id, name, query, packageName, category, dateRange, item.optBoolean("includeArchived"))
+    return SavedSearch(id, name, query, packageName, category, groupName, dateRange, item.optBoolean("includeArchived"))
   }
 }

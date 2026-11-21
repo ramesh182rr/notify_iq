@@ -2,10 +2,10 @@
 
 **Last updated:** 2026-11-21  
 **Current phase:** Phase 4 — local-model benchmark spike; LiteRT trial and ONNX graph-load probe complete, ONNX text inference open
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping, daily overview, basic user rules and saved searches are implemented; ONNX text-inference benchmarking and physical-device capture verification remain
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; ONNX text-inference benchmarking and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 3; Phase 5: 3); 14 remain, including ONNX text-inference benchmarking, optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty-one are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 3; Phase 5: 4); 13 remain, including ONNX text-inference benchmarking, optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -43,6 +43,7 @@
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
 - Added a constrained Kotlin rule codec/evaluator with ordered matching, schema v2 reminder actions, preview, and explicit re-evaluation of stored history. Reminders use inexact alarms, generic lock-screen text, Android 13+ notification permission, and reboot rescheduling. Existing rule effects are replaced only by the explicit user action; manual saved/category overrides remain authoritative, past reminder times are skipped, and alarms are canceled when their record is deleted.
 - Added saved searches to the Search screen. Names and bounded filter metadata are validated natively and stored locally; users can apply or delete them. Search metadata is capped at 20 entries and contains no notification content.
+- Added app-package/literal-text custom rule conditions and package-aware preview. Inbox and Search now discover assigned rule groups and filter on the exact group label; saved searches retain that filter and old entries without `groupName` remain compatible.
 - Ran TypeScript typecheck, Android debug assembly and unit tests, and the Android instrumentation suite on the Pixel 8 AVD. Fourteen instrumentation tests pass, including reminder validation/preview, explicit re-evaluation, manual save/category override preservation, and prior synthetic rule coverage.
 
 ## Current state
@@ -61,7 +62,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
-- [ ] Phase 5 — rule evaluation and saved searches are implemented and covered by emulator fixtures. The rule editor now accepts exact app-package and literal-text conditions (AND when both are supplied); category/priority condition controls and richer group browsing remain.
+- [x] Phase 5 — rule evaluation, package/text custom conditions, saved searches, exact rule-group browsing and saved group filters are implemented and covered by emulator fixtures.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
@@ -106,6 +107,9 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `fnm exec --using=22.23.4 -- npm run lint` — passed with warnings only; some warnings are in generated Android test reports under `mobile/model-benchmark/app/build`.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest` — passed after the rule editor change.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.notifyiq.UserRulesTest` — passed on Pixel_8 AVD; six rule evaluation, matching and persistence tests passed.
+- `fnm exec --using=22.23.4 -- npm run typecheck` — passed after adding exact rule-group browsing and saved group filters.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest` — passed with group filtering and saved-search integration.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:connectedDebugAndroidTest` — passed on Pixel_8 AVD; all 17 instrumentation tests passed, including exact rule-group filtering and saved group metadata.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.

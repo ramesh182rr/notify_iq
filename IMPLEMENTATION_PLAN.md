@@ -1,6 +1,6 @@
 # NotifyIQ Implementation Plan
 
-**Status:** Implementation in progress; Phases 0–3 and Phase 5 core rules are implemented. Phase 4 has a completed LiteRT trial and an ONNX graph-load probe; ONNX text inference remains open. Physical capture verification remains outstanding.
+**Status:** Implementation in progress; Phases 0–3 and Phase 5 are implemented. Phase 4 has a completed LiteRT trial and an ONNX graph-load probe; ONNX text inference remains open. Physical capture verification remains outstanding.
 **Source of truth:** `NotifyIQ-Development-Kit/` and accepted decisions recorded in `DECISIONS_LOG.md`.
 
 ## 1. Product and architecture understanding
@@ -138,7 +138,7 @@ Tasks:
 1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V2.md`.
 2. [x] Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important). **Implemented:** reminders use an inexact Android alarm, ask permission when the user adds a reminder action, use generic lock-screen copy, and reschedule after reboot. Existing notifications change only after the explicit re-evaluation action.
 3. [x] Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures. **Implemented:** emulator fixtures cover ordered matching, action conflicts, Unicode phrase matching, migration, persistence, preview, invalid-set rejection, reminder validation/preview, explicit re-evaluation, manual save/category overrides, and applied effects.
-4. **Partial:** Saved searches are implemented with local metadata persistence, native validation, apply/delete controls and a 20-search cap. The editor also supports exact package and literal-text conditions together or separately; category/priority condition controls and richer group browsing remain. Emulator coverage is recorded in `DEVELOPMENT_STATUS.md`.
+4. [x] Add custom rules, saved searches and richer grouping after basic semantics are stable. **Implemented:** users can add rules for an exact app package, literal text, or both; preview package-aware samples; discover/filter exact rule groups; and save those filters as local searches. Search metadata validation, backward-compatible saved-search decoding, exact group matching, and the 20-search cap are covered by emulator instrumentation.
 
 **Definition of done:** Rule outcomes are predictable, previewable, reversible where possible and never silently suppress Android delivery; rule execution is covered by fixtures and documented examples.
 
@@ -212,4 +212,4 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Next task:** Continue Phase 4 by selecting a reliable tokenizer integration for the pinned ONNX artifact, then implement autoregressive KV-cache generation in the isolated harness and run the 108-case corpus on the 6 GiB AVD. Available JVM tokenizer options need compatibility review before pinning. The LiteRT candidate is rejected for this use based on its measured quality; ONNX is deferred pending text-inference evidence. Manual visual QA and physical capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Thirty are implemented (Phases 0–3: 24; Phase 4 corpus, candidate pins and runtime decision: 3; Phase 5 core rules: 3); 14 remain. Task counts include optional cloud and release-readiness work.
+The roadmap contains 44 numbered tasks total. Thirty-one are implemented (Phases 0–3: 24; Phase 4 corpus, candidate pins and runtime decision: 3; Phase 5 user rules and organisation: 4); 13 remain. Task counts include optional cloud and release-readiness work.

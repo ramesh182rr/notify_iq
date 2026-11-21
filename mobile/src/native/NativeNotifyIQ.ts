@@ -59,6 +59,7 @@ export interface Spec extends TurboModule {
     query: string,
     packageName: string,
     category: string,
+    groupName: string,
     from: number,
     to: number,
     beforeReceivedAt: number,
@@ -79,6 +80,7 @@ export interface Spec extends TurboModule {
   getSavedSearches(): Promise<string>;
   addSavedSearch(name: string, filtersJson: string): Promise<string>;
   deleteSavedSearch(id: string): Promise<string>;
+  getRuleGroups(): Promise<ReadonlyArray<string>>;
 }
 
 export function getNativeNotifyIQ(): Spec | null {

@@ -130,6 +130,23 @@ class NotificationRepositoryTest {
   }
 
   @Test
+  fun filtersRuleGroupsByExactLabelAndDiscoversAvailableGroups() {
+    val repository = NotificationRepository(temporaryFolder.newFile("rule-groups.db"))
+    repository.setRetentionDays(-1)
+    repository.setUserRules("""{"schemaVersion":2,"rules":[
+      {"id":"food","name":"Food","enabled":true,"conditions":{"match":"all","containsText":"pizza"},"actions":[{"type":"addGroup","value":"Food"}]},
+      {"id":"fast-food","name":"Fast food","enabled":true,"conditions":{"match":"all","containsText":"lunch"},"actions":[{"type":"addGroup","value":"Fast Food"}]}
+    ]}""")
+    repository.upsert(captured("Pizza order", notificationKey = "pizza"))
+    repository.upsert(captured("Lunch order", notificationKey = "lunch"))
+
+    assertEquals(listOf("Fast Food", "Food"), repository.getRuleGroups())
+    assertEquals(listOf("Pizza order"), repository.notifications(NotificationFilters(groupName = "Food")).map { it.title })
+    assertEquals(listOf("Lunch order"), repository.notifications(NotificationFilters(groupName = "Fast Food")).map { it.title })
+    assertEquals(2, repository.notifications(NotificationFilters()).size)
+  }
+
+  @Test
   fun dailyOverviewAggregatesLocalRowsAndReturnsSourceNotifications() {
     val repository = NotificationRepository(temporaryFolder.newFile("overview.db"))
     repository.setRetentionDays(-1)

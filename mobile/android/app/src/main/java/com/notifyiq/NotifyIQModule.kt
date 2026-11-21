@@ -62,9 +62,9 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun searchNotifications(query: String, packageName: String, category: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
+  fun searchNotifications(query: String, packageName: String, category: String, groupName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
     try {
-      val filters = NotificationFilters(query = query, packageName = packageName, category = category, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())
+      val filters = NotificationFilters(query = query, packageName = packageName, category = category, groupName = groupName, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())
       promise.resolve(toWritableArray(NotificationRepository(appContext).notifications(filters)))
     } catch (_: Exception) { promise.reject("SEARCH_UNAVAILABLE", "Notification search is unavailable.") }
   }
@@ -130,6 +130,12 @@ class NotifyIQModule(
   fun deleteSavedSearch(id: String, promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).deleteSavedSearch(id)) }
     catch (_: Exception) { promise.reject("SAVED_SEARCH_DELETE_FAILED", "The saved search could not be deleted.") }
+  }
+
+  @ReactMethod
+  fun getRuleGroups(promise: Promise) {
+    try { promise.resolve(Arguments.fromList(NotificationRepository(appContext).getRuleGroups())) }
+    catch (_: Exception) { promise.reject("RULE_GROUPS_UNAVAILABLE", "Rule groups could not be loaded.") }
   }
 
   private fun updateEvent(promise: Promise, update: (NotificationRepository) -> Unit) {

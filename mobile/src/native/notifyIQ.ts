@@ -41,6 +41,7 @@ export function searchNotifications(filters: {
   query?: string;
   packageName?: string;
   category?: string;
+  groupName?: string;
   from?: number;
   to?: number;
   beforeReceivedAt?: number;
@@ -49,7 +50,7 @@ export function searchNotifications(filters: {
   limit?: number;
 }): Promise<ReadonlyArray<NotificationItem>> {
   return requireNativeModule().searchNotifications(
-    filters.query ?? '', filters.packageName ?? '', filters.category ?? '', filters.from ?? 0,
+    filters.query ?? '', filters.packageName ?? '', filters.category ?? '', filters.groupName ?? '', filters.from ?? 0,
     filters.to ?? 0, filters.beforeReceivedAt ?? 0, filters.beforeId ?? 0,
     filters.includeArchived ?? false, filters.limit ?? 50,
   );
@@ -100,11 +101,15 @@ export function getSavedSearches(): Promise<string> {
 }
 
 export function addSavedSearch(name: string, filters: {
-  query: string; packageName: string; category: string; dateRange: string; includeArchived: boolean;
+  query: string; packageName: string; category: string; groupName: string; dateRange: string; includeArchived: boolean;
 }): Promise<string> {
   return requireNativeModule().addSavedSearch(name, JSON.stringify(filters));
 }
 
 export function deleteSavedSearch(id: string): Promise<string> {
   return requireNativeModule().deleteSavedSearch(id);
+}
+
+export function getRuleGroups(): Promise<ReadonlyArray<string>> {
+  return requireNativeModule().getRuleGroups();
 }

@@ -6,6 +6,7 @@ import {
   addSavedSearch,
   deleteSavedSearch,
   getSavedSearches,
+  getRuleGroups,
   deleteNotification,
   searchNotifications,
   setNotificationArchived,
@@ -19,7 +20,7 @@ import type { AppTheme } from '../../theme/tokens';
 type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
 type PendingUndo = { label: string; action: () => Promise<void> };
-type SavedSearch = { id: string; name: string; query: string; packageName: string; category: string; dateRange: DateRange; includeArchived: boolean };
+type SavedSearch = { id: string; name: string; query: string; packageName: string; category: string; groupName: string; dateRange: DateRange; includeArchived: boolean };
 
 const PAGE_SIZE = 50;
 const CATEGORY_OPTIONS = [
@@ -33,7 +34,7 @@ const ignorePromise = (promise: Promise<unknown>) => {
 const decodeSavedSearches = (value: string): SavedSearch[] => {
   const parsed = JSON.parse(value) as { schemaVersion?: number; searches?: SavedSearch[] };
   if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.searches)) throw new Error('INVALID_SAVED_SEARCHES');
-  return parsed.searches;
+  return parsed.searches.map(search => ({ ...search, groupName: search.groupName ?? '' }));
 };
 
 export function InboxScreen({ theme, refreshKey, searchMode = false, listenerStatus, statusLoading = false, statusError = null }: Props) {
@@ -48,6 +49,8 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
   const [range, setRange] = useState<DateRange>('all');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [category, setCategory] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [groupOptions, setGroupOptions] = useState<string[]>([]);
   const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   const [categoryEditor, setCategoryEditor] = useState<NotificationItem | null>(null);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
@@ -68,7 +71,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     setLoading(true);
     try {
       const result = await searchNotifications({
-        query, packageName, category, from: rangeStart, includeArchived, limit: PAGE_SIZE,
+        query, packageName, category, groupName, from: rangeStart, includeArchived, limit: PAGE_SIZE,
       });
       if (requestId.current === id) {
         setItems([...result]);
@@ -80,7 +83,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     } finally {
       if (requestId.current === id) setLoading(false);
     }
-  }, [category, includeArchived, packageName, query, rangeStart]);
+  }, [category, groupName, includeArchived, packageName, query, rangeStart]);
 
   useEffect(() => {
     const timer = setTimeout(() => { ignorePromise(loadFirstPage()); }, query || packageName ? 250 : 0);
@@ -91,6 +94,10 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     if (!searchMode) return;
     getSavedSearches().then(value => setSavedSearches(decodeSavedSearches(value))).catch(() => setActionError(true));
   }, [searchMode]);
+
+  useEffect(() => {
+    getRuleGroups().then(groups => setGroupOptions([...groups])).catch(() => setActionError(true));
+  }, [refreshKey]);
 
   useEffect(() => {
     if (!pendingUndo) return;
@@ -104,7 +111,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     setLoading(true);
     try {
       const result = await searchNotifications({
-        query, packageName, category, from: rangeStart, beforeReceivedAt: last.receivedAt,
+        query, packageName, category, groupName, from: rangeStart, beforeReceivedAt: last.receivedAt,
         beforeId: last.id, includeArchived, limit: PAGE_SIZE,
       });
       setItems(current => [...current, ...result]);
@@ -163,7 +170,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
   const saveCurrentSearch = async () => {
     try {
       const result = await addSavedSearch(saveSearchName, {
-        query, packageName, category, dateRange: range, includeArchived,
+        query, packageName, category, groupName, dateRange: range, includeArchived,
       });
       setSavedSearches(decodeSavedSearches(result));
       setSaveSearchName('');
@@ -232,6 +239,18 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           </Pressable>
         ))}
       </ScrollView>
+      {groupOptions.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRail} accessibilityLabel="Filter by rule group">
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: groupName === '' }} onPress={() => setGroupName('')} style={[styles.chip, { backgroundColor: groupName === '' ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={{ color: theme.colors.textPrimary }}>All groups</Text>
+          </Pressable>
+          {groupOptions.map(value => (
+            <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: groupName === value }} onPress={() => setGroupName(value)} style={[styles.chip, { backgroundColor: groupName === value ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Text style={{ color: theme.colors.textPrimary }}>{value}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
       {searchMode ? (
         <View style={[styles.savedSearches, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.sectionLabel, { color: theme.colors.textPrimary }]}>Saved searches</Text>
@@ -239,11 +258,11 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
             <View key={saved.id} style={styles.savedSearchRow}>
               <Pressable accessibilityRole="button" accessibilityLabel={`Apply saved search ${saved.name}`} onPress={() => {
                 setQuery(saved.query); setPackageName(saved.packageName); setCategory(saved.category);
-                setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
+                setGroupName(saved.groupName); setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
               }} style={styles.savedSearchApply}>
                 <Text style={[styles.savedSearchTitle, { color: theme.colors.textPrimary }]}>{saved.name}</Text>
                 <Text style={[styles.hint, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                  {[saved.query || null, saved.packageName || null, saved.category ? categoryLabel(saved.category) : null, saved.dateRange === 'all' ? null : saved.dateRange === 'today' ? 'Today' : '7 days', saved.includeArchived ? 'Archived' : null].filter(Boolean).join(' · ') || 'All retained notifications'}
+                  {[saved.query || null, saved.packageName || null, saved.category ? categoryLabel(saved.category) : null, saved.groupName || null, saved.dateRange === 'all' ? null : saved.dateRange === 'today' ? 'Today' : '7 days', saved.includeArchived ? 'Archived' : null].filter(Boolean).join(' · ') || 'All retained notifications'}
                 </Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={`Delete saved search ${saved.name}`} onPress={() => ignorePromise(removeSavedSearch(saved.id))} style={styles.savedSearchDelete}>

@@ -8,6 +8,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import java.io.File
 import java.security.MessageDigest
 import java.util.Calendar
+import org.json.JSONArray
 import org.json.JSONObject
 
 private fun JSONObject.optNullableString(name: String): String? = if (!has(name) || isNull(name)) null else getString(name)
@@ -16,6 +17,7 @@ internal data class NotificationFilters(
   val query: String = "",
   val packageName: String = "",
   val category: String = "",
+  val groupName: String = "",
   val from: Long = 0,
   val to: Long = 0,
   val beforeReceivedAt: Long = 0,
@@ -119,6 +121,18 @@ internal class NotificationRepository private constructor(private val connection
 
   fun getSavedSearches(): String = synchronized(connection) {
     scalarText("SELECT value FROM app_preferences WHERE key = 'saved_searches_v1'") ?: SavedSearchCodec.emptyJson()
+  }
+
+  fun getRuleGroups(): List<String> = synchronized(connection) {
+    val groups = linkedSetOf<String>()
+    connection.prepare("SELECT groups_json FROM notification_rule_results WHERE groups_json <> '[]'").use { statement ->
+      while (statement.step()) {
+        runCatching { JSONArray(statement.getText(0)) }.getOrNull()?.let { values ->
+          for (index in 0 until values.length()) values.optString(index).takeIf(String::isNotBlank)?.let(groups::add)
+        }
+      }
+    }
+    groups.sortedWith(String.CASE_INSENSITIVE_ORDER)
   }
 
   fun addSavedSearch(name: String, filtersJson: String): String = synchronized(connection) {
@@ -315,6 +329,7 @@ internal class NotificationRepository private constructor(private val connection
     }
     if (filters.packageName.isNotBlank()) { where += "e.package_name = ?"; args += filters.packageName.trim() }
     if (filters.category.isNotBlank()) { where += "COALESCE(a.category_override, rr.category, a.category) = ?"; args += filters.category }
+    if (filters.groupName.isNotBlank()) { where += "instr(COALESCE(rr.groups_json, '[]'), ?) > 0"; args += JSONObject.quote(filters.groupName.trim()) }
     if (filters.from > 0) { where += "e.received_at >= ?"; args += filters.from }
     if (filters.to > 0) { where += "e.received_at < ?"; args += filters.to }
     if (!filters.includeArchived) where += "e.archived_at IS NULL"
