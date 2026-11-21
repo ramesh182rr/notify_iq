@@ -1,4 +1,4 @@
-import NativeNotifyIQ, {type ListenerStatus, type NotificationItem} from './NativeNotifyIQ';
+import NativeNotifyIQ, {type DailyOverview, type ListenerStatus, type NotificationItem} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   if (NativeNotifyIQ == null) {
@@ -18,6 +18,10 @@ export function openNotificationAccessSettings(): Promise<void> {
 
 export function getRecentNotifications(limit: number): Promise<ReadonlyArray<NotificationItem>> {
   return requireNativeModule().getRecentNotifications(limit);
+}
+
+export function getDailyOverview(): Promise<DailyOverview> {
+  return requireNativeModule().getDailyOverview();
 }
 
 export function clearNotificationHistory(): Promise<void> {

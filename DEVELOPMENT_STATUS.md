@@ -1,11 +1,11 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-21  
-**Current phase:** Phase 3 — deterministic classification and overview
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, category/priority analysis and typed bridge implemented; broader classification evaluation and physical-device capture verification remain
+**Current phase:** Phase 4 — local-model benchmark preparation
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping and daily overview implemented; broad evaluation and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-one are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 3); 23 remain, including optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-four are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6); 20 remain, including optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -30,6 +30,8 @@
 - Added a five-second undo affordance for save/archive changes; individual and bulk deletes remain confirmation-gated and irreversible within the app.
 - Added deterministic Kotlin category and conservative priority rules behind the privacy gate. Analysis persists separately from source notifications in schema v3, including confidence, explanation, method/version and category correction; FTS/app/category/date filters now use the derived category.
 - Added synthetic English, Hindi and code-mixed classification fixtures covering ambiguous, prompt-like and false-urgent text. These focused fixtures validate known examples; they do not establish broad classification accuracy.
+- Added exact same-app duplicate grouping within fixed 30-minute windows. Group metadata is separate and source rows remain intact.
+- Added a deterministic local-day overview with volume, app/category counts, busiest arrival hours, recent source links and explicit listener-coverage caveats.
 - Added five Android instrumentation tests for v1→v3 migration/backfill, FTS maintenance, retention, archive, package exclusion, classification and category override; all pass on the Pixel 8 API 35 emulator.
 
 ## Current state
@@ -43,7 +45,8 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
 - [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
 - [x] Phase 2 — inbox actions, retention, filters and FTS search are implemented; manual visual theme QA remains for release verification.
-- [ ] Phase 3 — deterministic classification, grouping, overview/digest and insights. Classification, separate analysis persistence and focused synthetic fixtures are implemented; grouping, overview and insights remain.
+- [x] Phase 3 — deterministic classification, separate analysis persistence, focused fixtures, repeat grouping, daily overview and aggregate insights are implemented.
+- [ ] Phase 4 — local-model benchmark spike; first task is the 100–300 case synthetic evaluation set. No production model dependency is selected.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [ ] Phase 5 — user rules and richer organisation.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
@@ -75,6 +78,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 - `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug` — passed.
 - `./gradlew --no-daemon connectedDebugAndroidTest` — passed, 4 database tests on Pixel 8 API 35.
 - `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug connectedDebugAndroidTest` — passed with schema v3/category analysis; 5 Android database instrumentation tests passed on Pixel 8 API 35.
+- `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug connectedDebugAndroidTest` — passed with schema v4/grouping and daily aggregates; 7 Android instrumentation tests passed on Pixel 8 API 35.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.

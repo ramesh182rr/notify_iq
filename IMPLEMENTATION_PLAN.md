@@ -1,6 +1,6 @@
 # NotifyIQ Implementation Plan
 
-**Status:** Implementation in progress; Phases 0–2 are implemented, Phase 3 classification is underway, and physical capture verification remains outstanding.
+**Status:** Implementation in progress; Phases 0–3 are implemented, Phase 4 benchmark preparation is next, and physical capture verification remains outstanding.
 **Source of truth:** `NotifyIQ-Development-Kit/` and accepted decisions recorded in `DECISIONS_LOG.md`.
 
 ## 1. Product and architecture understanding
@@ -113,9 +113,9 @@ Tasks:
 1. Implement category and conservative priority rules on privacy-screened content. **Implemented:** deterministic Kotlin rules run only after the sensitive-content gate; urgent/high rules require explicit phrases and defaults stay normal.
 2. Store analysis separately from source events with reason code, confidence, method/version and user correction. **Implemented:** schema v3 `notification_analysis` stores derived results separately, backfills retained v2 records, and supports a user category override.
 3. Build synthetic gold fixtures and test ambiguous, multilingual/code-mixed, malicious-looking and false-urgent cases. **Implemented:** focused English/Hindi/code-mixed, ambiguous, prompt-like and false-urgent fixtures cover initial rule behavior; this is not a broad accuracy benchmark.
-4. Add duplicate detection/grouping without deleting source records.
-5. Add deterministic daily overview/digest templates with source links and listener-coverage caveats.
-6. Add aggregate volume/app/category/peak-time insights with non-judgemental copy.
+4. Add duplicate detection/grouping without deleting source records. **Implemented:** exact same-app normalized content groups within fixed 30-minute windows; original notification rows remain available.
+5. Add deterministic daily overview/digest templates with source links and listener-coverage caveats. **Implemented:** today's local overview links recent source records and explains coverage limitations.
+6. Add aggregate volume/app/category/peak-time insights with non-judgemental copy. **Implemented:** local overview includes volume, app/category counts and busiest arrival hours.
 
 **Definition of done:** Results are explainable and correctable; low-confidence results are not urgent; derived data remains traceable to source rows; digest identifies generated content and observed coverage; aggregate calculations are reproducible.
 
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Continue Phase 3 with duplicate grouping and deterministic daily overview, then aggregate insights. Manual visual QA and Phase 1 physical-device capture verification remain follow-ups.
+**Next task:** Start Phase 4 by expanding the synthetic evaluation set to 100–300 labelled cases, covering notification types, English/Hindi/code-mix and prompt-like content. Manual visual QA and Phase 1 physical-device capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Phase 0 (4), Phase 1 tasks 1–8 (8), all Phase 2 tasks (6), and Phase 3 tasks 1–3 (3) are implemented (21 tasks); 23 remain. Task counts include the optional cloud phase and release-readiness work.
+The roadmap contains 44 numbered tasks total. Phases 0–3 are implemented: 4 + 8 + 6 + 6 tasks (24 total); 20 remain. Task counts include the optional cloud phase and release-readiness work.

@@ -72,6 +72,8 @@ test('renders source content and save, archive, and delete actions', async () =>
     analysisMethod: 'deterministic_rules',
     analysisVersion: 'rules_v1',
     categoryOverride: null,
+    duplicateGroupId: null,
+    duplicateCount: 1,
   }]);
 
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
@@ -119,6 +121,8 @@ test('offers an undo action after archiving', async () => {
     analysisMethod: 'deterministic_rules',
     analysisVersion: 'rules_v1',
     categoryOverride: null,
+    duplicateGroupId: null,
+    duplicateCount: 1,
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {
@@ -160,6 +164,8 @@ test('filters classified items and lets the user correct a category', async () =
     analysisMethod: 'deterministic_rules',
     analysisVersion: 'rules_v1',
     categoryOverride: null,
+    duplicateGroupId: null,
+    duplicateCount: 1,
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {

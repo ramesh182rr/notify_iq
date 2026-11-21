@@ -228,6 +228,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           <Text style={[styles.time, { color: theme.colors.textSecondary }]}>{new Date(item.receivedAt).toLocaleString()}</Text>
           <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text</Text>
           <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{categoryLabel(item.category)}{item.categoryOverride ? ' · changed by you' : ''} · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
+          {item.duplicateCount > 1 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Repeated {item.duplicateCount} times in this app within 30 minutes. All source notifications are kept.</Text> : null}
           <Pressable accessibilityRole="button" accessibilityLabel="View notification details" onPress={() => setSelectedItem(item)}>
             <Text style={{ color: theme.colors.brand }}>Details</Text>
           </Pressable>

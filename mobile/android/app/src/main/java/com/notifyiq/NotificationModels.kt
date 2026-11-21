@@ -32,4 +32,19 @@ data class NotificationRecord(
   val analysisMethod: String,
   val analysisVersion: String,
   val categoryOverride: String?,
+  val duplicateGroupId: Long?,
+  val duplicateCount: Int,
+)
+
+internal data class OverviewCount(val label: String, val count: Int)
+
+internal data class DailyOverviewResult(
+  val dayStart: Long,
+  val dayEnd: Long,
+  val totalCount: Int,
+  val appCount: Int,
+  val categories: List<OverviewCount>,
+  val apps: List<OverviewCount>,
+  val hours: List<OverviewCount>,
+  val sources: List<NotificationRecord>,
 )

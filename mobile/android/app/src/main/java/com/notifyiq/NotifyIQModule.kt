@@ -37,6 +37,23 @@ class NotifyIQModule(
     } catch (_: Exception) { promise.reject("HISTORY_UNAVAILABLE", "Notification history is unavailable.") }
   }
 
+  override fun getDailyOverview(promise: Promise) {
+    try {
+      val overview = NotificationRepository(appContext).dailyOverview()
+      val result = Arguments.createMap().apply {
+        putDouble("dayStart", overview.dayStart.toDouble())
+        putDouble("dayEnd", overview.dayEnd.toDouble())
+        putInt("totalCount", overview.totalCount)
+        putInt("appCount", overview.appCount)
+        putArray("categories", toOverviewCounts(overview.categories))
+        putArray("apps", toOverviewCounts(overview.apps))
+        putArray("hours", toOverviewCounts(overview.hours))
+        putArray("sources", toWritableArray(overview.sources))
+      }
+      promise.resolve(result)
+    } catch (_: Exception) { promise.reject("OVERVIEW_UNAVAILABLE", "The local daily overview is unavailable.") }
+  }
+
   override fun searchNotifications(query: String, packageName: String, category: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
     try {
       val filters = NotificationFilters(query = query, packageName = packageName, category = category, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())
@@ -73,7 +90,12 @@ class NotifyIQModule(
       putString("category", item.category); putString("priority", item.priority); putDouble("confidence", item.confidence)
       putString("analysisExplanation", item.analysisExplanation); putString("analysisMethod", item.analysisMethod)
       putString("analysisVersion", item.analysisVersion); putNullableString("categoryOverride", item.categoryOverride)
+      putNullableNumber("duplicateGroupId", item.duplicateGroupId); putInt("duplicateCount", item.duplicateCount)
     }) }
+  }
+
+  private fun toOverviewCounts(items: List<OverviewCount>) = Arguments.createArray().apply {
+    items.forEach { item -> pushMap(Arguments.createMap().apply { putString("label", item.label); putInt("count", item.count) }) }
   }
 
   private fun com.facebook.react.bridge.WritableMap.putNullableString(key: String, value: String?) {

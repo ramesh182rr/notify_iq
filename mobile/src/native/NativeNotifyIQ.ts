@@ -25,12 +25,27 @@ export type NotificationItem = {
   analysisMethod: string;
   analysisVersion: string;
   categoryOverride: string | null;
+  duplicateGroupId: number | null;
+  duplicateCount: number;
+};
+
+export type OverviewCount = { label: string; count: number };
+export type DailyOverview = {
+  dayStart: number;
+  dayEnd: number;
+  totalCount: number;
+  appCount: number;
+  categories: ReadonlyArray<OverviewCount>;
+  apps: ReadonlyArray<OverviewCount>;
+  hours: ReadonlyArray<OverviewCount>;
+  sources: ReadonlyArray<NotificationItem>;
 };
 
 export interface Spec extends TurboModule {
   getListenerStatus(): Promise<ListenerStatus>;
   openNotificationAccessSettings(): Promise<void>;
   getRecentNotifications(limit: number): Promise<ReadonlyArray<NotificationItem>>;
+  getDailyOverview(): Promise<DailyOverview>;
   setAppExcluded(packageName: string, excluded: boolean): Promise<void>;
   getExcludedPackages(): Promise<ReadonlyArray<string>>;
   clearNotificationHistory(): Promise<void>;

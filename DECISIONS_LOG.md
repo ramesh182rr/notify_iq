@@ -80,7 +80,19 @@ This log distinguishes decisions already present in the supplied development kit
 
 **Status:** Implementation choice, 2026-11-21
 **Decision:** Run deterministic category/priority rules only after sensitive-content screening. Store results separately from notification source fields with rule version, explanation, heuristic confidence score and user category override. Explicit phrases are required for urgent/high priority; unmatched priority remains normal. The numeric score is not a calibrated probability and must not be displayed as one.
-**Reason:** Enables category filtering without coupling analysis to the source event or overstating what keyword rules know. Synthetic multilingual and ambiguity fixtures remain the next validation task.
+**Reason:** Enables category filtering without coupling analysis to the source event or overstating what keyword rules know. Focused synthetic multilingual and ambiguity fixtures exist; broader accuracy evaluation remains unproven.
+
+### R-009 — Group only exact same-app notification repeats
+
+**Status:** Implementation choice, 2026-11-21
+**Decision:** Group notifications only when package and normalized title/body/subtext match exactly within the same fixed, epoch-aligned 30-minute window. Store a local SHA-256 match key and group membership separately; keep every source notification row. The hash is an internal lookup key, not a privacy boundary. Show repeats as a count and disclose that originals remain available.
+**Reason:** This avoids speculative semantic or cross-app grouping in the first implementation. The digest cannot determine whether two similar messages represent the same real-world event.
+
+### R-010 — Keep the daily overview deterministic and source linked
+
+**Status:** Implementation choice, 2026-11-21
+**Decision:** Generate today's overview from rows received during the device-local calendar day. Show volume, app/category counts, busiest local clock hours, and recent source notifications that open their saved local details. Always state that the overview reflects retained NotifyIQ rows and may be incomplete when listener coverage is unavailable.
+**Reason:** Provides a useful local summary without a model or account and avoids implying Android supplies a complete notification history.
 
 ### R-005 — Separate daily overview from generated digest in scope
 
