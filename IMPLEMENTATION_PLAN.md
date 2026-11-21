@@ -135,9 +135,9 @@ Tasks:
 
 Tasks:
 
-1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V1.md`.
-2. Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important). **In progress:** editor, all v1 actions except scheduled reminders, pause/enable/delete, preview, new-capture evaluation and Inbox reporting are implemented. Existing records aren't silently reprocessed.
-3. Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures. **In progress:** emulator fixtures cover ordered matching, action conflicts, Unicode phrase matching, migration, persistence, preview, invalid-set rejection, applied effects and user-edit precedence. Reminder scheduling and historical re-evaluation aren't covered.
+1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V2.md`.
+2. [x] Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important). **Implemented:** reminders use an inexact Android alarm, ask permission when the user adds a reminder action, use generic lock-screen copy, and reschedule after reboot. Existing notifications change only after the explicit re-evaluation action.
+3. [x] Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures. **Implemented:** emulator fixtures cover ordered matching, action conflicts, Unicode phrase matching, migration, persistence, preview, invalid-set rejection, reminder validation/preview, explicit re-evaluation, manual save/category overrides, and applied effects.
 4. Add custom rules, saved searches and richer grouping only after basic semantics are stable.
 
 **Definition of done:** Rule outcomes are predictable, previewable, reversible where possible and never silently suppress Android delivery; rule execution is covered by fixtures and documented examples.
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Fix `NotifyIQ` native-module discovery, then add a benchmark-only runtime adapter and attempt both pinned models on the emulator. Record any load failure and the emulator's memory ceiling in `docs/MODEL_BENCHMARK_RUN_TEMPLATE.md`; do not use emulator results as product device-support evidence. Manual visual QA and physical capture verification remain follow-ups.
+**Next task:** Add benchmark-only runtime adapters and attempt both pinned models on the emulator. Record any load failure and the emulator's memory ceiling in `docs/MODEL_BENCHMARK_RUN_TEMPLATE.md`; do not use emulator results as product device-support evidence. Manual visual QA and physical capture verification remain follow-ups.
 
 The roadmap contains 44 numbered tasks total. Twenty-seven are implemented (Phases 0–3: 24; Phase 4 evaluation corpus and candidate pins: 2; Phase 5 rule schema and semantics: 1); 17 remain. Task counts include optional cloud and release-readiness work.

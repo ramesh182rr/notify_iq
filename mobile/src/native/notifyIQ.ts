@@ -90,3 +90,7 @@ export function saveUserRules(rulesJson: string): Promise<void> {
 export function previewUserRules(rulesJson: string, sampleJson: string): Promise<string> {
   return requireNativeModule().previewUserRules(rulesJson, sampleJson);
 }
+
+export function reevaluateUserRules(): Promise<number> {
+  return requireNativeModule().reevaluateUserRules();
+}

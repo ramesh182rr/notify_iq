@@ -83,4 +83,43 @@ class UserRulesTest {
     assertFalse(updated.saved)
     assertEquals("personal", updated.category)
   }
+
+  @Test
+  fun explicitReevaluationUpdatesRulesButPreservesManualSaveAndCategoryOverrides() {
+    val repository = NotificationRepository(temporaryFolder.newFile("reevaluate.db"))
+    val item = CapturedNotification(
+      NotificationIdentity("com.bank", "event-reevaluate"), "Payment received", "Salary", null, 100L, System.currentTimeMillis(),
+    )
+    val ruleSavedItem = item.copy(identity = NotificationIdentity("com.bank", "event-rule-saved"), title = "Payment received again", body = "Salary")
+    repository.setUserRules("""{"schemaVersion":1,"rules":[{"id":"money","name":"Money","enabled":true,"conditions":{"match":"all","containsText":"payment"},"actions":[{"type":"setCategory","value":"finance"},{"type":"save"}]}]}""")
+    repository.upsert(item)
+    repository.upsert(ruleSavedItem)
+    val first = repository.notifications(NotificationFilters()).single { it.title == "Payment received" }
+    repository.setSaved(first.id, false)
+    repository.setCategoryOverride(first.id, "personal")
+
+    repository.setUserRules("""{"schemaVersion":2,"rules":[{"id":"money","name":"Money","enabled":true,"conditions":{"match":"all","containsText":"payment"},"actions":[{"type":"setCategory","value":"travel"},{"type":"includeInDigest","value":true}]}]}""")
+    assertEquals(2, repository.reevaluateUserRules())
+
+    val updated = repository.notifications(NotificationFilters())
+    val manuallyEdited = updated.single { it.title == "Payment received" }
+    val ruleOnly = updated.single { it.title == "Payment received again" }
+    assertFalse(manuallyEdited.saved)
+    assertEquals("personal", manuallyEdited.category)
+    assertEquals(true, manuallyEdited.includeInDigest)
+    assertFalse(ruleOnly.saved)
+    assertEquals("travel", ruleOnly.category)
+  }
+
+  @Test
+  fun reminderActionsValidateDelayAndAppearInPreview() {
+    val valid = """{"schemaVersion":2,"rules":[{"id":"r","name":"Follow up","enabled":true,"conditions":{"match":"all","containsText":"payment"},"actions":[{"type":"setCategory","value":"finance"},{"type":"createReminder","delayMinutes":60}]}]}"""
+    val parsed = UserRuleCodec.parse(valid)
+    val preview = org.json.JSONObject(NotificationRepository(temporaryFolder.newFile("reminder.db")).previewUserRules(
+      valid, """{"packageName":"com.bank","title":"Payment received","category":"other","priority":"normal"}""",
+    ))
+    assertEquals(60, parsed.evaluate(RuleSubject("com.bank", "Payment received", null, null, "other", "normal")).reminderAfterMinutes)
+    assertEquals(60, preview.getInt("reminderAfterMinutes"))
+    assertTrue(runCatching { UserRuleCodec.parse(valid.replace("60", "4")) }.isFailure)
+  }
 }

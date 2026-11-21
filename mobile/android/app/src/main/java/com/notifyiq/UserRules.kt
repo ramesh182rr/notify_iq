@@ -43,6 +43,7 @@ internal sealed interface RuleAction {
   data class IncludeInDigest(val value: Boolean) : RuleAction
   data class MarkImportant(val value: Boolean) : RuleAction
   data class AddGroup(val value: String) : RuleAction
+  data class CreateReminder(val delayMinutes: Int) : RuleAction
 }
 
 internal data class UserRule(
@@ -54,13 +55,14 @@ internal data class UserRule(
 )
 
 internal data class UserRuleSet(val rules: List<UserRule>) {
-  companion object { const val SCHEMA_VERSION = 1 }
+  companion object { const val SCHEMA_VERSION = 2 }
 
   fun evaluate(subject: RuleSubject): RuleEvaluation {
     var category = subject.category
     var saved = false
     var includeInDigest: Boolean? = null
     var important: Boolean? = null
+    var reminderAfterMinutes: Int? = null
     val groups = linkedSetOf<String>()
     val matched = mutableListOf<String>()
     rules.forEach { rule ->
@@ -73,10 +75,11 @@ internal data class UserRuleSet(val rules: List<UserRule>) {
           is RuleAction.IncludeInDigest -> includeInDigest = action.value
           is RuleAction.MarkImportant -> important = action.value
           is RuleAction.AddGroup -> groups += action.value
+          is RuleAction.CreateReminder -> reminderAfterMinutes = action.delayMinutes
         }
       }
     }
-    return RuleEvaluation(matched, category, saved, includeInDigest, important, groups.toList())
+    return RuleEvaluation(matched, category, saved, includeInDigest, important, groups.toList(), reminderAfterMinutes)
   }
 
   fun toJson(): String = JSONObject().put("schemaVersion", SCHEMA_VERSION).put("rules", JSONArray().apply {
@@ -99,6 +102,7 @@ internal data class RuleEvaluation(
   val includeInDigest: Boolean?,
   val important: Boolean?,
   val groups: List<String>,
+  val reminderAfterMinutes: Int?,
 )
 
 private fun RuleAction.toJson(): JSONObject = when (this) {
@@ -107,6 +111,7 @@ private fun RuleAction.toJson(): JSONObject = when (this) {
   is RuleAction.IncludeInDigest -> JSONObject().put("type", "includeInDigest").put("value", value)
   is RuleAction.MarkImportant -> JSONObject().put("type", "markImportant").put("value", value)
   is RuleAction.AddGroup -> JSONObject().put("type", "addGroup").put("value", value)
+  is RuleAction.CreateReminder -> JSONObject().put("type", "createReminder").put("delayMinutes", delayMinutes)
 }
 
 internal object UserRuleCodec {
@@ -116,7 +121,7 @@ internal object UserRuleCodec {
   fun parse(source: String): UserRuleSet {
     val root = JSONObject(source)
     requireKeys(root, setOf("schemaVersion", "rules"))
-    require(root.getInt("schemaVersion") == UserRuleSet.SCHEMA_VERSION) { "Unsupported rule schema version." }
+    require(root.getInt("schemaVersion") in 1..UserRuleSet.SCHEMA_VERSION) { "Unsupported rule schema version." }
     val array = root.getJSONArray("rules")
     require(array.length() <= 100) { "At most 100 rules are allowed." }
     val ids = mutableSetOf<String>()
@@ -135,7 +140,7 @@ internal object UserRuleCodec {
       val phrase = conditionJson.optionalString("containsText")?.trim()?.also { require(it.isNotEmpty() && it.length <= 120) }
       require(listOf(packageName, category, priority, phrase).count { it != null } in 1..4) { "Provide one or more conditions." }
       val actionArray = item.getJSONArray("actions")
-      require(actionArray.length() in 1..5) { "Each rule needs one to five actions." }
+      require(actionArray.length() in 1..6) { "Each rule needs one to six actions." }
       val actions = (0 until actionArray.length()).map { actionIndex -> parseAction(actionArray.getJSONObject(actionIndex)) }
       UserRule(id, name, item.getBoolean("enabled"), RuleConditions(packageName, category, priority, phrase), actions)
     }
@@ -150,6 +155,7 @@ internal object UserRuleCodec {
       "includeInDigest" -> { requireKeys(item, setOf("type", "value")); RuleAction.IncludeInDigest(item.getBoolean("value")) }
       "markImportant" -> { requireKeys(item, setOf("type", "value")); RuleAction.MarkImportant(item.getBoolean("value")) }
       "addGroup" -> { requireKeys(item, setOf("type", "value")); val value = item.getString("value").trim(); require(value.isNotEmpty() && value.length <= 40); RuleAction.AddGroup(value) }
+      "createReminder" -> { requireKeys(item, setOf("type", "delayMinutes")); val delay = item.getInt("delayMinutes"); require(delay in 5..10_080); RuleAction.CreateReminder(delay) }
       else -> error("Unsupported rule action: $type")
     }
   }

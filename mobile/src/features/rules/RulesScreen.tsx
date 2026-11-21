@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { getUserRules, previewUserRules, saveUserRules } from '../../native/notifyIQ';
+import { getUserRules, previewUserRules, reevaluateUserRules, saveUserRules } from '../../native/notifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 
 type RuleAction =
@@ -9,7 +9,8 @@ type RuleAction =
   | { type: 'save' }
   | { type: 'includeInDigest'; value: boolean }
   | { type: 'markImportant'; value: boolean }
-  | { type: 'addGroup'; value: string };
+  | { type: 'addGroup'; value: string }
+  | { type: 'createReminder'; delayMinutes: number };
 type Rule = {
   id: string;
   name: string;
@@ -17,9 +18,9 @@ type Rule = {
   conditions: { match: 'all'; containsText?: string };
   actions: RuleAction[];
 };
-type RuleSet = { schemaVersion: 1; rules: Rule[] };
+type RuleSet = { schemaVersion: 2; rules: Rule[] };
 const categories = ['other', 'finance', 'travel', 'delivery_shopping', 'reminder_calendar', 'social', 'promotion', 'system', 'personal'];
-const emptyRules: RuleSet = { schemaVersion: 1, rules: [] };
+const emptyRules: RuleSet = { schemaVersion: 2, rules: [] };
 
 export function RulesScreen({ theme }: { theme: AppTheme }) {
   const [ruleSet, setRuleSet] = useState<RuleSet>(emptyRules);
@@ -29,6 +30,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   const [digestMatch, setDigestMatch] = useState(false);
   const [importantMatch, setImportantMatch] = useState(false);
   const [groupMatch, setGroupMatch] = useState(false);
+  const [reminderMinutes, setReminderMinutes] = useState<number | null>(null);
   const [groupName, setGroupName] = useState('');
   const [previewText, setPreviewText] = useState('');
   const [previewResult, setPreviewResult] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
     if (importantMatch) actions.push({ type: 'markImportant', value: true });
     if (groupMatch && groupName.trim()) actions.push({ type: 'addGroup', value: groupName.trim() });
     if (groupMatch && !groupName.trim()) { setError('Enter a group label or turn off Add to group.'); return; }
+    if (reminderMinutes !== null) actions.push({ type: 'createReminder', delayMinutes: reminderMinutes });
     const rule: Rule = {
       id: `${Date.now()}`,
       name: `Contains “${trimmed.slice(0, 48)}”`,
@@ -76,30 +79,48 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
       conditions: { match: 'all', containsText: trimmed },
       actions,
     };
-    void persist({ schemaVersion: 1, rules: [...ruleSet.rules, rule] });
-    setPhrase('');
+    const add = async () => {
+      if (reminderMinutes !== null && Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          setError('Allow notifications to add a reminder rule. No rule was saved.');
+          return;
+        }
+      }
+      await persist({ schemaVersion: 2, rules: [...ruleSet.rules, rule] });
+      setPhrase('');
+    };
+    void add().catch(() => setError('Reminder permission could not be requested. No rule was saved.'));
   };
   const preview = async () => {
     try {
       const sample = { packageName: 'com.notifyiq.preview', title: previewText, body: null, subtext: null, category: 'other', priority: 'normal' };
       const result = JSON.parse(await previewUserRules(JSON.stringify(ruleSet), JSON.stringify(sample))) as {
         matchedRuleIds: string[]; category: string; save: boolean; includeInDigest: boolean | null;
-        important: boolean | null; groups: string[];
+        important: boolean | null; groups: string[]; reminderAfterMinutes: number | null;
       };
       setPreviewResult(result.matchedRuleIds.length
-        ? `Matched ${result.matchedRuleIds.length} rule(s): category ${result.category}; ${result.save ? 'save' : 'leave save state'}; digest ${result.includeInDigest === null ? 'unchanged' : result.includeInDigest ? 'included' : 'excluded'}; importance ${result.important === null ? 'unchanged' : result.important ? 'important' : 'normal'}; groups ${result.groups.length ? result.groups.join(', ') : 'none'}.`
+        ? `Matched ${result.matchedRuleIds.length} rule(s): category ${result.category}; ${result.save ? 'save' : 'leave save state'}; digest ${result.includeInDigest === null ? 'unchanged' : result.includeInDigest ? 'included' : 'excluded'}; importance ${result.important === null ? 'unchanged' : result.important ? 'important' : 'normal'}; groups ${result.groups.length ? result.groups.join(', ') : 'none'}; reminder ${result.reminderAfterMinutes === null ? 'none' : `in ${result.reminderAfterMinutes} minutes`}.`
         : 'No rules match this sample.');
       setError(null);
     } catch {
       setError('Preview is unavailable. Check the Android native bridge and rule data.');
     }
   };
+  const confirmReevaluation = () => Alert.alert(
+    'Re-evaluate existing notifications?',
+    'This updates rule-derived categories, groups, digest settings and saved state for stored notifications. Past reminder times will be skipped.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Re-evaluate', onPress: () => { setBusy(true); void reevaluateUserRules().then(count => setError(`Updated rules for ${count} stored notifications.`)).catch(() => setError('Existing notifications could not be re-evaluated.')).finally(() => setBusy(false)); } },
+    ],
+  );
   const colors = theme.colors;
   const card = { backgroundColor: colors.surface, borderColor: colors.border };
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: colors.textPrimary }]}>Rules</Text>
-      <Text style={[styles.copy, { color: colors.textSecondary }]}>Organise new notifications on this device. Rules never change Android delivery or automatically reprocess older history.</Text>
+      <Text style={[styles.copy, { color: colors.textSecondary }]}>Organise notifications on this device. Rules never change Android delivery. Older history changes only when you explicitly re-evaluate it.</Text>
       {error ? <Text accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Text> : null}
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Add a rule</Text>
@@ -121,6 +142,9 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
           ))}
         </View>
         {groupMatch ? <TextInput accessibilityLabel="Rule group label" maxLength={40} placeholder="Group label" placeholderTextColor={colors.textSecondary} value={groupName} onChangeText={setGroupName} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} /> : null}
+        <Pressable accessibilityRole="button" accessibilityLabel={`Reminder ${reminderMinutes === null ? 'off' : `${reminderMinutes} minutes`}; tap to change`} onPress={() => setReminderMinutes(value => value === null ? 15 : value === 15 ? 60 : value === 60 ? 1440 : null)} style={[styles.action, { backgroundColor: colors.surfaceMuted }]}>
+          <Text style={{ color: colors.textPrimary }}>Reminder: {reminderMinutes === null ? 'off' : `${reminderMinutes} minutes after notification`}</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={addRule} style={[styles.primary, { backgroundColor: colors.brand }]}>
           <Text style={styles.primaryText}>{busy ? 'Saving…' : 'Add rule'}</Text>
         </Pressable>
@@ -133,12 +157,13 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
       </View>
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Your rules</Text>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={confirmReevaluation} style={styles.action}><Text style={{ color: colors.brand }}>Re-evaluate existing notifications</Text></Pressable>
         {ruleSet.rules.length === 0 ? <Text style={[styles.copy, { color: colors.textSecondary }]}>{busy ? 'Loading rules…' : 'No rules yet.'}</Text> : null}
         {ruleSet.rules.map(rule => (
           <View key={rule.id} style={[styles.rule, { borderTopColor: colors.border }]}>
             <View style={styles.ruleText}>
               <Text style={[styles.ruleName, { color: colors.textPrimary }]}>{rule.name}</Text>
-              <Text style={[styles.copy, { color: colors.textSecondary }]}>{rule.actions.map(action => action.type === 'setCategory' ? `Category: ${action.value}` : action.type === 'save' ? 'Save' : action.type === 'includeInDigest' ? 'Digest' : action.type === 'markImportant' ? 'Important' : `Group: ${action.value}`).join(' · ')}</Text>
+              <Text style={[styles.copy, { color: colors.textSecondary }]}>{rule.actions.map(action => action.type === 'setCategory' ? `Category: ${action.value}` : action.type === 'save' ? 'Save' : action.type === 'includeInDigest' ? 'Digest' : action.type === 'markImportant' ? 'Important' : action.type === 'addGroup' ? `Group: ${action.value}` : `Reminder: ${action.delayMinutes} min`).join(' · ')}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`${rule.enabled ? 'Pause' : 'Enable'} ${rule.name}`} disabled={busy} onPress={() => void persist({ ...ruleSet, rules: ruleSet.rules.map(item => item.id === rule.id ? { ...item, enabled: !item.enabled } : item) })} style={styles.action}>
               <Text style={{ color: colors.brand }}>{rule.enabled ? 'Pause' : 'Enable'}</Text>

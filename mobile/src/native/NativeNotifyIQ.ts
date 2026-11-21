@@ -31,6 +31,8 @@ export type NotificationItem = {
   important: boolean | null;
   ruleGroups: ReadonlyArray<string>;
   matchedRuleIds: ReadonlyArray<string>;
+  reminderDueAt: number | null;
+  reminderStatus: string | null;
 };
 
 export type OverviewCount = { label: string; count: number };
@@ -73,6 +75,7 @@ export interface Spec extends TurboModule {
   getUserRules(): Promise<string>;
   saveUserRules(rulesJson: string): Promise<void>;
   previewUserRules(rulesJson: string, sampleJson: string): Promise<string>;
+  reevaluateUserRules(): Promise<number>;
 }
 
 export function getNativeNotifyIQ(): Spec | null {

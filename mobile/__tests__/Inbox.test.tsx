@@ -78,6 +78,8 @@ test('renders source content and save, archive, and delete actions', async () =>
     important: null,
     ruleGroups: [],
     matchedRuleIds: [],
+    reminderDueAt: null,
+    reminderStatus: null,
   }]);
 
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
@@ -131,6 +133,8 @@ test('offers an undo action after archiving', async () => {
     important: null,
     ruleGroups: [],
     matchedRuleIds: [],
+    reminderDueAt: null,
+    reminderStatus: null,
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {
@@ -178,6 +182,8 @@ test('filters classified items and lets the user correct a category', async () =
     important: null,
     ruleGroups: [],
     matchedRuleIds: [],
+    reminderDueAt: null,
+    reminderStatus: null,
   }]);
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {

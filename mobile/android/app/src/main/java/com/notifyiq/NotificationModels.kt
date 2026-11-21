@@ -38,6 +38,8 @@ data class NotificationRecord(
   val important: Boolean? = null,
   val ruleGroups: List<String> = emptyList(),
   val matchedRuleIds: List<String> = emptyList(),
+  val reminderDueAt: Long? = null,
+  val reminderStatus: String? = null,
 )
 
 internal data class OverviewCount(val label: String, val count: Int)

@@ -108,6 +108,12 @@ class NotifyIQModule(
     catch (_: Exception) { promise.reject("RULE_PREVIEW_FAILED", "The sample could not be evaluated.") }
   }
 
+  @ReactMethod
+  fun reevaluateUserRules(promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).reevaluateUserRules()) }
+    catch (_: Exception) { promise.reject("RULE_REEVALUATION_FAILED", "Notification history could not be re-evaluated.") }
+  }
+
   private fun updateEvent(promise: Promise, update: (NotificationRepository) -> Unit) {
     try { update(NotificationRepository(appContext)); promise.resolve(null) }
     catch (_: Exception) { promise.reject("NOTIFICATION_UPDATE_FAILED", "The notification could not be updated.") }
@@ -127,6 +133,8 @@ class NotifyIQModule(
       if (item.important == null) putNull("important") else putBoolean("important", item.important)
       putArray("ruleGroups", Arguments.fromList(item.ruleGroups))
       putArray("matchedRuleIds", Arguments.fromList(item.matchedRuleIds))
+      putNullableNumber("reminderDueAt", item.reminderDueAt)
+      putNullableString("reminderStatus", item.reminderStatus)
     }) }
   }
 

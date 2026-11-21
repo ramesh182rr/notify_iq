@@ -24,9 +24,9 @@ internal data class NotificationFilters(
   val limit: Int = 50,
 )
 
-internal class NotificationRepository private constructor(private val connection: SQLiteConnection) {
-  constructor(context: Context) : this(connectionFor(context.getDatabasePath(DB_NAME)))
-  internal constructor(databaseFile: File) : this(connectionFor(databaseFile))
+internal class NotificationRepository private constructor(private val connection: SQLiteConnection, private val context: Context?) {
+  constructor(context: Context) : this(connectionFor(context.getDatabasePath(DB_NAME)), context.applicationContext)
+  internal constructor(databaseFile: File) : this(connectionFor(databaseFile), null)
 
   init { synchronized(connection) { migrate() } }
 
@@ -86,6 +86,17 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 5
     }
+    if (version == 5) {
+      transaction {
+        connection.execSQL("ALTER TABLE notification_events ADD COLUMN saved_override INTEGER")
+        connection.execSQL("UPDATE notification_events SET saved_override = is_saved")
+        connection.execSQL("ALTER TABLE notification_rule_results ADD COLUMN rule_saved INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE notification_rule_results ADD COLUMN reminder_due_at INTEGER")
+        connection.execSQL("ALTER TABLE notification_rule_results ADD COLUMN reminder_status TEXT")
+        connection.execSQL("PRAGMA user_version = 6")
+      }
+      version = 6
+    }
     check(version == SCHEMA_VERSION)
   }
 
@@ -106,22 +117,79 @@ internal class NotificationRepository private constructor(private val connection
     execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('user_rules_v1', ?)", canonical)
   }
 
+  fun reevaluateUserRules(): Int = synchronized(connection) {
+    val ruleJson = scalarText("SELECT value FROM app_preferences WHERE key = 'user_rules_v1'") ?: UserRuleSet(emptyList()).toJson()
+    val ruleSet = UserRuleCodec.parse(ruleJson)
+    var processed = 0
+    transaction {
+      connection.prepare(
+        "SELECT e.id, e.package_name, e.title, e.body, e.subtext, e.received_at, e.saved_override, a.category_override, a.category, a.priority, rr.rule_saved, rr.reminder_status " +
+          "FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id=e.id LEFT JOIN notification_rule_results rr ON rr.event_id=e.id ORDER BY e.id",
+      ).use { statement ->
+        while (statement.step()) {
+          val id = statement.getLong(0)
+          val item = CapturedNotification(
+            NotificationIdentity(statement.getText(1), ""),
+            statement.nullableText(2), statement.nullableText(3), statement.nullableText(4), 0L, statement.getLong(5),
+          )
+          val savedOverride = statement.nullableLong(6)
+          val priorRuleSaved = statement.getLong(10) == 1L
+          if (priorRuleSaved && savedOverride == null) execute("UPDATE notification_events SET is_saved = 0 WHERE id = ?", id)
+          UserReminderScheduler.cancel(context, id)
+          val baseCategory = statement.nullableText(7) ?: statement.nullableText(8) ?: NotificationCategory.OTHER.wireValue
+          val priority = statement.nullableText(9) ?: "normal"
+          val result = ruleSet.evaluate(RuleSubject(item.identity.packageName, item.title, item.body, item.subtext, baseCategory, priority))
+          if (result.matchedRuleIds.isEmpty()) {
+            execute("DELETE FROM notification_rule_results WHERE event_id = ?", id)
+          } else {
+            val dueAt = result.reminderAfterMinutes?.let { item.receivedAt + it * 60_000L }
+            val status = dueAt?.let { at ->
+              when {
+                at <= System.currentTimeMillis() -> "expired"
+                context != null && UserReminderScheduler.schedule(context, id, at) -> "pending"
+                else -> "permission_missing"
+              }
+            }
+            execute(
+              "INSERT OR REPLACE INTO notification_rule_results(event_id, category, include_in_digest, important, groups_json, matched_rule_ids_json, rule_saved, reminder_due_at, reminder_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              id, result.category.takeIf { it != baseCategory },
+              result.includeInDigest?.let { if (it) 1L else 0L },
+              result.important?.let { if (it) 1L else 0L },
+              org.json.JSONArray(result.groups).toString(), org.json.JSONArray(result.matchedRuleIds).toString(),
+              if (result.save && savedOverride == null) 1L else 0L, dueAt, status,
+            )
+            if (result.save && savedOverride == null) execute("UPDATE notification_events SET is_saved = 1 WHERE id = ?", id)
+          }
+          processed++
+        }
+      }
+    }
+    processed
+  }
+
   private fun applyUserRules(id: Long, item: CapturedNotification, analysis: NotificationAnalysis) {
     val ruleJson = scalarText("SELECT value FROM app_preferences WHERE key = 'user_rules_v1'") ?: return
     val result = UserRuleCodec.parse(ruleJson).evaluate(
       RuleSubject(item.identity.packageName, item.title, item.body, item.subtext, analysis.category.wireValue, analysis.priority),
     )
     if (result.matchedRuleIds.isEmpty()) return
+    val reminderDueAt = result.reminderAfterMinutes?.let { item.receivedAt + it * 60_000L }
+    val reminderStatus = reminderDueAt?.let { dueAt ->
+      if (context != null && UserReminderScheduler.schedule(context, id, dueAt)) "pending" else "permission_missing"
+    }
     execute(
-      "INSERT OR REPLACE INTO notification_rule_results(event_id, category, include_in_digest, important, groups_json, matched_rule_ids_json) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO notification_rule_results(event_id, category, include_in_digest, important, groups_json, matched_rule_ids_json, rule_saved, reminder_due_at, reminder_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       id,
       result.category.takeIf { it != analysis.category.wireValue },
       result.includeInDigest?.let { if (it) 1L else 0L },
       result.important?.let { if (it) 1L else 0L },
       org.json.JSONArray(result.groups).toString(),
       org.json.JSONArray(result.matchedRuleIds).toString(),
+      if (result.save) 1L else 0L,
+      reminderDueAt,
+      reminderStatus,
     )
-    if (result.save) execute("UPDATE notification_events SET is_saved = 1 WHERE id = ?", id)
+    if (result.save) execute("UPDATE notification_events SET is_saved = 1 WHERE id = ? AND saved_override IS NULL", id)
   }
 
   internal fun ruleResults(id: Long): String? = synchronized(connection) {
@@ -136,6 +204,24 @@ internal class NotificationRepository private constructor(private val connection
         .put("matchedRuleIds", statement.getText(4))
         .toString()
     }
+  }
+
+  internal fun pendingReminders(): List<Pair<Long, Long>> = synchronized(connection) {
+    val reminders = mutableListOf<Pair<Long, Long>>()
+    connection.prepare("SELECT event_id, reminder_due_at FROM notification_rule_results WHERE reminder_status = 'pending' AND reminder_due_at IS NOT NULL").use { statement ->
+      while (statement.step()) reminders += statement.getLong(0) to statement.getLong(1)
+    }
+    reminders
+  }
+
+  internal fun markReminderDelivered(eventId: Long): Boolean = synchronized(connection) {
+    if (scalarText("SELECT reminder_status FROM notification_rule_results WHERE event_id = ?", eventId) != "pending") return@synchronized false
+    execute("UPDATE notification_rule_results SET reminder_status = 'delivered' WHERE event_id = ?", eventId)
+    true
+  }
+
+  internal fun markReminderUnavailable(eventId: Long) = synchronized(connection) {
+    execute("UPDATE notification_rule_results SET reminder_status = 'permission_missing' WHERE event_id = ?", eventId)
   }
 
   fun previewUserRules(ruleJson: String, sampleJson: String): String = synchronized(connection) {
@@ -154,14 +240,18 @@ internal class NotificationRepository private constructor(private val connection
       .put("category", result.category).put("save", result.save)
       .put("includeInDigest", result.includeInDigest?.let { it } ?: JSONObject.NULL)
       .put("important", result.important?.let { it } ?: JSONObject.NULL)
-      .put("groups", org.json.JSONArray(result.groups)).toString()
+      .put("groups", org.json.JSONArray(result.groups))
+      .put("reminderAfterMinutes", result.reminderAfterMinutes ?: JSONObject.NULL).toString()
   }
 
   fun setExcluded(packageName: String, excluded: Boolean) = synchronized(connection) {
     transaction {
       if (excluded) execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES (?, '1')", "excluded:$packageName")
       else execute("DELETE FROM app_preferences WHERE key = ?", "excluded:$packageName")
-      if (excluded) execute("DELETE FROM notification_events WHERE package_name = ?", packageName)
+      if (excluded) {
+        cancelReminders("SELECT id FROM notification_events WHERE package_name = ?", packageName)
+        execute("DELETE FROM notification_events WHERE package_name = ?", packageName)
+      }
       if (excluded) cleanupDuplicateGroups()
     }
   }
@@ -188,6 +278,7 @@ internal class NotificationRepository private constructor(private val connection
 
   fun deleteActive(packageName: String, key: String) = synchronized(connection) {
     transaction {
+      cancelReminders("SELECT id FROM notification_events WHERE package_name = ? AND notification_key = ? AND removed_at IS NULL", packageName, key)
       execute("DELETE FROM notification_events WHERE package_name = ? AND notification_key = ? AND removed_at IS NULL", packageName, key)
       cleanupDuplicateGroups()
     }
@@ -218,7 +309,7 @@ internal class NotificationRepository private constructor(private val connection
     args += filters.limit.coerceIn(1, 100)
     val sql = "SELECT e.id, e.package_name, e.title, e.body, e.subtext, e.posted_at, e.received_at, e.removed_at, e.is_saved, e.archived_at, " +
     "COALESCE(a.category_override, rr.category, a.category), COALESCE(a.priority_override, a.priority), a.confidence, a.explanation, a.method, a.version, a.category_override, m.group_id, " +
-      "CASE WHEN m.group_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM duplicate_group_members gm WHERE gm.group_id = m.group_id) END, rr.include_in_digest, rr.important, rr.groups_json, rr.matched_rule_ids_json " +
+      "CASE WHEN m.group_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM duplicate_group_members gm WHERE gm.group_id = m.group_id) END, rr.include_in_digest, rr.important, rr.groups_json, rr.matched_rule_ids_json, rr.reminder_due_at, rr.reminder_status " +
       "FROM notification_events e LEFT JOIN notification_analysis a ON a.event_id = e.id LEFT JOIN notification_rule_results rr ON rr.event_id = e.id LEFT JOIN duplicate_group_members m ON m.event_id = e.id ${if (where.isEmpty()) "" else "WHERE ${where.joinToString(" AND ")}"} " +
       "ORDER BY e.received_at DESC, e.id DESC LIMIT ?"
     val records = mutableListOf<NotificationRecord>()
@@ -257,7 +348,7 @@ internal class NotificationRepository private constructor(private val connection
   }
 
   fun setSaved(id: Long, saved: Boolean) = synchronized(connection) {
-    execute("UPDATE notification_events SET is_saved = ? WHERE id = ?", if (saved) 1L else 0L, id)
+    execute("UPDATE notification_events SET is_saved = ?, saved_override = ? WHERE id = ?", if (saved) 1L else 0L, if (saved) 1L else 0L, id)
   }
 
   fun setArchived(id: Long, archived: Boolean, now: Long = System.currentTimeMillis()) = synchronized(connection) {
@@ -265,7 +356,7 @@ internal class NotificationRepository private constructor(private val connection
     else execute("UPDATE notification_events SET archived_at = NULL WHERE id = ?", id)
   }
 
-  fun delete(id: Long) = synchronized(connection) { transaction { execute("DELETE FROM notification_events WHERE id = ?", id); cleanupDuplicateGroups() } }
+  fun delete(id: Long) = synchronized(connection) { transaction { UserReminderScheduler.cancel(context, id); execute("DELETE FROM notification_events WHERE id = ?", id); cleanupDuplicateGroups() } }
 
   fun setCategoryOverride(id: Long, category: String?) = synchronized(connection) {
     require(category == null || NotificationCategory.fromWireValue(category) != null)
@@ -287,7 +378,14 @@ internal class NotificationRepository private constructor(private val connection
     }
   }
 
-  fun clear() = synchronized(connection) { transaction { connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups() } }
+  fun clear() = synchronized(connection) { transaction { cancelReminders("SELECT id FROM notification_events"); connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups() } }
+
+  private fun cancelReminders(sql: String, vararg values: Any?) {
+    connection.prepare(sql).use { statement ->
+      values.forEachIndexed { index, value -> statement.bindValue(index + 1, value) }
+      while (statement.step()) UserReminderScheduler.cancel(context, statement.getLong(0))
+    }
+  }
 
   private fun cleanupIfDue(now: Long) {
     val lastCleanup = scalarText("SELECT value FROM app_preferences WHERE key = 'retention_cleanup_at'")?.toLongOrNull() ?: 0L
@@ -300,6 +398,7 @@ internal class NotificationRepository private constructor(private val connection
   }
 
   private fun deleteExpired(cutoff: Long) {
+    cancelReminders("SELECT id FROM notification_events WHERE received_at < ? AND is_saved = 0", cutoff)
     execute("DELETE FROM notification_events WHERE received_at < ? AND is_saved = 0", cutoff)
     cleanupDuplicateGroups()
   }
@@ -402,6 +501,11 @@ internal class NotificationRepository private constructor(private val connection
     if (statement.step() && statement.getColumnType(0) != SQLITE_NULL) statement.getText(0) else null
   }
 
+  private fun scalarText(sql: String, value: Any?): String? = connection.prepare(sql).use { statement ->
+    statement.bindValue(1, value)
+    if (statement.step() && statement.getColumnType(0) != SQLITE_NULL) statement.getText(0) else null
+  }
+
   private fun scalarLong(sql: String, vararg values: Any?): Long? = connection.prepare(sql).use { statement ->
     values.forEachIndexed { index, value -> statement.bindValue(index + 1, value) }
     if (statement.step() && statement.getColumnType(0) != SQLITE_NULL) statement.getLong(0) else null
@@ -438,7 +542,7 @@ internal class NotificationRepository private constructor(private val connection
     analysisExplanation = nullableText(13) ?: "No classification is available.", analysisMethod = nullableText(14) ?: "deterministic_rules",
     analysisVersion = nullableText(15) ?: NotificationAnalysis.VERSION, categoryOverride = nullableText(16), duplicateGroupId = nullableLong(17), duplicateCount = getLong(18).toInt(),
     includeInDigest = nullableLong(19)?.let { it == 1L }, important = nullableLong(20)?.let { it == 1L },
-    ruleGroups = jsonArrayStrings(21), matchedRuleIds = jsonArrayStrings(22),
+    ruleGroups = jsonArrayStrings(21), matchedRuleIds = jsonArrayStrings(22), reminderDueAt = nullableLong(23), reminderStatus = nullableText(24),
   )
 
   private fun SQLiteStatement.nullableText(index: Int): String? = if (getColumnType(index) == SQLITE_NULL) null else getText(index)
@@ -449,7 +553,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 5
+    private const val SCHEMA_VERSION = 6
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5

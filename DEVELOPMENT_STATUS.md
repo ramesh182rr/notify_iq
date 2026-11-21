@@ -2,10 +2,10 @@
 
 **Last updated:** 2026-11-21  
 **Current phase:** Phase 4 — local-model benchmark preparation
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping and daily overview implemented; synthetic evaluation is established, while model runtime evaluation, native-module discovery and physical-device capture verification remain
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping, daily overview and basic user rules are implemented; emulator-only model runtime evaluation and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-seven are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2; Phase 5: 1); 17 remain, including optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-nine are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2; Phase 5: 3); 15 remain, including the local-model emulator benchmark, optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -37,8 +37,8 @@
 - Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
-- Added a constrained Kotlin rule codec/evaluator with ordered matching, validation, local JSON preference storage, and a preview endpoint. The Rules screen supports category rule creation, preview, pause/enable, and delete. New privacy-screened captures now apply category/save actions and persist digest/importance/group results separately; applying results to existing records is not implemented.
-- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and twelve instrumentation tests pass, including synthetic rule precedence, Unicode matching, persistence round-trip, preview, invalid-set rejection, and action application to a new capture while preserving user edits. A separate instrumentation test confirms Android's notification-listener access API is callable.
+- Added a constrained Kotlin rule codec/evaluator with ordered matching, schema v2 reminder actions, preview, and explicit re-evaluation of stored history. Reminders use inexact alarms, generic lock-screen text, Android 13+ notification permission, and reboot rescheduling. Existing rule effects are replaced only by the explicit user action; manual saved/category overrides remain authoritative, past reminder times are skipped, and alarms are canceled when their record is deleted.
+- Ran TypeScript typecheck, Android debug assembly and unit tests, and the Android instrumentation suite on the Pixel 8 AVD. Fourteen instrumentation tests pass, including reminder validation/preview, explicit re-evaluation, manual save/category override preservation, and prior synthetic rule coverage.
 
 ## Current state
 
@@ -56,7 +56,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
-- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions. **In progress:** capture evaluation, all v1 action controls, persisted outcomes and Inbox reporting are implemented. Reminder scheduling and explicit re-evaluation of older records remain deferred.
+- [x] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions are implemented and covered by emulator fixtures. Custom rules, saved searches and richer grouping remain a follow-up task.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
@@ -90,6 +90,10 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `./gradlew --no-daemon connectedDebugAndroidTest` — passed, 4 database tests on Pixel 8 API 35.
 - `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug connectedDebugAndroidTest` — passed with schema v3/category analysis; 5 Android database instrumentation tests passed on Pixel 8 API 35.
 - `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug connectedDebugAndroidTest` — passed with schema v4/grouping and daily aggregates; 7 Android instrumentation tests passed on Pixel 8 API 35.
+- `fnm exec --using=22.23.4 -- npm run typecheck` — passed after adding reminder rule controls and explicit history re-evaluation.
+- `fnm exec --using=22.23.4 -- npm test -- --runInBand --watchman=false` — passed, 4 suites / 8 tests after updating notification model fixtures.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest` — passed with reminder scheduling and history re-evaluation.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:connectedDebugAndroidTest` — passed on Pixel_8 AVD; 14 instrumentation tests passed.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.
