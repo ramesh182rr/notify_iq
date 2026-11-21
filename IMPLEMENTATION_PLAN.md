@@ -89,7 +89,7 @@ Tasks:
 6. Implement initial SQLite migration, native repository, safe event extraction and bounded database-error handling; keep all content out of logs. **Implemented with schema version 1 and a bounded serialized listener queue.** FTS5 is deferred until a driver guaranteeing FTS5 is selected; see `DECISIONS_LOG.md`.
 7. Expose typed status/query/preferences/clear-history APIs to TypeScript; UI reads the repository rather than relying on raw event emission. **Implemented for status, recent history, package exclusion and history clearing.**
 8. Add a minimal recent-event inbox and local-history deletion only after durable capture works. **Implemented; end-to-end capture and deletion await permission/device verification.**
-9. Verify capture with UI closed, exclusion, sensitive fixtures, listener reconnect, access revocation and Android notification removal semantics on a physical device.
+9. Verify capture with UI closed, exclusion, sensitive fixtures, listener reconnect, access revocation and Android notification removal semantics on a physical device. **Emulator partial:** real Settings grant/revoke, background capture and exclusion UI were verified on API 35; process-death capture, reliable live sensitive-fixture injection, notification removal/reconnect and physical-device lifecycle checks remain outstanding.
 
 **Definition of done:** A synthetic permitted notification is retained and readable after reopening with JS inactive during capture; excluded content is not extracted/persisted; sensitive fixtures follow documented policy; removal updates lifecycle metadata without erasing history; permission revocation and DB errors show safe states; migrations and repository behavior are verified. No cloud upload.
 

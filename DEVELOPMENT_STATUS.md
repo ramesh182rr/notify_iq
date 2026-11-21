@@ -55,7 +55,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 ### Planned phases
 
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
-- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Emulator shell grant/revoke and one synthetic capture pass; Settings UI, UI-closed capture, exclusion/sensitive cases and physical device lifecycle checks remain.
+- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. API 35 emulator Settings grant/revoke, background capture and app-exclusion UI checks pass; process-death capture, reliable live sensitive-fixture injection, removal/reconnect and physical-device lifecycle checks remain.
 - [x] Phase 2 — inbox actions, retention, filters and FTS search are implemented; manual visual theme QA remains for release verification.
 - [x] Phase 3 — deterministic classification, separate analysis persistence, focused fixtures, repeat grouping, daily overview and aggregate insights are implemented.
 - [x] Phase 4 task 1 — 108-case synthetic evaluation set and deterministic baseline established. No production model dependency is selected.
@@ -76,10 +76,13 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 
 ## Blockers and follow-up
 
-- Physical-device capture lifecycle verification remains outstanding. The emulator capture check used Android shell commands rather than the Settings permission flow.
+- Physical-device capture lifecycle verification remains outstanding. The API 35 emulator now verifies the real Settings grant/revoke path and capture while the app is backgrounded; it does not verify process-death lifecycle or OEM behavior.
 - The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
 - The first bridgeless registration path marked `NotifyIQ` as a TurboModule, but the RN 0.88.1 JS runtime exposed no `global.__turboModuleProxy`. Switched to a plain `ReactContextBaseJavaModule` through legacy interop. Pixel 8 API 35 verified access status, rule persistence across reinstall, preview output, and deletion of the synthetic test rule. The test rule was removed after the smoke check.
-- Emulator listener smoke check: queried access-off, granted listener access through `cmd notification allow_listener`, confirmed the service became live, posted a synthetic “Payment/payment” shell notification, and verified the Inbox captured it as Finance. Cleared local test history and restored access-off with `cmd notification disallow_listener`. This does not verify the Settings UI grant flow or UI-closed capture.
+- Emulator listener smoke check: shell-granted access, posted a synthetic “Payment/payment” notification, and verified it was captured as Finance. This preceded the newer Settings-flow check and did not cover UI-closed capture.
+- API 35 Settings-flow check: started from access-off, granted permission through NotifyIQ's Privacy control and Android's confirmation sheet, then verified the app reported access on. A normal synthetic `com.android.shell` notification was captured while the app was backgrounded. Excluding that package through the Privacy UI suppressed a later synthetic post; removing the exclusion returned the setting to its initial state.
+- The `cmd notification post` utility did not preserve the intended multiword sensitive fixture and surfaced generic shell content, so the live sensitive-capture attempt is inconclusive. Synthetic privacy-gate fixtures remain the evidence for OTP/password/card screening. No live sensitive event is claimed.
+- Restored notification access to off, removed the temporary package exclusion, individually deleted the three timestamped synthetic shell rows, removed the temporary ADB reverse mapping, and stopped the Metro server started for this check. Inbox is empty; the already installed debug app remains on the emulator.
 - Production has no model inference runtime or bundled weights. LiteRT and ONNX are only in `mobile/model-benchmark/`; LiteRT failed the quality comparison, and ONNX has only passed graph loading. Physical-device verification remains. See the model benchmark preflight and runtime reports in `docs/`.
 
 ## Checks performed
