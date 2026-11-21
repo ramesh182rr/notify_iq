@@ -76,6 +76,9 @@ export interface Spec extends TurboModule {
   saveUserRules(rulesJson: string): Promise<void>;
   previewUserRules(rulesJson: string, sampleJson: string): Promise<string>;
   reevaluateUserRules(): Promise<number>;
+  getSavedSearches(): Promise<string>;
+  addSavedSearch(name: string, filtersJson: string): Promise<string>;
+  deleteSavedSearch(id: string): Promise<string>;
 }
 
 export function getNativeNotifyIQ(): Spec | null {

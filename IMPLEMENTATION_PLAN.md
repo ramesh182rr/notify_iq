@@ -138,7 +138,7 @@ Tasks:
 1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V2.md`.
 2. [x] Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important). **Implemented:** reminders use an inexact Android alarm, ask permission when the user adds a reminder action, use generic lock-screen copy, and reschedule after reboot. Existing notifications change only after the explicit re-evaluation action.
 3. [x] Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures. **Implemented:** emulator fixtures cover ordered matching, action conflicts, Unicode phrase matching, migration, persistence, preview, invalid-set rejection, reminder validation/preview, explicit re-evaluation, manual save/category overrides, and applied effects.
-4. Add custom rules, saved searches and richer grouping only after basic semantics are stable.
+4. **Partial:** Saved searches are implemented with local metadata persistence, native validation, apply/delete controls and a 20-search cap. Custom rule conditions beyond literal text and richer group browsing remain; saved-search emulator coverage is recorded in `DEVELOPMENT_STATUS.md`.
 
 **Definition of done:** Rule outcomes are predictable, previewable, reversible where possible and never silently suppress Android delivery; rule execution is covered by fixtures and documented examples.
 
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Continue Phase 4 by implementing tokenizer and autoregressive KV-cache support for the isolated ONNX harness, then run the 108-case corpus on the 6 GiB AVD. The LiteRT candidate is rejected for this use based on its measured quality; ONNX is deferred pending text-inference evidence. Manual visual QA and physical capture verification remain follow-ups.
+**Next task:** Continue Phase 4 by selecting a reliable tokenizer integration for the pinned ONNX artifact, then implement autoregressive KV-cache generation in the isolated harness and run the 108-case corpus on the 6 GiB AVD. Available JVM tokenizer options need compatibility review before pinning. The LiteRT candidate is rejected for this use based on its measured quality; ONNX is deferred pending text-inference evidence. Manual visual QA and physical capture verification remain follow-ups.
 
 The roadmap contains 44 numbered tasks total. Thirty are implemented (Phases 0–3: 24; Phase 4 corpus, candidate pins and runtime decision: 3; Phase 5 core rules: 3); 14 remain. Task counts include optional cloud and release-readiness work.

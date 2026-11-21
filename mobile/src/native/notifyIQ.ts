@@ -94,3 +94,17 @@ export function previewUserRules(rulesJson: string, sampleJson: string): Promise
 export function reevaluateUserRules(): Promise<number> {
   return requireNativeModule().reevaluateUserRules();
 }
+
+export function getSavedSearches(): Promise<string> {
+  return requireNativeModule().getSavedSearches();
+}
+
+export function addSavedSearch(name: string, filters: {
+  query: string; packageName: string; category: string; dateRange: string; includeArchived: boolean;
+}): Promise<string> {
+  return requireNativeModule().addSavedSearch(name, JSON.stringify(filters));
+}
+
+export function deleteSavedSearch(id: string): Promise<string> {
+  return requireNativeModule().deleteSavedSearch(id);
+}

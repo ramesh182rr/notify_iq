@@ -3,6 +3,9 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 
 import {
   clearNotificationHistory,
+  addSavedSearch,
+  deleteSavedSearch,
+  getSavedSearches,
   deleteNotification,
   searchNotifications,
   setNotificationArchived,
@@ -16,6 +19,7 @@ import type { AppTheme } from '../../theme/tokens';
 type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
 type PendingUndo = { label: string; action: () => Promise<void> };
+type SavedSearch = { id: string; name: string; query: string; packageName: string; category: string; dateRange: DateRange; includeArchived: boolean };
 
 const PAGE_SIZE = 50;
 const CATEGORY_OPTIONS = [
@@ -25,6 +29,11 @@ const CATEGORY_OPTIONS = [
 ] as const;
 const ignorePromise = (promise: Promise<unknown>) => {
   promise.catch(() => undefined);
+};
+const decodeSavedSearches = (value: string): SavedSearch[] => {
+  const parsed = JSON.parse(value) as { schemaVersion?: number; searches?: SavedSearch[] };
+  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.searches)) throw new Error('INVALID_SAVED_SEARCHES');
+  return parsed.searches;
 };
 
 export function InboxScreen({ theme, refreshKey, searchMode = false, listenerStatus, statusLoading = false, statusError = null }: Props) {
@@ -41,6 +50,9 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
   const [category, setCategory] = useState('');
   const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   const [categoryEditor, setCategoryEditor] = useState<NotificationItem | null>(null);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [saveSearchName, setSaveSearchName] = useState('');
+  const [editingSavedSearch, setEditingSavedSearch] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const requestId = useRef(0);
 
@@ -74,6 +86,11 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     const timer = setTimeout(() => { ignorePromise(loadFirstPage()); }, query || packageName ? 250 : 0);
     return () => clearTimeout(timer);
   }, [loadFirstPage, packageName, query, refreshKey]);
+
+  useEffect(() => {
+    if (!searchMode) return;
+    getSavedSearches().then(value => setSavedSearches(decodeSavedSearches(value))).catch(() => setActionError(true));
+  }, [searchMode]);
 
   useEffect(() => {
     if (!pendingUndo) return;
@@ -143,6 +160,29 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     ],
   );
 
+  const saveCurrentSearch = async () => {
+    try {
+      const result = await addSavedSearch(saveSearchName, {
+        query, packageName, category, dateRange: range, includeArchived,
+      });
+      setSavedSearches(decodeSavedSearches(result));
+      setSaveSearchName('');
+      setEditingSavedSearch(false);
+      setActionError(false);
+    } catch {
+      setActionError(true);
+    }
+  };
+
+  const removeSavedSearch = async (id: string) => {
+    try {
+      setSavedSearches(decodeSavedSearches(await deleteSavedSearch(id)));
+      setActionError(false);
+    } catch {
+      setActionError(true);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{searchMode ? 'Search' : 'Inbox'}</Text>
@@ -192,6 +232,42 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           </Pressable>
         ))}
       </ScrollView>
+      {searchMode ? (
+        <View style={[styles.savedSearches, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.sectionLabel, { color: theme.colors.textPrimary }]}>Saved searches</Text>
+          {savedSearches.map(saved => (
+            <View key={saved.id} style={styles.savedSearchRow}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Apply saved search ${saved.name}`} onPress={() => {
+                setQuery(saved.query); setPackageName(saved.packageName); setCategory(saved.category);
+                setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
+              }} style={styles.savedSearchApply}>
+                <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{saved.name}</Text>
+                <Text style={[styles.hint, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+                  {[saved.query || null, saved.packageName || null, saved.category ? categoryLabel(saved.category) : null, saved.dateRange === 'all' ? null : saved.dateRange === 'today' ? 'Today' : '7 days', saved.includeArchived ? 'Archived' : null].filter(Boolean).join(' · ') || 'All retained notifications'}
+                </Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Delete saved search ${saved.name}`} onPress={() => ignorePromise(removeSavedSearch(saved.id))} style={styles.savedSearchDelete}>
+                <Text style={{ color: theme.colors.danger }}>Delete</Text>
+              </Pressable>
+            </View>
+          ))}
+          {editingSavedSearch ? (
+            <View style={styles.row}>
+              <TextInput accessibilityLabel="Saved search name" placeholder="Search name" placeholderTextColor={theme.colors.textSecondary} value={saveSearchName} onChangeText={setSaveSearchName} maxLength={40} style={[styles.input, styles.savedSearchName, { color: theme.colors.textPrimary, borderColor: theme.colors.border }]} />
+              <Pressable accessibilityRole="button" accessibilityLabel="Save current search" disabled={!saveSearchName.trim()} onPress={() => ignorePromise(saveCurrentSearch())}>
+                <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>Save</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Cancel saving search" onPress={() => { setEditingSavedSearch(false); setSaveSearchName(''); }}>
+                <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable accessibilityRole="button" accessibilityLabel="Save current search" onPress={() => setEditingSavedSearch(true)}>
+              <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>Save current search</Text>
+            </Pressable>
+          )}
+        </View>
+      ) : null}
       {!searchMode ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Manage retention and app exclusions in Privacy.</Text> : null}
       {actionError ? <Text style={{ color: theme.colors.danger }}>That change could not be saved. Try again.</Text> : null}
       {!loading && items.length > 0 ? (
@@ -360,6 +436,11 @@ const styles = StyleSheet.create({
   undoAction: { fontWeight: '700' },
   coverage: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 4 },
   coverageTitle: { fontSize: 14, fontWeight: '700' },
+  savedSearches: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10 },
+  savedSearchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  savedSearchApply: { flex: 1, gap: 2, minHeight: 42, justifyContent: 'center' },
+  savedSearchDelete: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  savedSearchName: { flex: 1, minWidth: 120 },
   sectionLabel: { fontSize: 14, fontWeight: '700' },
   hint: { fontSize: 12, lineHeight: 17 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)', justifyContent: 'center', padding: 20 },

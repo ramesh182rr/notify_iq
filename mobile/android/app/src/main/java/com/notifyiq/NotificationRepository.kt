@@ -117,6 +117,22 @@ internal class NotificationRepository private constructor(private val connection
     execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('user_rules_v1', ?)", canonical)
   }
 
+  fun getSavedSearches(): String = synchronized(connection) {
+    scalarText("SELECT value FROM app_preferences WHERE key = 'saved_searches_v1'") ?: SavedSearchCodec.emptyJson()
+  }
+
+  fun addSavedSearch(name: String, filtersJson: String): String = synchronized(connection) {
+    val updated = SavedSearchCodec.add(getSavedSearches(), name, filtersJson)
+    execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('saved_searches_v1', ?)", updated)
+    updated
+  }
+
+  fun deleteSavedSearch(id: String): String = synchronized(connection) {
+    val updated = SavedSearchCodec.remove(getSavedSearches(), id)
+    execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('saved_searches_v1', ?)", updated)
+    updated
+  }
+
   fun reevaluateUserRules(): Int = synchronized(connection) {
     val ruleJson = scalarText("SELECT value FROM app_preferences WHERE key = 'user_rules_v1'") ?: UserRuleSet(emptyList()).toJson()
     val ruleSet = UserRuleCodec.parse(ruleJson)

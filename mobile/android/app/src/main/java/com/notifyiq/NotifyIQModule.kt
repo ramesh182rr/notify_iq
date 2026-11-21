@@ -114,6 +114,24 @@ class NotifyIQModule(
     catch (_: Exception) { promise.reject("RULE_REEVALUATION_FAILED", "Notification history could not be re-evaluated.") }
   }
 
+  @ReactMethod
+  fun getSavedSearches(promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).getSavedSearches()) }
+    catch (_: Exception) { promise.reject("SAVED_SEARCHES_UNAVAILABLE", "Saved searches could not be loaded.") }
+  }
+
+  @ReactMethod
+  fun addSavedSearch(name: String, filtersJson: String, promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).addSavedSearch(name, filtersJson)) }
+    catch (_: Exception) { promise.reject("SAVED_SEARCH_INVALID", "The saved search is invalid or the saved-search limit was reached.") }
+  }
+
+  @ReactMethod
+  fun deleteSavedSearch(id: String, promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).deleteSavedSearch(id)) }
+    catch (_: Exception) { promise.reject("SAVED_SEARCH_DELETE_FAILED", "The saved search could not be deleted.") }
+  }
+
   private fun updateEvent(promise: Promise, update: (NotificationRepository) -> Unit) {
     try { update(NotificationRepository(appContext)); promise.resolve(null) }
     catch (_: Exception) { promise.reject("NOTIFICATION_UPDATE_FAILED", "The notification could not be updated.") }
