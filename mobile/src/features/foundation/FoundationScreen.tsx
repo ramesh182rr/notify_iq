@@ -24,6 +24,7 @@ const descriptions: Record<ScreenKey, string> = {
   search: 'Search will cover retained notification history once local storage is in place.',
   insights: 'Insights will be calculated from notification history stored on this device.',
   rules: 'Rules will organize NotifyIQ history. They will not change Android notification delivery.',
+  privacy: 'Manage local retention, excluded apps and notification access.',
 };
 
 export function FoundationScreen({

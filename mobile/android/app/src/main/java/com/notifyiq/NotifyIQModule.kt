@@ -32,18 +32,52 @@ class NotifyIQModule(
 
   override fun getRecentNotifications(limit: Double, promise: Promise) {
     try {
-      val items = Arguments.createArray()
-      NotificationRepository(appContext).recent(limit.toInt()).forEach { item ->
-        items.pushMap(Arguments.createMap().apply {
-          putString("id", item.id); putString("packageName", item.packageName)
-          if (item.title == null) putNull("title") else putString("title", item.title)
-          if (item.body == null) putNull("body") else putString("body", item.body)
-          putDouble("receivedAt", item.receivedAt.toDouble())
-          if (item.removedAt == null) putNull("removedAt") else putDouble("removedAt", item.removedAt.toDouble())
-        })
-      }
-      promise.resolve(items)
+      val items = NotificationRepository(appContext).notifications(NotificationFilters(limit = limit.toInt()))
+      promise.resolve(toWritableArray(items))
     } catch (_: Exception) { promise.reject("HISTORY_UNAVAILABLE", "Notification history is unavailable.") }
+  }
+
+  override fun searchNotifications(query: String, packageName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
+    try {
+      val filters = NotificationFilters(query, packageName, from.toLong(), to.toLong(), beforeReceivedAt.toLong(), beforeId.toLong(), includeArchived, limit.toInt())
+      promise.resolve(toWritableArray(NotificationRepository(appContext).notifications(filters)))
+    } catch (_: Exception) { promise.reject("SEARCH_UNAVAILABLE", "Notification search is unavailable.") }
+  }
+
+  override fun setNotificationSaved(id: Double, saved: Boolean, promise: Promise) = updateEvent(promise) { it.setSaved(id.toLong(), saved) }
+  override fun setNotificationArchived(id: Double, archived: Boolean, promise: Promise) = updateEvent(promise) { it.setArchived(id.toLong(), archived) }
+  override fun deleteNotification(id: Double, promise: Promise) = updateEvent(promise) { it.delete(id.toLong()) }
+
+  override fun getRetentionDays(promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).getRetentionDays()) }
+    catch (_: Exception) { promise.reject("RETENTION_UNAVAILABLE", "Retention settings are unavailable.") }
+  }
+
+  override fun setRetentionDays(days: Double, promise: Promise) {
+    try { NotificationRepository(appContext).setRetentionDays(days.toInt()); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("RETENTION_UPDATE_FAILED", "Retention settings could not be saved.") }
+  }
+
+  private fun updateEvent(promise: Promise, update: (NotificationRepository) -> Unit) {
+    try { update(NotificationRepository(appContext)); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("NOTIFICATION_UPDATE_FAILED", "The notification could not be updated.") }
+  }
+
+  private fun toWritableArray(items: List<NotificationRecord>) = Arguments.createArray().apply {
+    items.forEach { item -> pushMap(Arguments.createMap().apply {
+      putDouble("id", item.id.toDouble()); putString("packageName", item.packageName)
+      putNullableString("title", item.title); putNullableString("body", item.body); putNullableString("subtext", item.subtext)
+      putDouble("postedAt", item.postedAt.toDouble()); putDouble("receivedAt", item.receivedAt.toDouble())
+      putNullableNumber("removedAt", item.removedAt); putBoolean("saved", item.saved); putNullableNumber("archivedAt", item.archivedAt)
+    }) }
+  }
+
+  private fun com.facebook.react.bridge.WritableMap.putNullableString(key: String, value: String?) {
+    if (value == null) putNull(key) else putString(key, value)
+  }
+
+  private fun com.facebook.react.bridge.WritableMap.putNullableNumber(key: String, value: Long?) {
+    if (value == null) putNull(key) else putDouble(key, value.toDouble())
   }
 
   override fun setAppExcluded(packageName: String, excluded: Boolean, promise: Promise) {
@@ -53,6 +87,14 @@ class NotifyIQModule(
       NotificationListenerRuntimeState.exclusionsReady = true
       promise.resolve(null)
     } catch (_: Exception) { promise.reject("EXCLUSION_UPDATE_FAILED", "The app exclusion could not be saved.") }
+  }
+
+  override fun getExcludedPackages(promise: Promise) {
+    try {
+      promise.resolve(Arguments.fromList(NotificationRepository(appContext).getExcludedPackages().sorted()))
+    } catch (_: Exception) {
+      promise.reject("EXCLUSIONS_UNAVAILABLE", "Excluded apps could not be loaded.")
+    }
   }
 
   override fun clearNotificationHistory(promise: Promise) {

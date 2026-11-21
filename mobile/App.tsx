@@ -7,6 +7,7 @@ import { BottomTabBar } from './src/components/BottomTabBar';
 import { ScreenContainer } from './src/components/ScreenContainer';
 import { FoundationScreen } from './src/features/foundation/FoundationScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
+import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import {getListenerStatus, openNotificationAccessSettings} from './src/native/notifyIQ';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
@@ -88,8 +89,10 @@ function App() {
         />
         <View style={styles.flex}>
           <ScreenContainer theme={theme}>
-            {activeScreen === 'inbox' ? (
-              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} />
+            {activeScreen === 'inbox' || activeScreen === 'search' ? (
+              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} />
+            ) : activeScreen === 'privacy' ? (
+              <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={handleOpenSettings} />
             ) : <FoundationScreen
               screen={activeScreen}
               title={activeScreenDetails?.label ?? 'Home'}

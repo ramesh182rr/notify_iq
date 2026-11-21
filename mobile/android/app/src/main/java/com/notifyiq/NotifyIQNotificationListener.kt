@@ -15,6 +15,7 @@ class NotifyIQNotificationListener : NotificationListenerService() {
     repository = NotificationRepository(this)
     NotificationListenerRuntimeState.exclusionsReady = runCatching {
       NotificationListenerRuntimeState.excludedPackages = repository.getExcludedPackages()
+      repository.applyRetentionPolicy()
     }.isSuccess
   }
 

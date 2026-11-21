@@ -15,10 +15,14 @@ internal data class CapturedNotification(
 )
 
 data class NotificationRecord(
-  val id: String,
+  val id: Long,
   val packageName: String,
   val title: String?,
   val body: String?,
+  val subtext: String?,
+  val postedAt: Long,
   val receivedAt: Long,
   val removedAt: Long?,
+  val saved: Boolean,
+  val archivedAt: Long?,
 )

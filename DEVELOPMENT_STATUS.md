@@ -1,11 +1,11 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-21  
-**Current phase:** Phase 1 — permission and native capture foundation  
-**Application implementation:** Listener, privacy gate, SQLite persistence, typed bridge, and basic inbox implemented; device-level capture verification remains  
+**Current phase:** Phase 2 — core inbox, retention and search
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre and typed bridge implemented; Phase 2 polish and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twelve are implemented (Phase 0: 4; Phase 1: 8); 32 remain, including optional cloud foundations and release readiness. Phase 1 device verification is still outstanding.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Sixteen are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 4); 28 remain, including optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -21,13 +21,18 @@
 - Built and installed the debug app on the attached Pixel API 36 emulator; Metro served the JavaScript bundle and the launcher activity started.
 - Added a focused foundation rendering test; typecheck, lint and test pass.
 - Implemented notification-access education/status/settings handoff and app-resume status refresh.
-- Implemented a Kotlin notification listener, pre-extraction package exclusion check, whole-event sensitive-content discard, bounded serialized persistence queue, SQLite schema v1, repository bridge, recent-event inbox, and confirmed history deletion.
+- Implemented a Kotlin notification listener, pre-extraction package exclusion check, whole-event sensitive-content discard, bounded serialized persistence queue, SQLite schema v2, repository bridge, recent-event inbox, and confirmed history deletion.
 - Added synthetic Kotlin unit fixtures for OTP, password, payment card and ordinary notification content.
-- Deferred FTS5 from the initial portable SQLite schema until an FTS5-capable driver is selected; recorded the implementation adjustment in `DECISIONS_LOG.md`.
+- Migrated the repository to AndroidX BundledSQLiteDriver. Schema v2 adds FTS5 with transactional triggers, saved/archive state and retention cleanup.
+- Added FTS search, app/date/archive filters, keyset pagination, per-item save/archive/delete actions and configurable 7/30/90/never retention.
+- Added notification detail modal with source, posted/received timestamps, stored content and provenance; documented local deletion limitations in Inbox.
+- Added a dedicated Privacy Centre for notification access status/settings, retention choices, excluded package management and local history deletion. App exclusions currently use exact package-name entry; an installed-app picker remains a usability improvement.
+- Added a five-second undo affordance for save/archive changes; individual and bulk deletes remain confirmation-gated and irreversible within the app.
+- Added four Android instrumentation tests for migration, FTS maintenance, retention, archive and package exclusion; all pass on the Pixel 8 API 35 emulator.
 
 ## Current state
 
-The development kit and planning baseline are tracked in `be075d2`; the new root `.gitignore` and `mobile/` app are untracked, with the planning and decision documents modified locally. The kit's FastAPI and Kotlin files remain starter/reference artifacts. Node 22.23.4 and JDK 17 were used for the RN 0.88.1 scaffold; Node 18.20.8 remains the default outside the pinned project toolchain. Python 3.15.2 is not relevant until optional backend work. An API 36 emulator is attached; no physical Android device is attached.
+The development kit and planning baseline are tracked in `be075d2`; implementation and documentation changes are local and uncommitted. The kit's FastAPI and Kotlin files remain starter/reference artifacts. Node 22.23.4 and JDK 17 were used for the RN 0.88.1 scaffold; Node 18.20.8 remains the default outside the pinned project toolchain. Python 3.15.2 is not relevant until optional backend work. A Pixel 8 API 35 emulator is attached; no physical Android device is attached.
 
 ## Outstanding tasks
 
@@ -35,7 +40,7 @@ The development kit and planning baseline are tracked in `be075d2`; the new root
 
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
 - [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
-- [ ] Phase 2 — inbox actions, retention, filters and FTS search.
+- [ ] Phase 2 — inbox actions, retention, filters and FTS search. FTS, detail view, Privacy Centre and save/archive undo are implemented; category filters (pending classification) and accessibility/theme QA remain.
 - [ ] Phase 3 — deterministic classification, grouping, overview/digest and insights.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [ ] Phase 5 — user rules and richer organisation.
@@ -52,8 +57,8 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 
 ## Blockers and follow-up
 
-- No blocker to Phase 1 implementation. Physical-device lifecycle verification remains outstanding; no physical device is attached in this environment.
-- `adb devices` currently reports no attached emulator/device, so the latest APK could not be installed for a final UI run. Notification access was not enabled.
+- Physical-device capture lifecycle verification remains outstanding. Notification access was not enabled during emulator testing.
+- The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remains off and no live capture flow was exercised.
 
 ## Checks performed
 
@@ -63,8 +68,9 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 - `fnm exec --using=22.23.4 -- npm install` — completed; npm reported zero vulnerabilities. Template dependencies emitted deprecation notices, including ESLint 8.
 - `npm run typecheck` — passed after Phase 1 changes.
 - `npm run lint` — passed after Phase 1 changes.
-- `npm test -- --runInBand --watchman=false` — passed, 1 suite / 1 test.
-- `./gradlew --no-daemon generateCodegenArtifactsFromSchema testDebugUnitTest assembleDebug` — passed; native unit tests and debug APK build succeeded.
+- `npm test -- --runInBand --watchman=false` — passed, 3 suites / 5 tests after Privacy Centre and undo work.
+- `./gradlew --no-daemon generateCodegenArtifactsFromSchema compileDebugKotlin assembleDebug` — passed.
+- `./gradlew --no-daemon connectedDebugAndroidTest` — passed, 4 database tests on Pixel 8 API 35.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
-- Metro ran on port 8091 because ports 8081 and 8082 were already occupied. It logged the bundle request without a JavaScript exception.
+- Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.
