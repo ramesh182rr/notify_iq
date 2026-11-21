@@ -1,5 +1,5 @@
 import type {TurboModule} from 'react-native';
-import {TurboModuleRegistry} from 'react-native';
+import {NativeModules, TurboModuleRegistry} from 'react-native';
 
 export type ListenerStatus = {
   accessGranted: boolean;
@@ -68,4 +68,8 @@ export interface Spec extends TurboModule {
   setRetentionDays(days: number): Promise<void>;
 }
 
-export default TurboModuleRegistry.get<Spec>('NotifyIQ');
+export function getNativeNotifyIQ(): Spec | null {
+  return TurboModuleRegistry.get<Spec>('NotifyIQ')
+    ?? (NativeModules.NotifyIQ as Spec | undefined)
+    ?? null;
+}

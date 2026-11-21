@@ -1,6 +1,7 @@
-import NativeNotifyIQ, {type DailyOverview, type ListenerStatus, type NotificationItem} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type NotificationItem} from './NativeNotifyIQ';
 
 function requireNativeModule() {
+  const NativeNotifyIQ = getNativeNotifyIQ();
   if (NativeNotifyIQ == null) {
     throw new Error('NOTIFYIQ_NATIVE_MODULE_UNAVAILABLE');
   }

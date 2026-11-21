@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.provider.Settings
 import android.app.NotificationManager
+import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -25,7 +26,8 @@ class NotifyIQModule(
         if (NotificationListenerRuntimeState.lastErrorCode == null) putNull("lastErrorCode") else putString("lastErrorCode", NotificationListenerRuntimeState.lastErrorCode)
       }
       promise.resolve(status)
-    } catch (_: Exception) {
+    } catch (error: Exception) {
+      Log.e(NAME, "Unable to read notification access status", error)
       promise.reject("LISTENER_STATUS_UNAVAILABLE", "Unable to read notification access status.")
     }
   }

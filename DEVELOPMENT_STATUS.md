@@ -2,10 +2,10 @@
 
 **Last updated:** 2026-11-21  
 **Current phase:** Phase 4 — local-model benchmark preparation
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping and daily overview implemented; broad evaluation and physical-device capture verification remain
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, repeat grouping and daily overview implemented; synthetic evaluation is established, while model runtime evaluation, native-module discovery and physical-device capture verification remain
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-four are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6); 20 remain, including optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twenty-six are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 2); 18 remain, including optional cloud foundations and release readiness.
 
 ## Completed
 
@@ -33,6 +33,10 @@
 - Added exact same-app duplicate grouping within fixed 30-minute windows. Group metadata is separate and source rows remain intact.
 - Added a deterministic local-day overview with volume, app/category counts, busiest arrival hours, recent source links and explicit listener-coverage caveats.
 - Added five Android instrumentation tests for v1→v3 migration/backfill, FTS maintenance, retention, archive, package exclusion, classification and category override; all pass on the Pixel 8 API 35 emulator.
+- Added a synthetic multilingual evaluation corpus of 108 unique cases (nine categories, 12 each; English, Hindi and code-mixed examples) and a JUnit evaluator reporting category accuracy/macro-F1, priority accuracy, urgent false positives/negatives and language slices.
+- Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
+- Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
+- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and eight instrumentation tests pass. A new instrumentation test confirms Android's notification-listener access API is callable.
 
 ## Current state
 
@@ -46,13 +50,14 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
 - [x] Phase 2 — inbox actions, retention, filters and FTS search are implemented; manual visual theme QA remains for release verification.
 - [x] Phase 3 — deterministic classification, separate analysis persistence, focused fixtures, repeat grouping, daily overview and aggregate insights are implemented.
-- [ ] Phase 4 — local-model benchmark spike; first task is the 100–300 case synthetic evaluation set. No production model dependency is selected.
+- [x] Phase 4 task 1 — 108-case synthetic evaluation set and deterministic baseline established. No production model dependency is selected.
+- [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [ ] Phase 5 — user rules and richer organisation.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
-See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risks and the recommended first implementation task.
+See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and risks. Candidate pins and the per-run report template are in `docs/`.
 
 ## Working decisions
 
@@ -63,7 +68,9 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 ## Blockers and follow-up
 
 - Physical-device capture lifecycle verification remains outstanding. Notification access was not enabled during emulator testing.
-- The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remains off and no live capture flow was exercised.
+- The debug APK installed and Metro served the JS bundle; Android logcat confirmed `Running NotifyIQ`. Notification access remained disabled and no live capture flow was exercised.
+- Emulator smoke test found that the React Native app cannot resolve the `NotifyIQ` native module; its access status remains “unavailable”. Android's underlying access-status API works in instrumentation, so native-module discovery is the current fault to fix before listener lifecycle verification.
+- Emulator-only model measurements remain outstanding: the app has no inference runtime or model artifacts, and the available API 35 AVD reports 2 GiB guest memory with an emulated graphics path. See `docs/MODEL_BENCHMARK_EMULATOR_PREFLIGHT.md`.
 
 ## Checks performed
 

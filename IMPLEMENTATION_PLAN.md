@@ -123,9 +123,9 @@ Tasks:
 
 Tasks:
 
-1. Create a synthetic, labelled evaluation set (100–300 cases) covering relevant notification types, languages and prompt-injection-like text; never use personal content.
-2. Freeze model revisions, artifact checksums, licence details and runtime versions.
-3. Run official/sample ONNX Runtime Android Qwen path and LiteRT-LM path on physical lower-memory, mid-range and flagship devices where available.
+1. [x] Create a synthetic, labelled evaluation set (100–300 cases) covering relevant notification types, languages and prompt-injection-like text; never use personal content. **Implemented:** 108 synthetic cases, nine categories, English/Hindi/code-mix, with a JUnit metric reporter and deterministic baseline.
+2. [x] Freeze model revisions, artifact checksums, licence details and runtime versions for the LiteRT-LM and ONNX Runtime Android benchmark candidates. **Implemented:** pins and compatibility caveats are recorded in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
+3. Run the pinned ONNX Runtime Android Qwen path and LiteRT-LM path on the available Android emulator as an explicitly emulator-only trial. Real-device measurements remain a later release gate.
 4. Measure cold load, memory/RSS, prefill/decode speed, battery/thermal behavior, package/download size, JSON validity, category/priority metrics and false-positive urgency.
 5. Decide whether to adopt, defer or reject each runtime based on recorded thresholds and supported devices; keep deterministic fallback.
 
@@ -210,6 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Start Phase 4 by expanding the synthetic evaluation set to 100–300 labelled cases, covering notification types, English/Hindi/code-mix and prompt-like content. Manual visual QA and Phase 1 physical-device capture verification remain follow-ups.
+**Next task:** Fix `NotifyIQ` native-module discovery, then add a benchmark-only runtime adapter and attempt both pinned models on the emulator. Record any load failure and the emulator's memory ceiling in `docs/MODEL_BENCHMARK_RUN_TEMPLATE.md`; do not use emulator results as product device-support evidence. Manual visual QA and physical capture verification remain follow-ups.
 
-The roadmap contains 44 numbered tasks total. Phases 0–3 are implemented: 4 + 8 + 6 + 6 tasks (24 total); 20 remain. Task counts include the optional cloud phase and release-readiness work.
+The roadmap contains 44 numbered tasks total. Twenty-six are implemented (Phases 0–3: 24; Phase 4 evaluation corpus and candidate pins: 2); 18 remain. Task counts include optional cloud and release-readiness work.
