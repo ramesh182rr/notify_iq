@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph Device[Android Device]
+    NLS[Kotlin NotificationListenerService]
+    PRIV[Privacy Gate]
+    DB[(SQLite + FTS5)]
+    AI[Local Qwen adapter]
+    RN[React Native UI]
+    NLS --> PRIV --> DB
+    DB <--> AI
+    RN <--> DB
+  end
+  subgraph Cloud[Optional Cloud]
+    API[FastAPI on Render]
+    PG[(Neon PostgreSQL)]
+    R2[(Cloudflare R2)]
+    API <--> PG
+    API <--> R2
+  end
+  RN -. opt-in only .-> API

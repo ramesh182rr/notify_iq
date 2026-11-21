@@ -1,0 +1,18 @@
+flowchart TD
+  A[Android posts notification] --> B[Kotlin NotificationListenerService]
+  B --> C{App excluded?}
+  C -->|Yes| X[Discard without persisting content]
+  C -->|No| D[Extract allowed fields]
+  D --> E[Sensitive-data screen and redact]
+  E --> F{Safe to retain?}
+  F -->|No| X
+  F -->|Yes| G[Persist event in local SQLite]
+  G --> H[Queue lightweight analysis]
+  H --> I[Rules and deterministic parser]
+  I --> J{Confidence enough?}
+  J -->|Yes| K[Store derived classification]
+  J -->|No| L[Optional local Qwen inference]
+  L --> M[Validate structured result]
+  M --> K
+  K --> N[FTS index and inbox update]
+  N --> O[Digest and aggregate insights]

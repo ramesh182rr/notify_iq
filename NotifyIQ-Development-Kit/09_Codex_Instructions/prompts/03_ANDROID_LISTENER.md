@@ -1,0 +1,3 @@
+# Prompt 03 — Minimal Kotlin notification listener
+
+Implement the minimal Kotlin `NotificationListenerService` integration described in `ANDROID_NOTIFICATION_INTEGRATION.md`. Ensure manifest declaration is correct, permission flow opens Android settings, listener waits for `onListenerConnected`, handles disconnection, and does not perform network/model work in callbacks. Persist events natively to the single authoritative SQLite repository after app exclusion and sensitive-data screening. Expose only typed status/query APIs to React Native. Add unit/manual tests and document OEM limitations. Do not send raw events through JS as the sole persistence mechanism.

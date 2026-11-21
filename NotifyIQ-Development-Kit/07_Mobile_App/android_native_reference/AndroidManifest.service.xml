@@ -1,0 +1,10 @@
+<!-- Merge this service declaration into the app's AndroidManifest.xml. -->
+<service
+    android:name=".notification.NotifyIQNotificationListener"
+    android:label="NotifyIQ notification access"
+    android:exported="false"
+    android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+    <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+    </intent-filter>
+</service>

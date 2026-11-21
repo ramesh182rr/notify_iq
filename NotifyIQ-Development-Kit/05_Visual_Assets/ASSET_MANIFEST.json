@@ -1,0 +1,35 @@
+{
+  "project": "NotifyIQ Development Kit",
+  "version": "1.0",
+  "created": "2026-11-16",
+  "assets": [
+    {
+      "file": "screens_light/home_dashboard_light.png",
+      "description": "Generated single-screen light theme dashboard reference."
+    },
+    {
+      "file": "concept_boards/full_product_concept_board.png",
+      "description": "Generated product and architecture concept board; use only as visual direction."
+    },
+    {
+      "file": "concept_boards/product_architecture_and_screens.png",
+      "description": "Generated architecture and screen overview board."
+    },
+    {
+      "file": "concept_boards/development_kit_overview.png",
+      "description": "Generated project kit promotional overview board."
+    },
+    {
+      "file": "concept_boards/wide_product_reference.png",
+      "description": "Generated wide product reference infographic."
+    },
+    {
+      "file": "concept_boards/wide_development_kit_infographic.png",
+      "description": "Generated feature, screen and technology overview infographic."
+    },
+    {
+      "file": "brand/notifyiq-mark.svg",
+      "description": "Editable SVG starter brand mark."
+    }
+  ]
+}
