@@ -1,0 +1,40 @@
+# JavaScript and native build output
+node_modules/
+**/node_modules/
+android/.gradle/
+**/android/.gradle/
+**/android/app/build/
+**/android/local.properties
+**/build/
+**/Pods/
+**/DerivedData/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.mobileprovision
+
+# Local notification data and downloaded model weights
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+models/**/*.gguf
+models/**/*.onnx
+models/**/*.litertlm
+
+# Tooling output
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
