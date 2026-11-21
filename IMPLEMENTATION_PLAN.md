@@ -1,6 +1,6 @@
 # NotifyIQ Implementation Plan
 
-**Status:** Planning baseline; no application features implemented.  
+**Status:** Implementation in progress; Phase 0 is complete and Phase 1 capture is underway.  
 **Source of truth:** `NotifyIQ-Development-Kit/` and accepted decisions recorded in `DECISIONS_LOG.md`.
 
 ## 1. Product and architecture understanding
@@ -81,14 +81,14 @@ Tasks:
 
 Tasks:
 
-1. Finalise a single authoritative database ownership decision, event identity/deduplication rules, migration numbering and sensitive-content retention policy.
-2. Implement onboarding explanation, permission status, settings deep link, resume re-check and actionable access-off state.
-3. Implement Kotlin listener declaration and connection/disconnection/rebind handling; avoid model/network work in callbacks.
-4. Implement app exclusion storage and verify package exclusion before content extraction.
-5. Implement deterministic privacy screening/redaction for synthetic OTP, authentication, password and card test fixtures before persistence; define false-positive and fail-closed behavior explicitly.
-6. Implement initial SQLite migration, native repository, safe event extraction and bounded database-error handling; keep all content out of logs.
-7. Expose typed status/query/preferences/clear-history APIs to TypeScript; UI reads the repository rather than relying on raw event emission.
-8. Add a minimal recent-event inbox and local-history deletion only after durable capture works.
+1. Finalise a single authoritative database ownership decision, event identity/deduplication rules, migration numbering and sensitive-content retention policy. **Complete:** decisions recorded in `DECISIONS_LOG.md`.
+2. Implement onboarding explanation, permission status, settings deep link, resume re-check and actionable access-off state. **Implemented; manual permission interaction remains part of device verification.**
+3. Implement Kotlin listener declaration and connection/disconnection/rebind handling; avoid model/network work in callbacks. **Implemented.**
+4. Implement app exclusion storage and verify package exclusion before content extraction. **Implemented in the native repository/listener; app-selection UI and device verification remain.**
+5. Implement deterministic privacy screening/redaction for synthetic OTP, authentication, password and card test fixtures before persistence; define false-positive and fail-closed behavior explicitly. **Implemented with focused synthetic unit fixtures; detector coverage remains bounded and documented.**
+6. Implement initial SQLite migration, native repository, safe event extraction and bounded database-error handling; keep all content out of logs. **Implemented with schema version 1 and a bounded serialized listener queue.** FTS5 is deferred until a driver guaranteeing FTS5 is selected; see `DECISIONS_LOG.md`.
+7. Expose typed status/query/preferences/clear-history APIs to TypeScript; UI reads the repository rather than relying on raw event emission. **Implemented for status, recent history, package exclusion and history clearing.**
+8. Add a minimal recent-event inbox and local-history deletion only after durable capture works. **Implemented; end-to-end capture and deletion await permission/device verification.**
 9. Verify capture with UI closed, exclusion, sensitive fixtures, listener reconnect, access revocation and Android notification removal semantics on a physical device.
 
 **Definition of done:** A synthetic permitted notification is retained and readable after reopening with JS inactive during capture; excluded content is not extracted/persisted; sensitive fixtures follow documented policy; removal updates lifecycle metadata without erasing history; permission revocation and DB errors show safe states; migrations and repository behavior are verified. No cloud upload.
@@ -210,4 +210,6 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Phase 0 complete:** the React Native 0.88.1 shell typechecks, lints, passes its focused rendering test, builds and launches on the attached API 36 emulator. No physical Android device is attached, so physical capture lifecycle checks remain outstanding.
 
-**Next task:** Phase 1, implement the permission/status boundary and native local-capture vertical slice using the approved single Kotlin-owned database, migration 001, pre-extraction exclusion check, whole-event sensitive discard, and typed JS repository API. Use synthetic notifications only. The database and retention decisions are recorded; no further product decision is a blocker.
+**Next task:** Complete Phase 1 task 9 verification on a physical Android device: capture with JS inactive, verify exclusion and sensitive-content discard, listener reconnect/revocation, and removal semantics. Then proceed to Phase 2 retention and search after selecting an FTS5-capable SQLite driver.
+
+The roadmap contains 44 numbered tasks total. Phase 0 and Phase 1 tasks 1–8 are implemented (12 tasks); 32 remain. Task counts include the optional cloud phase and release-readiness work.

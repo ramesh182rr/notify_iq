@@ -10,6 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "jest"
   },
+  "codegenConfig": {
+    "name": "NotifyIQSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/native",
+    "android": {
+      "javaPackageName": "com.notifyiq"
+    }
+  },
   "dependencies": {
     "react": "19.3.0",
     "react-native": "0.88.1",

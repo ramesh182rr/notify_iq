@@ -24,6 +24,13 @@ test('renders the foundation states, five tabs, and appearance choices', async (
           screen="home"
           title="Home"
           theme={lightTheme}
+          listenerStatus={{accessGranted: false, connected: false, lastErrorCode: null}}
+          statusError={null}
+          statusLoading={false}
+          settingsOpening={false}
+          settingsError={null}
+          onOpenSettings={jest.fn()}
+          onRetryStatus={jest.fn()}
         />
         <BottomTabBar
           activeScreen="home"
@@ -39,6 +46,8 @@ test('renders the foundation states, five tabs, and appearance choices', async (
   expect(renderedTree).toContain('NotifyIQ');
   expect(renderedTree).toContain('FOUNDATION BUILD');
   expect(renderedTree).toContain('Local-first by design');
+  expect(renderedTree).toContain('Notification access is off');
+  expect(renderedTree).toContain('Open notification access settings');
   expect(renderedTree).toContain('System');
   expect(renderedTree).toContain('Light');
   expect(renderedTree).toContain('Dark');

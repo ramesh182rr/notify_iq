@@ -1,9 +1,11 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-21  
-**Current phase:** Phase 0 — React Native foundation complete on emulator  
-**Application implementation:** Foundation shell complete; notification capture not started  
+**Current phase:** Phase 1 — permission and native capture foundation  
+**Application implementation:** Listener, privacy gate, SQLite persistence, typed bridge, and basic inbox implemented; device-level capture verification remains  
 **Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
+
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Twelve are implemented (Phase 0: 4; Phase 1: 8); 32 remain, including optional cloud foundations and release readiness. Phase 1 device verification is still outstanding.
 
 ## Completed
 
@@ -18,6 +20,10 @@
 - Added the project-level `.gitignore` for build output, credentials, local databases and downloaded model artifacts.
 - Built and installed the debug app on the attached Pixel API 36 emulator; Metro served the JavaScript bundle and the launcher activity started.
 - Added a focused foundation rendering test; typecheck, lint and test pass.
+- Implemented notification-access education/status/settings handoff and app-resume status refresh.
+- Implemented a Kotlin notification listener, pre-extraction package exclusion check, whole-event sensitive-content discard, bounded serialized persistence queue, SQLite schema v1, repository bridge, recent-event inbox, and confirmed history deletion.
+- Added synthetic Kotlin unit fixtures for OTP, password, payment card and ordinary notification content.
+- Deferred FTS5 from the initial portable SQLite schema until an FTS5-capable driver is selected; recorded the implementation adjustment in `DECISIONS_LOG.md`.
 
 ## Current state
 
@@ -28,7 +34,7 @@ The development kit and planning baseline are tracked in `be075d2`; the new root
 ### Planned phases
 
 - [x] Phase 0 — RN foundation and emulator build proof; physical-device verification remains outstanding.
-- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox.
+- [ ] Phase 1 — permission UX, native listener, privacy gate, SQLite persistence and basic inbox. Implementation is present; physical capture/revocation/removal verification remains.
 - [ ] Phase 2 — inbox actions, retention, filters and FTS search.
 - [ ] Phase 3 — deterministic classification, grouping, overview/digest and insights.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
@@ -47,6 +53,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 ## Blockers and follow-up
 
 - No blocker to Phase 1 implementation. Physical-device lifecycle verification remains outstanding; no physical device is attached in this environment.
+- `adb devices` currently reports no attached emulator/device, so the latest APK could not be installed for a final UI run. Notification access was not enabled.
 
 ## Checks performed
 
@@ -54,8 +61,10 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy, risk
 - Read-only local environment version checks for Node, npm, Java, adb and Python; confirmed `ANDROID_HOME` is configured.
 - Inspected the light dashboard and full-product concept board as visual references.
 - `fnm exec --using=22.23.4 -- npm install` — completed; npm reported zero vulnerabilities. Template dependencies emitted deprecation notices, including ESLint 8.
-- `fnm exec --using=22.23.4 -- npm run typecheck` — passed.
-- `fnm exec --using=22.23.4 -- npm run lint` — passed without warnings.
-- `fnm exec --using=22.23.4 -- npm test -- --runInBand --watchman=false` — passed, 1 suite / 1 test. Watchman was disabled because the sandbox denied its state-file permission change.
+- `npm run typecheck` — passed after Phase 1 changes.
+- `npm run lint` — passed after Phase 1 changes.
+- `npm test -- --runInBand --watchman=false` — passed, 1 suite / 1 test.
+- `./gradlew --no-daemon generateCodegenArtifactsFromSchema testDebugUnitTest assembleDebug` — passed; native unit tests and debug APK build succeeded.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8091 because ports 8081 and 8082 were already occupied. It logged the bundle request without a JavaScript exception.
+- Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.

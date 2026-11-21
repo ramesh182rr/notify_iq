@@ -69,12 +69,12 @@ This log distinguishes decisions already present in the supplied development kit
 **Reason:** Current text says “redact or discard” without defining class behavior; pattern screening cannot guarantee zero false positives/negatives.  
 **Implementation:** If deterministic screening finds OTP/authentication code, password or payment-card-like content in any extracted field, discard the entire notification event before persistence; retain no title, body, package/key, or event metadata for that item. Excluded packages are checked before extraction and also leave no stored event. Never claim detection is complete; add safe-field and false-positive fixtures before capture ships.
 
-### R-004 — Make schema versioning and FTS invariants part of migration 001
+### R-004 — Version the local schema and gate FTS on driver support
 
 **Status:** Approved by user, 2026-11-21  
-**Recommendation:** Add numbered migrations and transactional FTS insert/update/delete/retention/clear behavior, with tests from a fresh DB. Define stable event identity, update/removal semantics, saved-item retention and digest coverage fields first.  
-**Reason:** Supplied SQLite SQL is a reference schema, not a migration, and does not define FTS maintenance behavior or all lifecycle semantics.  
-**Implementation:** Use numbered Kotlin-owned migrations recorded with `PRAGMA user_version`. Migration 001 includes transactional event/analysis writes, FTS5 triggers for insert/update/delete, foreign keys, and indexes. An active notification is keyed by Android user + package + notification key; posts while active update that event, removal marks it removed, and a later post after removal starts a new event. Content-hash deduplication is deferred. Saved rows are exempt from age-based cleanup until unsaved or explicitly deleted.
+**Recommendation:** Use numbered Kotlin-owned migrations and transactional FTS insert/update/delete/retention/clear behavior after selecting a driver that guarantees FTS5. Define stable event identity, update/removal semantics, saved-item retention and digest coverage fields first.
+**Reason:** The platform SQLite available through `SQLiteOpenHelper` does not provide an app-level FTS5 guarantee. AndroidX documents FTS5 support as dependent on the selected SQLite driver; the bundled driver supports it. Keep the initial event schema portable and choose/test the search driver before adding FTS tables.
+**Implementation:** Schema version 1 currently stores preferences and notification events, with indexes and active-event identity `(package_name, notification_key)`. Posts update an active event, removal marks it removed, and a later post creates a new event. Content-hash deduplication and FTS5 are deferred. Add a tested numbered migration and transactional FTS maintenance when an FTS5-capable driver is selected. Saved rows are exempt from age-based cleanup until unsaved or explicitly deleted.
 
 ### R-005 — Separate daily overview from generated digest in scope
 

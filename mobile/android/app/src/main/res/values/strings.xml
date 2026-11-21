@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">NotifyIQ</string>
+    <string name="notification_listener_label">NotifyIQ notification access</string>
 </resources>

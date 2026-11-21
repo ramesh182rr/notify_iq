@@ -1,17 +1,26 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { ScreenKey } from '../../navigation/screens';
+import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
+import { NotificationAccessCard } from './NotificationAccessCard';
 
 type FoundationScreenProps = {
   screen: ScreenKey;
   theme: AppTheme;
   title: string;
+  listenerStatus: ListenerStatus | null;
+  statusError: string | null;
+  statusLoading: boolean;
+  settingsOpening: boolean;
+  settingsError: string | null;
+  onOpenSettings: () => void;
+  onRetryStatus: () => void;
 };
 
 const descriptions: Record<ScreenKey, string> = {
   home: 'A private place to review and understand the notifications you receive.',
-  inbox: 'Your retained notifications will appear here after local capture is implemented.',
+  inbox: 'Notifications captured on this device.',
   search: 'Search will cover retained notification history once local storage is in place.',
   insights: 'Insights will be calculated from notification history stored on this device.',
   rules: 'Rules will organize NotifyIQ history. They will not change Android notification delivery.',
@@ -21,6 +30,13 @@ export function FoundationScreen({
   screen,
   theme,
   title,
+  listenerStatus,
+  statusError,
+  statusLoading,
+  settingsOpening,
+  settingsError,
+  onOpenSettings,
+  onRetryStatus,
 }: FoundationScreenProps) {
   const isHome = screen === 'home';
 
@@ -46,10 +62,23 @@ export function FoundationScreen({
         </Text>
         <Text style={[styles.cardBody, { color: theme.colors.textSecondary }]}>
           {isHome
-            ? 'This foundation has no notification access or saved history yet. Capture and privacy controls will be added in the next implementation phase.'
+            ? 'Notification capture is local to this device and skips excluded apps and content that looks like credentials or payment card data.'
             : 'This screen is a navigation shell. It does not display sample notifications or invented activity.'}
         </Text>
       </View>
+
+      {isHome ? (
+        <NotificationAccessCard
+          error={statusError}
+          isLoading={statusLoading}
+          isOpeningSettings={settingsOpening}
+          settingsError={settingsError}
+          onOpenSettings={onOpenSettings}
+          onRetry={onRetryStatus}
+          status={listenerStatus}
+          theme={theme}
+        />
+      ) : null}
 
       <View style={[styles.note, { backgroundColor: theme.colors.brandSoft }]}>
         <Text style={[styles.noteTitle, { color: theme.colors.brand }]}>
