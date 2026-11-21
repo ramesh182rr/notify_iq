@@ -9,6 +9,7 @@ import { FoundationScreen } from './src/features/foundation/FoundationScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
+import { RulesScreen } from './src/features/rules/RulesScreen';
 import {getListenerStatus, openNotificationAccessSettings} from './src/native/notifyIQ';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
@@ -97,6 +98,8 @@ function App() {
               <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={handleOpenSettings} />
             ) : activeScreen === 'insights' ? (
               <InsightsScreen theme={theme} refreshKey={inboxRefreshKey} status={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
+            ) : activeScreen === 'rules' ? (
+              <RulesScreen theme={theme} />
             ) : <FoundationScreen
               screen={activeScreen}
               title={activeScreenDetails?.label ?? 'Home'}

@@ -136,8 +136,8 @@ Tasks:
 Tasks:
 
 1. [x] Define a versioned, constrained rule schema and deterministic evaluation semantics. **Implemented:** v1 fields, limits, matching, action precedence, conflict handling and re-evaluation behavior are specified in `docs/USER_RULES_V1.md`.
-2. Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important).
-3. Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures.
+2. Implement rule list/editor, preview, pause/enable/delete and actions limited to NotifyIQ organisation (categorise/save/digest/reminder/group/mark important). **In progress:** category rule editor, list, pause/enable/delete, local preference persistence and preview API are implemented. Rule actions are not yet applied to stored/future notifications; the native bridge discovery issue also prevents UI runtime verification.
+3. Test precedence, conflicts, migration, rule edits and actions against synthetic fixtures. **In progress:** emulator fixtures cover ordered matching, action conflict behavior, Unicode phrase matching, persistence round-trip, preview and invalid-set rejection; migration and applied notification effects remain outstanding.
 4. Add custom rules, saved searches and richer grouping only after basic semantics are stable.
 
 **Definition of done:** Rule outcomes are predictable, previewable, reversible where possible and never silently suppress Android delivery; rule execution is covered by fixtures and documented examples.

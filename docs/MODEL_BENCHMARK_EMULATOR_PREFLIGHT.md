@@ -12,7 +12,7 @@
 - Graphics property: `emulation`; this is not a phone GPU backend result.
 - Battery: 100%, not charging; emulator reported 25°C at the snapshot.
 - Debug APK installed and the React Native home screen rendered when Metro was running.
-- `./gradlew --no-daemon testDebugUnitTest connectedDebugAndroidTest` — passed; 8 unit tests and 8 instrumentation tests, including the new Android notification-access API smoke test.
+- `./gradlew --no-daemon testDebugUnitTest connectedDebugAndroidTest` — passed; 8 unit tests and 11 instrumentation tests, including Android notification-access API and synthetic rule evaluation/persistence cases.
 - `npm run typecheck` — passed.
 
 The native notification-access status is still unavailable from the React Native screen, even though an instrumentation test can call Android's `isNotificationListenerAccessGranted()` API without an exception. The app currently cannot resolve `NotifyIQ` from `TurboModuleRegistry` at runtime; see the latest filtered emulator log and the native-module registration code. Do not treat screen rendering as a completed capture lifecycle test.

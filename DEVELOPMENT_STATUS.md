@@ -37,7 +37,8 @@
 - Recorded the evaluation baseline and pinned both candidate model artifacts, revisions, SHA-256 checksums, licenses and runtime versions in `docs/MODEL_BENCHMARK_CANDIDATES.md`.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
-- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and eight instrumentation tests pass. A new instrumentation test confirms Android's notification-listener access API is callable.
+- Added a constrained Kotlin rule codec/evaluator with ordered matching, validation, local JSON preference storage, and a preview endpoint. The Rules screen now supports category rule creation, preview, pause/enable, and delete. Rule actions are not yet applied to notification records, and the unresolved native bridge prevents runtime UI verification.
+- Ran the Android app and test suites on the Pixel 8 API 35 emulator: eight unit tests and eleven instrumentation tests pass, including synthetic rule precedence, Unicode matching, persistence round-trip, preview and invalid-set rejection. A separate instrumentation test confirms Android's notification-listener access API is callable.
 
 ## Current state
 
@@ -55,7 +56,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
-- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions.
+- [ ] Phase 5 — rule evaluation, persistence, preview/editor and organisation actions. **In progress:** evaluator, local storage, preview API, and category rule editor/controls are implemented; automatic action application and JS bridge verification remain.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 

@@ -8,6 +8,9 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import java.io.File
 import java.security.MessageDigest
 import java.util.Calendar
+import org.json.JSONObject
+
+private fun JSONObject.optNullableString(name: String): String? = if (!has(name) || isNull(name)) null else getString(name)
 
 internal data class NotificationFilters(
   val query: String = "",
@@ -85,6 +88,34 @@ internal class NotificationRepository private constructor(private val connection
       while (statement.step()) values += statement.getText(0)
     }
     values
+  }
+
+  fun getUserRules(): String = synchronized(connection) {
+    scalarText("SELECT value FROM app_preferences WHERE key = 'user_rules_v1'") ?: UserRuleSet(emptyList()).toJson()
+  }
+
+  fun setUserRules(json: String) = synchronized(connection) {
+    val canonical = UserRuleCodec.parse(json).toJson()
+    execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('user_rules_v1', ?)", canonical)
+  }
+
+  fun previewUserRules(ruleJson: String, sampleJson: String): String = synchronized(connection) {
+    val sample = JSONObject(sampleJson)
+    val result = UserRuleCodec.parse(ruleJson).evaluate(
+      RuleSubject(
+        packageName = sample.getString("packageName"),
+        title = sample.optNullableString("title"),
+        body = sample.optNullableString("body"),
+        subtext = sample.optNullableString("subtext"),
+        category = sample.getString("category"),
+        priority = sample.getString("priority"),
+      ),
+    )
+    JSONObject().put("matchedRuleIds", org.json.JSONArray(result.matchedRuleIds))
+      .put("category", result.category).put("save", result.save)
+      .put("includeInDigest", result.includeInDigest?.let { it } ?: JSONObject.NULL)
+      .put("important", result.important?.let { it } ?: JSONObject.NULL)
+      .put("groups", org.json.JSONArray(result.groups)).toString()
   }
 
   fun setExcluded(packageName: String, excluded: Boolean) = synchronized(connection) {

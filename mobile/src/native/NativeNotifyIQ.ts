@@ -66,6 +66,9 @@ export interface Spec extends TurboModule {
   deleteNotification(id: number): Promise<void>;
   getRetentionDays(): Promise<number>;
   setRetentionDays(days: number): Promise<void>;
+  getUserRules(): Promise<string>;
+  saveUserRules(rulesJson: string): Promise<void>;
+  previewUserRules(rulesJson: string, sampleJson: string): Promise<string>;
 }
 
 export function getNativeNotifyIQ(): Spec | null {

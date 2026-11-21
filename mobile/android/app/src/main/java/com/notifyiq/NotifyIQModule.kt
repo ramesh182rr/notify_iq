@@ -78,6 +78,21 @@ class NotifyIQModule(
     catch (_: Exception) { promise.reject("RETENTION_UPDATE_FAILED", "Retention settings could not be saved.") }
   }
 
+  override fun getUserRules(promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).getUserRules()) }
+    catch (_: Exception) { promise.reject("RULES_UNAVAILABLE", "User rules could not be loaded.") }
+  }
+
+  override fun saveUserRules(rulesJson: String, promise: Promise) {
+    try { NotificationRepository(appContext).setUserRules(rulesJson); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("RULES_INVALID", "The rule set is invalid and was not saved.") }
+  }
+
+  override fun previewUserRules(rulesJson: String, sampleJson: String, promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).previewUserRules(rulesJson, sampleJson)) }
+    catch (_: Exception) { promise.reject("RULE_PREVIEW_FAILED", "The sample could not be evaluated.") }
+  }
+
   private fun updateEvent(promise: Promise, update: (NotificationRepository) -> Unit) {
     try { update(NotificationRepository(appContext)); promise.resolve(null) }
     catch (_: Exception) { promise.reject("NOTIFICATION_UPDATE_FAILED", "The notification could not be updated.") }

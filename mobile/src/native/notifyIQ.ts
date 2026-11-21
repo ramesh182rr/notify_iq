@@ -78,3 +78,15 @@ export function getRetentionDays(): Promise<number> {
 export function setRetentionDays(days: number): Promise<void> {
   return requireNativeModule().setRetentionDays(days);
 }
+
+export function getUserRules(): Promise<string> {
+  return requireNativeModule().getUserRules();
+}
+
+export function saveUserRules(rulesJson: string): Promise<void> {
+  return requireNativeModule().saveUserRules(rulesJson);
+}
+
+export function previewUserRules(rulesJson: string, sampleJson: string): Promise<string> {
+  return requireNativeModule().previewUserRules(rulesJson, sampleJson);
+}
