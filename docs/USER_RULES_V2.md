@@ -37,6 +37,8 @@ The persisted document is a JSON object with this shape:
 
 Conditions are an AND of the supplied filters. At least one filter is required. `match` is currently only `all`. `appPackage` is an exact Android package name. `category` must be one of `other`, `finance`, `travel`, `delivery_shopping`, `reminder_calendar`, `social`, `promotion`, `system`, or `personal`; it matches the effective category, including a user's existing category correction. `priority` is `normal`, `high`, or `urgent`. `containsText` is a literal case-insensitive substring in the title, body, or subtext; it is not a regular expression. Text is capped at 120 characters and is normalized with Unicode NFKC before comparison.
 
+The current rule editor exposes an optional exact app-package condition and an optional literal-text condition; when both are entered, both must match. The native schema also accepts category and priority conditions, but the editor does not expose those condition controls yet.
+
 Supported actions are:
 
 - `setCategory` with one supported category value.

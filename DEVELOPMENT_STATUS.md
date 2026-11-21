@@ -61,7 +61,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
 - [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
-- [ ] Phase 5 — rule evaluation and saved searches are implemented and covered by emulator fixtures; advanced custom rule conditions and richer group browsing remain.
+- [ ] Phase 5 — rule evaluation and saved searches are implemented and covered by emulator fixtures. The rule editor now accepts exact app-package and literal-text conditions (AND when both are supplied); category/priority condition controls and richer group browsing remain.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
 - [ ] Phase 7 — device/OEM QA, privacy/release review and beta.
 
@@ -102,6 +102,10 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `fnm exec --using=22.23.4 -- npm run typecheck` — passed after adding saved-search UI and native bridge methods.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest` — passed; production app and instrumentation APK compiled with saved-search support.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.notifyiq.SavedSearchesTest` — passed on Pixel_8 AVD; two saved-search persistence/validation tests passed.
+- `fnm exec --using=22.23.4 -- npm run typecheck` — passed after adding app-package rule conditions and package-aware preview.
+- `fnm exec --using=22.23.4 -- npm run lint` — passed with warnings only; some warnings are in generated Android test reports under `mobile/model-benchmark/app/build`.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest` — passed after the rule editor change.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.notifyiq.UserRulesTest` — passed on Pixel_8 AVD; six rule evaluation, matching and persistence tests passed.
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.

@@ -15,7 +15,7 @@ type Rule = {
   id: string;
   name: string;
   enabled: boolean;
-  conditions: { match: 'all'; containsText?: string };
+  conditions: { match: 'all'; appPackage?: string; containsText?: string };
   actions: RuleAction[];
 };
 type RuleSet = { schemaVersion: 2; rules: Rule[] };
@@ -25,6 +25,7 @@ const emptyRules: RuleSet = { schemaVersion: 2, rules: [] };
 export function RulesScreen({ theme }: { theme: AppTheme }) {
   const [ruleSet, setRuleSet] = useState<RuleSet>(emptyRules);
   const [phrase, setPhrase] = useState('');
+  const [appPackage, setAppPackage] = useState('');
   const [categoryIndex, setCategoryIndex] = useState(1);
   const [saveMatch, setSaveMatch] = useState(false);
   const [digestMatch, setDigestMatch] = useState(false);
@@ -33,6 +34,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   const [reminderMinutes, setReminderMinutes] = useState<number | null>(null);
   const [groupName, setGroupName] = useState('');
   const [previewText, setPreviewText] = useState('');
+  const [previewPackage, setPreviewPackage] = useState('com.notifyiq.preview');
   const [previewResult, setPreviewResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -64,7 +66,8 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   };
   const addRule = () => {
     const trimmed = phrase.trim();
-    if (!trimmed) { setError('Enter text the notification must contain.'); return; }
+    const packageFilter = appPackage.trim();
+    if (!trimmed && !packageFilter) { setError('Enter a text phrase, an app package, or both.'); return; }
     const actions: RuleAction[] = [{ type: 'setCategory', value: categories[categoryIndex] }];
     if (saveMatch) actions.push({ type: 'save' });
     if (digestMatch) actions.push({ type: 'includeInDigest', value: true });
@@ -72,11 +75,15 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
     if (groupMatch && groupName.trim()) actions.push({ type: 'addGroup', value: groupName.trim() });
     if (groupMatch && !groupName.trim()) { setError('Enter a group label or turn off Add to group.'); return; }
     if (reminderMinutes !== null) actions.push({ type: 'createReminder', delayMinutes: reminderMinutes });
+    const nameParts = [
+      packageFilter ? `From ${packageFilter}` : null,
+      trimmed ? `Contains “${trimmed.slice(0, 48)}”` : null,
+    ].filter((part): part is string => part !== null);
     const rule: Rule = {
       id: `${Date.now()}`,
-      name: `Contains “${trimmed.slice(0, 48)}”`,
+      name: nameParts.join(' · ').slice(0, 80),
       enabled: true,
-      conditions: { match: 'all', containsText: trimmed },
+      conditions: { match: 'all', ...(packageFilter ? { appPackage: packageFilter } : {}), ...(trimmed ? { containsText: trimmed } : {}) },
       actions,
     };
     const add = async () => {
@@ -94,7 +101,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
   };
   const preview = async () => {
     try {
-      const sample = { packageName: 'com.notifyiq.preview', title: previewText, body: null, subtext: null, category: 'other', priority: 'normal' };
+      const sample = { packageName: previewPackage.trim() || 'com.notifyiq.preview', title: previewText, body: null, subtext: null, category: 'other', priority: 'normal' };
       const result = JSON.parse(await previewUserRules(JSON.stringify(ruleSet), JSON.stringify(sample))) as {
         matchedRuleIds: string[]; category: string; save: boolean; includeInDigest: boolean | null;
         important: boolean | null; groups: string[]; reminderAfterMinutes: number | null;
@@ -124,7 +131,8 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
       {error ? <Text accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Text> : null}
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Add a rule</Text>
-        <Text style={[styles.copy, { color: colors.textSecondary }]}>Match a literal phrase in notification text, then assign a category.</Text>
+        <Text style={[styles.copy, { color: colors.textSecondary }]}>Match a specific app, a literal phrase in notification text, or both. When both are set, both must match.</Text>
+        <TextInput accessibilityLabel="Match app package" autoCapitalize="none" autoCorrect={false} maxLength={255} placeholder="App package, such as com.example.bank" placeholderTextColor={colors.textSecondary} value={appPackage} onChangeText={setAppPackage} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} />
         <TextInput accessibilityLabel="Text to match" autoCapitalize="none" placeholder="For example: payment received" placeholderTextColor={colors.textSecondary} value={phrase} onChangeText={setPhrase} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} />
         <Pressable accessibilityRole="button" accessibilityLabel={`Category ${categories[categoryIndex]}; tap to change`} onPress={() => setCategoryIndex(index => (index + 1) % categories.length)} style={[styles.action, { backgroundColor: colors.surfaceMuted }]}>
           <Text style={{ color: colors.textPrimary }}>Category: {categories[categoryIndex]} · change</Text>
@@ -151,6 +159,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
       </View>
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: colors.textPrimary }]}>Preview</Text>
+        <TextInput accessibilityLabel="Preview app package" autoCapitalize="none" autoCorrect={false} maxLength={255} placeholder="App package" placeholderTextColor={colors.textSecondary} value={previewPackage} onChangeText={setPreviewPackage} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} />
         <TextInput accessibilityLabel="Preview notification text" placeholder="Enter sample notification text" placeholderTextColor={colors.textSecondary} value={previewText} onChangeText={setPreviewText} style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]} />
         <Pressable accessibilityRole="button" onPress={() => void preview()} style={styles.action}><Text style={{ color: colors.brand }}>Preview enabled rules</Text></Pressable>
         {previewResult ? <Text accessibilityLiveRegion="polite" style={{ color: colors.textSecondary }}>{previewResult}</Text> : null}
@@ -163,7 +172,11 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
           <View key={rule.id} style={[styles.rule, { borderTopColor: colors.border }]}>
             <View style={styles.ruleText}>
               <Text style={[styles.ruleName, { color: colors.textPrimary }]}>{rule.name}</Text>
-              <Text style={[styles.copy, { color: colors.textSecondary }]}>{rule.actions.map(action => action.type === 'setCategory' ? `Category: ${action.value}` : action.type === 'save' ? 'Save' : action.type === 'includeInDigest' ? 'Digest' : action.type === 'markImportant' ? 'Important' : action.type === 'addGroup' ? `Group: ${action.value}` : `Reminder: ${action.delayMinutes} min`).join(' · ')}</Text>
+              <Text style={[styles.copy, { color: colors.textSecondary }]}>{[
+                rule.conditions.appPackage ? `App: ${rule.conditions.appPackage}` : null,
+                rule.conditions.containsText ? `Text: “${rule.conditions.containsText}”` : null,
+                ...rule.actions.map(action => action.type === 'setCategory' ? `Category: ${action.value}` : action.type === 'save' ? 'Save' : action.type === 'includeInDigest' ? 'Digest' : action.type === 'markImportant' ? 'Important' : action.type === 'addGroup' ? `Group: ${action.value}` : `Reminder: ${action.delayMinutes} min`),
+              ].filter(Boolean).join(' · ')}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`${rule.enabled ? 'Pause' : 'Enable'} ${rule.name}`} disabled={busy} onPress={() => void persist({ ...ruleSet, rules: ruleSet.rules.map(item => item.id === rule.id ? { ...item, enabled: !item.enabled } : item) })} style={styles.action}>
               <Text style={{ color: colors.brand }}>{rule.enabled ? 'Pause' : 'Enable'}</Text>

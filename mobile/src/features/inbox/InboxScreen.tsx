@@ -241,7 +241,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
                 setQuery(saved.query); setPackageName(saved.packageName); setCategory(saved.category);
                 setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
               }} style={styles.savedSearchApply}>
-                <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>{saved.name}</Text>
+                <Text style={[styles.savedSearchTitle, { color: theme.colors.textPrimary }]}>{saved.name}</Text>
                 <Text style={[styles.hint, { color: theme.colors.textSecondary }]} numberOfLines={1}>
                   {[saved.query || null, saved.packageName || null, saved.category ? categoryLabel(saved.category) : null, saved.dateRange === 'all' ? null : saved.dateRange === 'today' ? 'Today' : '7 days', saved.includeArchived ? 'Archived' : null].filter(Boolean).join(' · ') || 'All retained notifications'}
                 </Text>
@@ -255,7 +255,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
             <View style={styles.row}>
               <TextInput accessibilityLabel="Saved search name" placeholder="Search name" placeholderTextColor={theme.colors.textSecondary} value={saveSearchName} onChangeText={setSaveSearchName} maxLength={40} style={[styles.input, styles.savedSearchName, { color: theme.colors.textPrimary, borderColor: theme.colors.border }]} />
               <Pressable accessibilityRole="button" accessibilityLabel="Save current search" disabled={!saveSearchName.trim()} onPress={() => ignorePromise(saveCurrentSearch())}>
-                <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>Save</Text>
+                <Text style={[styles.savedSearchButton, { color: theme.colors.brand }]}>Save</Text>
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Cancel saving search" onPress={() => { setEditingSavedSearch(false); setSaveSearchName(''); }}>
                 <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
@@ -263,7 +263,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
             </View>
           ) : (
             <Pressable accessibilityRole="button" accessibilityLabel="Save current search" onPress={() => setEditingSavedSearch(true)}>
-              <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>Save current search</Text>
+              <Text style={[styles.savedSearchButton, { color: theme.colors.brand }]}>Save current search</Text>
             </Pressable>
           )}
         </View>
@@ -441,6 +441,8 @@ const styles = StyleSheet.create({
   savedSearchApply: { flex: 1, gap: 2, minHeight: 42, justifyContent: 'center' },
   savedSearchDelete: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
   savedSearchName: { flex: 1, minWidth: 120 },
+  savedSearchTitle: { fontWeight: '600' },
+  savedSearchButton: { fontWeight: '700' },
   sectionLabel: { fontSize: 14, fontWeight: '700' },
   hint: { fontSize: 12, lineHeight: 17 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)', justifyContent: 'center', padding: 20 },
