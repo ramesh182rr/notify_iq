@@ -90,6 +90,10 @@
   - Floating pill bottom navigation, checked in light and dark themes and when scrolled.
   - Private RSA-4096 release key generated outside the repo. Version 1.6 is signed with it (cert `38886f7f…`), and Android rejects debug-signed updates over it.
   - Old debug-signed APKs moved to `dist/old-debug-signed/`.
+- Phase 7 progress:
+  - Battery/CPU measured on the emulator: about 17 ms CPU per captured notification, idle about 20 ms per 30 s, no wakelocks. Found the 50-active-notification test pitfall.
+  - Play listing kit in `docs/store/`: 512 icon, feature graphic, 8 framed 2:1 screenshots from an opt-in fictional-data seeder, store text within limits, Play Console answers, and hostable privacy/terms HTML generated from the in-app legal text.
+  - Emulator cleaned afterwards: demo history deleted, access off, test APK removed.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.

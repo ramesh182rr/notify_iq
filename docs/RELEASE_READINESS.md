@@ -65,6 +65,15 @@ Tooling note: Android SDK command-line tools 23.0 (`cmdline-tools;latest`, sha1 
   - No database encryption at rest beyond Android's.
   - The legal text has not been reviewed by a lawyer. The governing law and developer contact still need owner decisions.
 
+### Battery and CPU (Pixel_8 API 35 emulator, release 1.6, 2026-11-22)
+
+- **Idle:** about 20 ms of process CPU per 30 s with the app in the background. No wakelocks held, and no alarms unless the user sets reminders.
+- **Capture cost:** 100 post-and-dismiss cycles (synthetic, mixed categories) used 1.7 s of CPU in total, about **17 ms per notification**, including the dismissal update, analysis and money/date extraction. All 100 were captured.
+- **Estimate:** a heavy user receiving 300 notifications a day spends about 5 s of CPU per day on NotifyIQ. That is negligible, but it is an estimate from emulator CPU, not a measurement on a physical battery.
+- **Memory:** about 180–220 MB resident while the UI process is alive, typical for React Native and Hermes.
+- **Test pitfall:** Android caps each app at 50 active notifications ("Package has already posted or enqueued 50 notifications. Not showing more"). Fixture runs must dismiss as they go; otherwise later posts are silently dropped and measurements are invalid. The first burst measurement here was discarded for this reason.
+- Still needed: battery and thermal behaviour on physical devices (OEM background policies differ).
+
 ### Build reproducibility
 
 Two clean `assembleRelease` builds produced APKs whose 404 zip entries are byte-identical. Only the outer container (signing block and zip metadata) differs. Play re-signs uploads with the app-signing key.
