@@ -8,7 +8,7 @@ import { ScreenContainer } from './src/components/ScreenContainer';
 import { HomeScreen } from './src/features/home/HomeScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
-import { InsightsScreen } from './src/features/insights/InsightsScreen';
+import { InsightsHub, type InsightsSection } from './src/features/insights/InsightsHub';
 import { RulesScreen } from './src/features/rules/RulesScreen';
 import {getListenerStatus, openNotificationAccessSettings} from './src/native/notifyIQ';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
@@ -30,6 +30,7 @@ function App() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [inboxRefreshKey, setInboxRefreshKey] = useState(0);
+  const [insightsSection, setInsightsSection] = useState<InsightsSection>('today');
   const navigate = useCallback((screen: ScreenKey) => {
     setActiveScreen(screen);
     if (screen === 'inbox') setInboxRefreshKey(value => value + 1);
@@ -96,7 +97,7 @@ function App() {
             ) : activeScreen === 'privacy' ? (
               <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={handleOpenSettings} />
             ) : activeScreen === 'insights' ? (
-              <InsightsScreen theme={theme} refreshKey={inboxRefreshKey} status={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
+              <InsightsHub theme={theme} refreshKey={inboxRefreshKey} section={insightsSection} onSectionChange={setInsightsSection} status={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
             ) : activeScreen === 'rules' ? (
               <RulesScreen theme={theme} />
             ) : <HomeScreen
@@ -110,6 +111,7 @@ function App() {
               onOpenSettings={handleOpenSettings}
               onRetryStatus={refreshListenerStatus}
               onNavigate={navigate}
+              onOpenInsights={(section: InsightsSection) => { setInsightsSection(section); navigate('insights'); }}
             />}
           </ScreenContainer>
         </View>

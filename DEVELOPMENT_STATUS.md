@@ -5,7 +5,7 @@
 **Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; physical-device capture verification remains
 **Git:** `HEAD` is `3c175de` on `main`. Changes since then are uncommitted local work for owner review: CLAUDE.md, ONNX benchmark (Phase 4 close), dev Metro port, Home screen, Android 15 redaction handling and the fixture poster.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty-three are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 5; Phase 5: 4); 11 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and release readiness (4).
+**Roadmap count:** 47 numbered tasks (Phase 5b added). Thirty-six are implemented; 11 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and release readiness (4, of which 1–3 are partial).
 
 ## Completed
 
@@ -56,6 +56,12 @@
   - New shared primitives in `src/components/ui.tsx` (View-drawn tab icons, reduced-motion-aware fade-in), a compact header, an icon tab bar, and an adaptive launcher icon.
   - Verified on the emulator in light and dark themes with synthetic data, which was then deleted.
 - Play compatibility verified: target API 36, 16 KB-aligned native libraries, AAB built. The release APK installed and launched cleanly on the emulator. Local artifacts were copied to git-ignored `dist/`.
+- Money and upcoming insights (R-013, Phase 5b):
+  - Deterministic extractor (`InsightExtractor.kt`), schema v7 `notification_insights` with backfill, money/upcoming/recurring queries, dismiss, and insight reminders.
+  - UI: Insights → Money / Coming up, plus Home cards.
+  - Accuracy: dev 88 cases at 1.000 on all extraction metrics. The first unseen runs gave money precision 0.933 (holdout) and 0.846 (holdout 2), with amounts and dates always correct when detected. All sets pass after generic fixes. Details in `docs/MONEY_AND_UPCOMING_INSIGHTS.md`.
+- Found (R-014): Android 15 redacts bank alerts containing OTP-like tokens such as "A/c XX1234" for NotifyIQ. Probed on the emulator; the Money screen discloses it.
+- Emulator end-to-end check: synthetic alerts produced correct spent/received totals and categories. Offer, failed and balance lines were ignored. Coming up grouped the items, and a reminder was scheduled (alarm at 09:00 next day), then cancelled. Cleanup: history deleted through the Privacy UI (0 events/insights), access revoked, poster uninstalled, no pending NotifyIQ alarms.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -148,3 +154,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 
 - `./gradlew --no-daemon :app:connectedDebugAndroidTest` (after Phase 7 changes) — passed: 18 tests, 0 failures, 1 skipped (the opt-in scale test).
 - `npm run typecheck`, eslint (0 errors), `npm test` (4 suites / 8 tests) — passed after the UI refresh. `:app:assembleRelease :app:bundleRelease` — passed; release APK smoke on emulator passed.
+- After Phase 5b: `npm run typecheck`, eslint (0 errors), `npm test` (5 suites / 10 tests); `./gradlew :app:testDebugUnitTest` (11 tests including 3 extraction evaluations); `:app:connectedDebugAndroidTest` on Pixel_8 API 35 — 22 tests, 0 failures, 1 skipped (opt-in scale).

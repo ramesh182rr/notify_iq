@@ -62,6 +62,87 @@ class NotifyIQModule(
   }
 
   @ReactMethod
+  fun getMoneySummary(from: Double, to: Double, promise: Promise) {
+    try {
+      val summary = NotificationRepository(appContext).moneySummary(from.toLong(), to.toLong())
+      fun buckets(items: List<MoneyBucket>) = Arguments.createArray().apply {
+        items.forEach { bucket -> pushMap(Arguments.createMap().apply {
+          putString("label", bucket.label); putDouble("amountMinor", bucket.amountMinor.toDouble()); putInt("count", bucket.count)
+        }) }
+      }
+      promise.resolve(Arguments.createMap().apply {
+        putDouble("from", summary.from.toDouble()); putDouble("to", summary.to.toDouble())
+        putString("currency", summary.currency)
+        putDouble("spentMinor", summary.spentMinor.toDouble()); putDouble("receivedMinor", summary.receivedMinor.toDouble())
+        putInt("debitCount", summary.debitCount); putInt("creditCount", summary.creditCount)
+        putArray("merchants", buckets(summary.merchants)); putArray("categories", buckets(summary.categories))
+        putArray("recent", Arguments.createArray().apply {
+          summary.recent.forEach { row -> pushMap(Arguments.createMap().apply {
+            putDouble("eventId", row.eventId.toDouble()); putDouble("amountMinor", row.amountMinor.toDouble())
+            putString("currency", row.currency); putString("direction", row.direction)
+            if (row.merchant == null) putNull("merchant") else putString("merchant", row.merchant)
+            putString("category", row.category); putDouble("receivedAt", row.receivedAt.toDouble())
+            putString("packageName", row.packageName); putBoolean("subscription", row.subscription)
+          }) }
+        })
+        putArray("otherCurrencies", Arguments.createArray().apply { summary.otherCurrencies.forEach(::pushString) })
+      })
+    } catch (_: Exception) { promise.reject("MONEY_UNAVAILABLE", "The local money summary is unavailable.") }
+  }
+
+  @ReactMethod
+  fun getUpcomingActions(promise: Promise) {
+    try {
+      promise.resolve(Arguments.createArray().apply {
+        NotificationRepository(appContext).upcomingActions().forEach { item -> pushMap(Arguments.createMap().apply {
+          putDouble("eventId", item.eventId.toDouble()); putString("kind", item.kind); putDouble("dueAt", item.dueAt.toDouble())
+          putBoolean("hasTime", item.hasTime)
+          if (item.amountMinor == null) putNull("amountMinor") else putDouble("amountMinor", item.amountMinor.toDouble())
+          if (item.currency == null) putNull("currency") else putString("currency", item.currency)
+          if (item.reminderAt == null) putNull("reminderAt") else putDouble("reminderAt", item.reminderAt.toDouble())
+          if (item.reminderStatus == null) putNull("reminderStatus") else putString("reminderStatus", item.reminderStatus)
+          putString("packageName", item.packageName)
+          if (item.title == null) putNull("title") else putString("title", item.title)
+          if (item.body == null) putNull("body") else putString("body", item.body)
+          putDouble("receivedAt", item.receivedAt.toDouble())
+        }) }
+      })
+    } catch (_: Exception) { promise.reject("UPCOMING_UNAVAILABLE", "Upcoming items are unavailable.") }
+  }
+
+  @ReactMethod
+  fun getRecurringPayments(promise: Promise) {
+    try {
+      promise.resolve(Arguments.createArray().apply {
+        NotificationRepository(appContext).recurringPayments().forEach { item -> pushMap(Arguments.createMap().apply {
+          putString("merchant", item.merchant); putDouble("amountMinor", item.amountMinor.toDouble()); putString("currency", item.currency)
+          putString("cadence", item.cadence); putDouble("lastPaidAt", item.lastPaidAt.toDouble())
+          if (item.nextExpectedAt == null) putNull("nextExpectedAt") else putDouble("nextExpectedAt", item.nextExpectedAt.toDouble())
+          putInt("occurrences", item.occurrences)
+        }) }
+      })
+    } catch (_: Exception) { promise.reject("RECURRING_UNAVAILABLE", "Recurring payments are unavailable.") }
+  }
+
+  @ReactMethod
+  fun dismissInsight(eventId: Double, promise: Promise) {
+    try { NotificationRepository(appContext).dismissInsight(eventId.toLong()); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The item could not be dismissed.") }
+  }
+
+  @ReactMethod
+  fun setInsightReminder(eventId: Double, at: Double, promise: Promise) {
+    try { promise.resolve(NotificationRepository(appContext).setInsightReminder(eventId.toLong(), at.toLong())) }
+    catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The reminder could not be set.") }
+  }
+
+  @ReactMethod
+  fun clearInsightReminder(eventId: Double, promise: Promise) {
+    try { NotificationRepository(appContext).clearInsightReminder(eventId.toLong()); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The reminder could not be cleared.") }
+  }
+
+  @ReactMethod
   fun searchNotifications(query: String, packageName: String, category: String, groupName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
     try {
       val filters = NotificationFilters(query = query, packageName = packageName, category = category, groupName = groupName, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())

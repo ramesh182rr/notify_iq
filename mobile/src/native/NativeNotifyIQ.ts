@@ -36,6 +36,54 @@ export type NotificationItem = {
 };
 
 export type OverviewCount = { label: string; count: number };
+export type MoneyBucket = { label: string; amountMinor: number; count: number };
+export type MoneyTransaction = {
+  eventId: number;
+  amountMinor: number;
+  currency: string;
+  direction: string;
+  merchant: string | null;
+  category: string;
+  receivedAt: number;
+  packageName: string;
+  subscription: boolean;
+};
+export type MoneySummary = {
+  from: number;
+  to: number;
+  currency: string;
+  spentMinor: number;
+  receivedMinor: number;
+  debitCount: number;
+  creditCount: number;
+  merchants: ReadonlyArray<MoneyBucket>;
+  categories: ReadonlyArray<MoneyBucket>;
+  recent: ReadonlyArray<MoneyTransaction>;
+  otherCurrencies: ReadonlyArray<string>;
+};
+export type UpcomingAction = {
+  eventId: number;
+  kind: string;
+  dueAt: number;
+  hasTime: boolean;
+  amountMinor: number | null;
+  currency: string | null;
+  reminderAt: number | null;
+  reminderStatus: string | null;
+  packageName: string;
+  title: string | null;
+  body: string | null;
+  receivedAt: number;
+};
+export type RecurringPayment = {
+  merchant: string;
+  amountMinor: number;
+  currency: string;
+  cadence: string;
+  lastPaidAt: number;
+  nextExpectedAt: number | null;
+  occurrences: number;
+};
 export type DailyOverview = {
   dayStart: number;
   dayEnd: number;
@@ -81,6 +129,12 @@ export interface Spec extends TurboModule {
   addSavedSearch(name: string, filtersJson: string): Promise<string>;
   deleteSavedSearch(id: string): Promise<string>;
   getRuleGroups(): Promise<ReadonlyArray<string>>;
+  getMoneySummary(from: number, to: number): Promise<MoneySummary>;
+  getUpcomingActions(): Promise<ReadonlyArray<UpcomingAction>>;
+  getRecurringPayments(): Promise<ReadonlyArray<RecurringPayment>>;
+  dismissInsight(eventId: number): Promise<void>;
+  setInsightReminder(eventId: number, at: number): Promise<string>;
+  clearInsightReminder(eventId: number): Promise<void>;
 }
 
 export function getNativeNotifyIQ(): Spec | null {

@@ -1,0 +1,31 @@
+id	language	posted	title	body	amount	currency	direction	merchant	action	due	subscription
+K001	en	2026-11-22T10:00	Bank	Your a/c no. XX2211 is debited for Rs.1,050.00 on 22-11-26 and credited to a/c XX9900 (UPI Ref 61234)	1050.00	INR	debit	?	-	-	0
+K002	en	2026-11-22T10:00	Card	Thank you for using your card XX8899 for Rs 2,199 at RELIANCE DIGITAL	2199.00	INR	debit	Reliance Digital	-	-	0
+K003	en	2026-11-22T10:00	UPI	Received Rs 600 from Deepak via UPI	600.00	INR	credit	Deepak	-	-	0
+K004	en	2026-11-22T10:00	Wallet	Added ₹1,000 to your wallet	-	-	-	-	-	-	0
+K005	en	2026-11-22T10:00	Netflix	We couldn't process your payment of ₹649. Please update your payment details by 26 Nov	-	-	-	-	task	2026-11-26	0
+K006	en	2026-11-22T10:00	Insurance	Health insurance premium of ₹22,500 due on 15/12/2026	-	-	-	-	bill_due	2026-12-15	0
+K007	en	2026-11-22T10:00	Gym	Your Cult membership will renew on 05 Dec 2026. ₹1,999 will be charged	-	-	-	-	subscription_renewal	2026-12-05	1
+K008	en	2026-11-22T10:00	Passport	Passport appointment at PSK Bengaluru on 02-12-2026 at 09:30	-	-	-	-	appointment	2026-12-02T09:30	0
+K009	en	2026-11-22T10:00	School	Fee of Rs 18,000 to be paid by 10 Dec 2026	-	-	-	-	bill_due	2026-12-10	0
+K010	en	2026-11-22T10:00	Phone	Your Airtel prepaid pack expires on 29 Nov. Recharge with ₹349	-	-	-	-	expiry	2026-11-29	0
+K011	en	2026-11-22T10:00	Food	₹432 paid to Zomato using UPI	432.00	INR	debit	Zomato	-	-	0
+K012	en	2026-11-22T10:00	Promo	Pay ₹1 and get 3 months of Prime free! Offer ends soon	-	-	-	-	-	-	0
+K013	en	2026-11-22T10:00	Balance	Rs 2,000 is your minimum due. Total outstanding Rs 40,000	-	-	-	-	-	-	0
+K014	en	2026-11-22T10:00	Bank	Dear customer, Rs. 7,500.00 has been debited from your account towards ELECTRICITY BOARD	7500.00	INR	debit	Electricity Board	-	-	0
+K015	en	2026-11-22T10:00	Refund	₹1,299 refunded to your Amazon Pay balance	1299.00	INR	credit	-	-	-	0
+K016	mix	2026-11-22T10:00	UPI	Aapne ₹250 Raju ko bheje	250.00	INR	debit	Raju	-	-	0
+K017	mix	2026-11-22T10:00	UPI	Mummy ne ₹1,000 bheje hain	1000.00	INR	credit	?	-	-	0
+K018	hi	2026-11-22T10:00	बिल	आपका बिजली बिल ₹1,180 है, अंतिम तिथि 30/11/2026	-	-	-	-	bill_due	2026-11-30	0
+K019	en	2026-11-22T10:00	Health	Physiotherapy session with Dr. Nair tomorrow at 7 pm	-	-	-	-	appointment	2026-11-23T19:00	0
+K020	en	2026-11-22T10:00	Work	Project report deadline is 4 Dec 2026	-	-	-	-	task	2026-12-04	0
+K021	en	2026-11-22T10:00	Card	Your card XX1234 will expire on 30-11-2026	-	-	-	-	expiry	2026-11-30	0
+K022	en	2026-11-22T10:00	Spotify	Spotify: payment of ₹119 was successful. Thanks for being Premium	119.00	INR	debit	?	-	-	1
+K023	en	2026-11-22T10:00	Uber	Your Uber trip: ₹312 charged to Paytm	312.00	INR	debit	?	-	-	0
+K024	en	2026-11-22T10:00	Bank	INR 1,00,000 credited to your account by RTGS from GLOBAL EXPORTS	100000.00	INR	credit	Global Exports	-	-	0
+K025	en	2026-11-22T10:00	Investment	Rs 5,000 SIP installment will be debited on 10/12/2026	-	-	-	-	bill_due	2026-12-10	0
+K026	en	2026-11-22T10:00	Offers	Upgrade now and save ₹2,000. Valid till 30 Nov	-	-	-	-	-	-	0
+K027	en	2026-11-22T10:00	Delivery	Pay ₹540 cash on delivery for order 8812	-	-	-	-	-	-	0
+K028	en	2026-11-22T10:00	Vaccine	Second dose of vaccination due on 12 Jan 2027	-	-	-	-	appointment	2027-01-12	0
+K029	en	2026-11-22T10:00	Prime	Prime Video: ₹299 charged for your monthly subscription	299.00	INR	debit	?	-	-	1
+K030	en	2026-11-22T10:00	Library	Return the borrowed books by 3 Dec 2026	-	-	-	-	task	2026-12-03	0

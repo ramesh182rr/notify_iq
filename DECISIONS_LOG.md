@@ -152,6 +152,24 @@ This log distinguishes decisions already present in the supplied development kit
 **Reason:** Before this change, these events produced placeholder or empty rows in history. No secret was stored, but R-003 requires leaving no event metadata for sensitive items, and empty rows are noise. The public SDK exposes no `Ranking` sensitivity flag; the internal `hasSensitiveContent` is hidden API.
 **Limits:** Relies on current AOSP redaction behavior on API 35+. OEM builds may differ and need device verification. NotifyIQ's own deterministic gate remains the primary control.
 
+### R-013 — Deterministic money and upcoming insights, precision first
+
+**Status:** Approved by user, 2026-11-22 ("go ahead … consider the accuracy")
+**Decision:**
+- Extract money movements (amount, debit/credit, merchant, spend category), dated actions (bill due, subscription renewal, expiry, appointment, task) and recurring payments from privacy-screened notification text using deterministic local rules. No model or network is involved.
+- Store results separately (`notification_insights`, cascade-deleted with the source).
+- Link every item to its source and let the user dismiss it.
+- Totals are labelled as "from payment alerts saved on this phone", never as a statement, consistent with the PRD non-goal of verifying transactions.
+- Ambiguous text yields nothing.
+- Accuracy is tracked on synthetic dev and held-out sets. The dev set gates the build; held-out sets are reported only.
+
+**Evidence:** `docs/MONEY_AND_UPCOMING_INSIGHTS.md`. On first unseen runs, money precision was 0.85–0.93, and amounts and dates were never misread when detected.
+
+### R-014 — Android 15 hides OTP-like bank alerts from NotifyIQ
+
+**Status:** Observed limitation, 2026-11-22
+**Decision:** Accept and disclose. Android 15 redacts notifications it classifies as OTP-like (including standalone 4–8 digit tokens such as "A/c XX1234") for third-party listeners. NotifyIQ cannot read them and discards them per R-012. The Money screen explains that some bank alerts will be missing. Do not seek SMS permissions or any workaround. Verify the impact on physical Pixel and Samsung devices.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

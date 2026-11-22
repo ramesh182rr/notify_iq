@@ -1,0 +1,89 @@
+id	language	posted	title	body	amount	currency	direction	merchant	action	due	subscription
+D001	en	2026-11-22T10:00	Bank alert	Rs.499.00 debited from A/c XX1234 on 22-11-26 at NETFLIX. Avl Bal Rs.10,234.50	499.00	INR	debit	Netflix	-	-	1
+D002	en	2026-11-22T10:00	UPI	Rs 250.00 debited from A/c XX5678 and credited to ramesh.kumar@okaxis UPI Ref 412345678901	250.00	INR	debit	Ramesh Kumar	-	-	0
+D003	en	2026-11-22T10:00	UPI credit	Rs 1,500 credited to A/c XX5678 from VPA priya@ybl on 22-11-26. UPI Ref 498765432100	1500.00	INR	credit	Priya	-	-	0
+D004	en	2026-11-22T10:00	Payment successful	₹180 paid to Swiggy	180.00	INR	debit	Swiggy	-	-	0
+D005	en	2026-11-22T10:00	-	You paid ₹349 to Spotify India	349.00	INR	debit	Spotify India	-	-	1
+D006	en	2026-11-22T10:00	Salary	INR 85,000.00 credited to your A/c XX9012 on 01-Nov-26 by NEFT from ACME TECH PVT LTD	85000.00	INR	credit	Acme Tech Pvt Ltd	-	-	0
+D007	en	2026-11-22T10:00	ATM	Rs.2,000 withdrawn from ATM using card XX1234 on 22-Nov. Avl bal Rs 8,000	2000.00	INR	debit	-	-	-	0
+D008	en	2026-11-22T10:00	Card alert	Your Credit Card XX4321 was used for INR 2,345.00 at AMAZON PAY INDIA on 22/11/2026 10:15	2345.00	INR	debit	Amazon Pay India	-	-	0
+D009	en	2026-11-22T10:00	Refund	Refund of Rs 799 for your order has been credited to your account	799.00	INR	credit	-	-	-	0
+D010	en	2026-11-22T10:00	Balance	Your A/c XX1234 balance is Rs 12,500.00 as on 22-Nov-26	-	-	-	-	-	-	0
+D011	en	2026-11-22T10:00	Offer	Get flat ₹150 cashback on your next recharge! Use code SAVE150	-	-	-	-	-	-	0
+D012	en	2026-11-22T10:00	Bank alert	Transaction of Rs 1,200 at FLIPKART failed due to insufficient balance	-	-	-	-	-	-	0
+D013	en	2026-11-22T10:00	Mandate	Rs 499 will be debited on 25-Nov-26 for your Netflix subscription via e-mandate	-	-	-	-	subscription_renewal	2026-11-25	1
+D014	en	2026-11-22T10:00	Electricity bill	Your electricity bill of Rs 1,240 is due on 28 Nov 2026. Pay now to avoid late fee.	-	-	-	-	bill_due	2026-11-28	0
+D015	en	2026-11-22T10:00	Card statement	Statement generated for card XX4321. Total due: Rs 12,480.00, Min due: Rs 624.00. Pay by 05-Dec-2026.	-	-	-	-	bill_due	2026-12-05	0
+D016	en	2026-11-22T10:00	Loan	EMI of Rs 8,500 for loan A/c XX7788 is due on 05/12/2026	-	-	-	-	bill_due	2026-12-05	0
+D017	en	2026-11-22T10:00	Insurance	Your policy premium of Rs 15,000 is due on 10 Dec 2026	-	-	-	-	bill_due	2026-12-10	0
+D018	en	2026-11-22T10:00	Prime	Your Amazon Prime membership will renew on 01 Dec 2026 for ₹1,499	-	-	-	-	subscription_renewal	2026-12-01	1
+D019	en	2026-11-22T10:00	Spotify	Your Spotify Premium subscription has been renewed. ₹119 charged. Next billing date: 22 Dec 2026	119.00	INR	debit	Spotify	subscription_renewal	2026-12-22	1
+D020	en	2026-11-22T10:00	Jio	Your Jio plan expires on 30-Nov-2026. Recharge to continue services.	-	-	-	-	expiry	2026-11-30	0
+D021	en	2026-11-22T10:00	Card	Your debit card ending 1234 will expire on 31/12/2026. A new card will be dispatched.	-	-	-	-	expiry	2026-12-31	0
+D022	en	2026-11-22T10:00	Insurance	Your vehicle insurance expires in 5 days. Renew now.	-	-	-	-	expiry	2026-11-27	0
+D023	en	2026-11-22T10:00	Clinic	Appointment confirmed with Dr. Mehta on 24 Nov at 10:30 AM, City Clinic	-	-	-	-	appointment	2026-11-24T10:30	0
+D024	en	2026-11-22T10:00	Lab	Your blood test is scheduled for tomorrow at 8:00 am. Please fast for 10 hours.	-	-	-	-	appointment	2026-11-23T08:00	0
+D025	en	2026-11-22T10:00	Hospital	Reminder: Follow-up visit at Apollo Hospital on 26/11/2026 at 5 pm	-	-	-	-	appointment	2026-11-26T17:00	0
+D026	en	2026-11-22T10:00	KYC	Complete your KYC by 30 Nov 2026 to keep your account active	-	-	-	-	task	2026-11-30	0
+D027	en	2026-11-22T10:00	Classroom	Assignment 3 must be submitted by Friday	-	-	-	-	task	2026-11-27	0
+D028	en	2026-11-22T10:00	Delivery	Your parcel will be delivered tomorrow	-	-	-	-	-	-	0
+D030	hi	2026-11-22T10:00	बैंक	आपके खाते XX1234 से ₹500 डेबिट किए गए। शेष ₹4,500	500.00	INR	debit	-	-	-	0
+D031	hi	2026-11-22T10:00	बैंक	आपके खाते में ₹2,000 जमा किए गए	2000.00	INR	credit	-	-	-	0
+D032	mix	2026-11-22T10:00	Bank	Aapke account se Rs 300 kat gaye, Swiggy ko payment	300.00	INR	debit	Swiggy	-	-	0
+D033	mix	2026-11-22T10:00	Bijli	Aapka bijli bill Rs 950 due hai 28-11-2026 tak	-	-	-	-	bill_due	2026-11-28	0
+D034	hi	2026-11-22T10:00	क्लिनिक	डॉक्टर के साथ आपका अपॉइंटमेंट 25/11/2026 को सुबह 11:00 बजे है	-	-	-	-	appointment	2026-11-25T11:00	0
+D035	en	2026-11-22T10:00	Sale	Sale ends 30 Nov! Get up to ₹500 off on electronics	-	-	-	-	-	-	0
+D036	en	2026-11-22T10:00	Cashback	Your ₹100 cashback offer expires on 25 Nov. Use it now!	-	-	-	-	-	-	0
+D037	en	2026-11-22T10:00	Loan	Congratulations! You are pre-approved for a loan of Rs 5,00,000. Apply now	-	-	-	-	-	-	0
+D038	en	2026-11-22T10:00	Card	Your credit limit has been increased to Rs 2,00,000	-	-	-	-	-	-	0
+D039	en	2026-11-22T10:00	Paytm	Cashback of ₹25 credited to your Paytm wallet	25.00	INR	credit	-	-	-	0
+D040	en	2026-11-22T10:00	Paytm	₹120 paid to Uber via Paytm Wallet	120.00	INR	debit	Uber	-	-	0
+D041	en	2026-11-22T10:00	Recharge	Recharge of ₹299 for 98XXXXXX10 successful	299.00	INR	debit	-	-	-	0
+D042	en	2026-11-22T10:00	BESCOM	Payment of Rs 1,240 towards BESCOM electricity bill received. Thank you.	1240.00	INR	debit	BESCOM electricity	-	-	0
+D043	en	2026-11-22T10:00	Airtel	Your Airtel postpaid bill of ₹599 is due tomorrow	-	-	-	-	bill_due	2026-11-23	0
+D044	en	2026-11-22T10:00	Card	Credit card payment of Rs 4,500 due in 3 days	-	-	-	-	bill_due	2026-11-25	0
+D045	en	2026-11-22T10:00	Statement	Your statement is ready. Amount due $45.20 by Dec 3, 2026	-	-	-	-	bill_due	2026-12-03	0
+D046	en	2026-11-22T10:00	Card	You spent $12.99 at Apple.com on Nov 21	12.99	USD	debit	Apple.com	-	-	1
+D047	en	2026-11-22T10:00	Google Pay	Ankit sent you ₹200	200.00	INR	credit	Ankit	-	-	0
+D048	en	2026-11-22T10:00	Google Pay	You received ₹1,000 from Neha Sharma	1000.00	INR	credit	Neha Sharma	-	-	0
+D049	en	2026-11-22T10:00	Google Pay	Rahul requested ₹500 from you on Google Pay	-	-	-	-	-	-	0
+D050	en	2026-11-22T10:00	UPI	Collect request of Rs 2,000 from merchant@icici. Approve in your UPI app	-	-	-	-	-	-	0
+D051	en	2026-11-22T10:00	Card	Avl bal Rs 5,000. Rs 750 spent on HDFC card XX12 at ZOMATO	750.00	INR	debit	Zomato	-	-	0
+D052	en	2026-11-22T10:00	IMPS	IMPS of Rs 10,000 sent to A/c XX3344 (Ravi) Ref 123456. Charges Rs 5.90	10000.00	INR	debit	-	-	-	0
+D053	en	2026-11-22T10:00	Autopay	Rs 1,499 auto-debited for Amazon Prime membership	1499.00	INR	debit	Amazon Prime	-	-	1
+D054	en	2026-11-22T10:00	IRCTC	Your IRCTC ticket PNR 1234567890 is confirmed. Journey on 05-Dec-2026	-	-	-	-	-	-	0
+D055	en	2026-11-22T10:00	Calendar	Team standup meeting starts in 15 minutes	-	-	-	-	-	-	0
+D056	en	2026-11-22T10:00	Passport	Your passport renewal application must be submitted by 15 Jan 2027	-	-	-	-	task	2027-01-15	0
+D057	en	2026-11-22T10:00	Library	Your library book is due on 28/11/2026	-	-	-	-	task	2026-11-28	0
+D058	en	2026-11-22T10:00	Water	Water bill paid successfully. Amount: ₹420	420.00	INR	debit	-	-	-	0
+D059	en	2026-11-22T10:00	Netflix	Your Netflix payment failed. Update your payment method by 25 Nov to continue watching	-	-	-	-	task	2026-11-25	0
+D060	en	2026-11-22T10:00	Gym	Your gym membership expires on 01/12/2026	-	-	-	-	expiry	2026-12-01	0
+D061	en	2026-11-22T10:00	Health	Video consultation with Dr. Rao today at 6:30 PM	-	-	-	-	appointment	2026-11-22T18:30	0
+D062	en	2026-11-22T10:00	Health	Your child's vaccination is due on 02 Dec 2026	-	-	-	-	appointment	2026-12-02	0
+D063	en	2026-11-22T10:00	LIC	Pay ₹2,300 to LIC before 12/12/2026 to keep policy active	-	-	-	-	bill_due	2026-12-12	0
+D064	en	2026-11-22T10:00	Google	Rs 89 debited for Google Play purchase	89.00	INR	debit	Google Play	-	-	1
+D065	en	2026-11-22T10:00	Myntra	Order placed! ₹1,299 paid for Myntra order #12345	1299.00	INR	debit	Myntra	-	-	0
+D066	en	2026-11-22T10:00	Shop	Shop now and get ₹200 off	-	-	-	-	-	-	0
+D067	en	2026-11-22T10:00	FD	Your fixed deposit of Rs 50,000 matures on 15-12-2026	-	-	-	-	expiry	2026-12-15	0
+D068	en	2026-11-22T10:00	Bank	Interest of Rs 342 credited to your savings account	342.00	INR	credit	-	-	-	0
+D069	en	2026-11-22T10:00	UPI	Rs 5,000 transferred to Mom via UPI	5000.00	INR	debit	Mom	-	-	0
+D070	en	2026-11-22T10:00	Tax	Last date to file your income tax return is 31 Dec 2026	-	-	-	-	task	2026-12-31	0
+D071	en	2026-11-22T10:00	Electricity	Your electricity bill for Nov is generated. Amount ₹1,100. Due date 07/12/2026	-	-	-	-	bill_due	2026-12-07	0
+D072	en	2026-11-22T10:00	Adobe	Payment of ₹2,999 to Adobe failed	-	-	-	-	-	-	0
+D073	en	2026-11-22T10:00	Order	Your order of ₹499 has been cancelled. Refund will be processed in 5-7 days	-	-	-	-	-	-	0
+D074	en	2026-11-22T10:00	Refund	Refund of ₹499 processed to your original payment method	499.00	INR	credit	-	-	-	0
+D075	en	2026-11-22T10:00	UPI Lite	Your UPI Lite balance is ₹350	-	-	-	-	-	-	0
+D076	en	2026-11-22T10:00	Paytm	Rs.45.00 debited from your Paytm wallet for Uber ride	45.00	INR	debit	Uber	-	-	0
+D077	en	2026-11-22T10:00	Salon	Your haircut appointment is at 4 pm today	-	-	-	-	appointment	2026-11-22T16:00	0
+D078	en	2026-11-22T10:00	Calendar	Meeting with CA tomorrow 11 am regarding GST filing	-	-	-	-	appointment	2026-11-23T11:00	0
+D079	en	2026-11-22T10:00	Flight	Flight 6E-203 departs on 28 Nov at 07:45	-	-	-	-	-	-	0
+D080	en	2026-11-22T10:00	DTH	Your DTH subscription expires tomorrow. Recharge now	-	-	-	-	expiry	2026-11-23	0
+D081	mix	2026-11-22T10:00	Reminder	Kal tak form submit karna hai	-	-	-	-	-	-	0
+D082	en	2026-11-22T10:00	SIP	Rs 2,500 has been debited towards your SIP in Axis Bluechip Fund	2500.00	INR	debit	?	-	-	0
+D083	en	2026-11-22T10:00	Loan	Your loan EMI of ₹12,000 has been debited successfully	12000.00	INR	debit	-	-	-	0
+D084	en	2026-11-22T10:00	Refund	You have received a payment of ₹750 from Swiggy Instamart (refund)	750.00	INR	credit	Swiggy Instamart	-	-	0
+D085	en	2026-11-22T10:00	Salary	Salary of Rs 72,000 credited	72000.00	INR	credit	-	-	-	0
+D086	en	2026-11-22T10:00	Apple	₹99 charged to your card for iCloud+ storage	99.00	INR	debit	iCloud	-	-	1
+D087	en	2026-11-22T10:00	Card	Your credit card bill of Rs 3,456 is overdue. Pay immediately	-	-	-	-	-	-	0
+D089	en	2026-11-22T10:00	Recharge	Recharge done! ₹719 plan active till 20 Jan 2027	719.00	INR	debit	-	expiry	2027-01-20	0
+D090	en	2026-11-22T10:00	NEFT	₹15,000 sent to Landlord via NEFT for rent	15000.00	INR	debit	Landlord	-	-	0

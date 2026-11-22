@@ -1,0 +1,41 @@
+id	language	posted	title	body	amount	currency	direction	merchant	action	due	subscription
+H001	en	2026-11-22T10:00	Bank	A/c *5678 debited INR 640.00 on 21Nov26; trf to BLINKIT. Not you? Call 18001234	640.00	INR	debit	Blinkit	-	-	0
+H002	en	2026-11-22T10:00	UPI	Sent ₹1,200 to Sunita Devi using UPI	1200.00	INR	debit	Sunita Devi	-	-	0
+H003	en	2026-11-22T10:00	Card	INR 3,250.00 spent on your card ending 4455 at DMART AVENUE on 22-11-2026	3250.00	INR	debit	Dmart Avenue	-	-	0
+H004	en	2026-11-22T10:00	Bank	Your account has been credited with Rs. 25,000 from RAJESH KUMAR	25000.00	INR	credit	Rajesh Kumar	-	-	0
+H005	en	2026-11-22T10:00	Money received	Karan paid you ₹450	450.00	INR	credit	Karan	-	-	0
+H006	en	2026-11-22T10:00	Hotstar	Your Disney+ Hotstar subscription will auto-renew on 3 Dec 2026 for Rs 299	-	-	-	-	subscription_renewal	2026-12-03	1
+H007	en	2026-11-22T10:00	YouTube	YouTube Premium: ₹129 payment successful. Your next billing date is 22 December 2026	129.00	INR	debit	?	subscription_renewal	2026-12-22	1
+H008	en	2026-11-22T10:00	Gas	Gas cylinder booking confirmed. Pay ₹905 on delivery	-	-	-	-	-	-	0
+H009	en	2026-11-22T10:00	Broadband	Your broadband bill of ₹799 is due on 01-12-2026	-	-	-	-	bill_due	2026-12-01	0
+H010	en	2026-11-22T10:00	Card	Total amount due ₹18,230.55. Minimum amount due ₹912. Due date: 08 Dec 2026	-	-	-	-	bill_due	2026-12-08	0
+H011	en	2026-11-22T10:00	Insurance	Your car insurance policy expires on 14/01/2027. Renew today to stay covered.	-	-	-	-	expiry	2027-01-14	0
+H012	en	2026-11-22T10:00	RTO	Driving licence validity ends on 20-03-2027	-	-	-	-	expiry	2027-03-20	0
+H013	en	2026-11-22T10:00	Dentist	Dental check-up booked for 27 Nov, 3:30 PM at Smile Clinic	-	-	-	-	appointment	2026-11-27T15:30	0
+H014	en	2026-11-22T10:00	Hospital	Reminder: MRI scan at Fortis on Monday at 9 am	-	-	-	-	appointment	2026-11-23T09:00	0
+H015	en	2026-11-22T10:00	Work	Please submit your timesheet by 25/11	-	-	-	-	task	2026-11-25	0
+H016	en	2026-11-22T10:00	Training	Complete the safety training before 30 Nov 2026	-	-	-	-	task	2026-11-30	0
+H017	en	2026-11-22T10:00	Shoes	Flat 50% off on all shoes. Offer valid till 30 Nov	-	-	-	-	-	-	0
+H018	en	2026-11-22T10:00	Rewards	You've won ₹1,000 cashback! Claim before it expires	-	-	-	-	-	-	0
+H019	en	2026-11-22T10:00	Bank	Your available balance is INR 45,678.90	-	-	-	-	-	-	0
+H020	en	2026-11-22T10:00	Card	Transaction declined: Rs 3,000 at CROMA. Reason: incorrect PIN	-	-	-	-	-	-	0
+H021	en	2026-11-22T10:00	SIP	₹2,000 will be debited from your account on 05 Dec for SIP	-	-	-	-	bill_due	2026-12-05	0
+H022	hi	2026-11-22T10:00	बैंक	आपके खाते से ₹1,250 का भुगतान किया गया	1250.00	INR	debit	-	-	-	0
+H023	hi	2026-11-22T10:00	बीमा	आपकी बीमा पॉलिसी 10/12/2026 को समाप्त हो रही है	-	-	-	-	expiry	2026-12-10	0
+H024	mix	2026-11-22T10:00	UPI	Bhai ne ₹500 bheje	500.00	INR	credit	?	-	-	0
+H025	mix	2026-11-22T10:00	Recharge	Aapka mobile recharge ₹239 ka successful raha	239.00	INR	debit	-	-	-	0
+H026	en	2026-11-22T10:00	Swiggy	Your Swiggy One membership renews on 28 Nov for ₹99	-	-	-	-	subscription_renewal	2026-11-28	1
+H027	en	2026-11-22T10:00	Metro	Rs 60 paid at Metro Station Kiosk	60.00	INR	debit	Metro Station Kiosk	-	-	0
+H028	en	2026-11-22T10:00	Refund	Refund of Rs 1,050 for order #4521 will be credited in 3-5 days	-	-	-	-	-	-	0
+H029	en	2026-11-22T10:00	Bill	Your bill payment of ₹1,600 to TATA POWER was successful	1600.00	INR	debit	Tata Power	-	-	0
+H030	en	2026-11-22T10:00	IRCTC	PNR 456: Train departs 29-Nov-2026 06:15	-	-	-	-	-	-	0
+H031	en	2026-11-22T10:00	Clinic	Doctor appointment reminder: Dr. Iyer, Thursday 4:00 PM	-	-	-	-	appointment	2026-11-26T16:00	0
+H032	en	2026-11-22T10:00	Delivery	Your parcel was delivered	-	-	-	-	-	-	0
+H033	en	2026-11-22T10:00	Loan	EMI of ₹6,250 debited from A/c XX7788 for Loan XX991	6250.00	INR	debit	?	-	-	0
+H034	en	2026-11-22T10:00	IMPS	Credited: ₹10,000 by IMPS from VIKRAM S	10000.00	INR	credit	Vikram S	-	-	0
+H035	en	2026-11-22T10:00	Trial	Your free trial ends on 30 Nov 2026. You'll be charged ₹149/month after that	-	-	-	-	subscription_renewal	2026-11-30	1
+H036	en	2026-11-22T10:00	Zee5	Rs 199 debited for Zee5 annual plan	199.00	INR	debit	Zee5	-	-	1
+H037	en	2026-11-22T10:00	Uber	Get ₹50 off your next ride with Uber	-	-	-	-	-	-	0
+H038	en	2026-11-22T10:00	Tax	Pay your property tax of ₹8,400 before 31-12-2026 to avoid penalty	-	-	-	-	bill_due	2026-12-31	0
+H039	en	2026-11-22T10:00	UPI	Payment received from Amit for ₹300	300.00	INR	credit	Amit	-	-	0
+H040	en	2026-11-22T10:00	ATM	₹2,000 withdrawn at ATM on 22 Nov 2026 10:05	2000.00	INR	debit	?	-	-	0

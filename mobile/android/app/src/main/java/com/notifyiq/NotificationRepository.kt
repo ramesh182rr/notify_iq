@@ -99,6 +99,22 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 6
     }
+    if (version == 6) {
+      transaction {
+        connection.execSQL(
+          "CREATE TABLE notification_insights (event_id INTEGER PRIMARY KEY NOT NULL REFERENCES notification_events(id) ON DELETE CASCADE, " +
+            "amount_minor INTEGER, currency TEXT, direction TEXT, merchant TEXT, merchant_key TEXT, spend_category TEXT, channel TEXT, " +
+            "action_kind TEXT, due_at INTEGER, due_has_time INTEGER NOT NULL DEFAULT 0, action_amount_minor INTEGER, action_currency TEXT, " +
+            "subscription INTEGER NOT NULL DEFAULT 0, evidence TEXT NOT NULL, version INTEGER NOT NULL, dismissed INTEGER NOT NULL DEFAULT 0, " +
+            "reminder_at INTEGER, reminder_status TEXT)",
+        )
+        connection.execSQL("CREATE INDEX idx_insights_due ON notification_insights(due_at) WHERE action_kind IS NOT NULL")
+        connection.execSQL("CREATE INDEX idx_insights_merchant ON notification_insights(merchant_key) WHERE amount_minor IS NOT NULL")
+        backfillInsights()
+        connection.execSQL("PRAGMA user_version = 7")
+      }
+      version = 7
+    }
     check(version == SCHEMA_VERSION)
   }
 
@@ -244,14 +260,158 @@ internal class NotificationRepository private constructor(private val connection
     reminders
   }
 
-  internal fun markReminderDelivered(eventId: Long): Boolean = synchronized(connection) {
-    if (scalarText("SELECT reminder_status FROM notification_rule_results WHERE event_id = ?", eventId) != "pending") return@synchronized false
-    execute("UPDATE notification_rule_results SET reminder_status = 'delivered' WHERE event_id = ?", eventId)
+  /** Insight reminders use their own alarm identity so they never replace a rule reminder. */
+  internal fun pendingInsightReminders(): List<Pair<Long, Long>> = synchronized(connection) {
+    val reminders = mutableListOf<Pair<Long, Long>>()
+    connection.prepare("SELECT event_id, reminder_at FROM notification_insights WHERE reminder_status = 'pending' AND reminder_at IS NOT NULL").use { statement ->
+      while (statement.step()) reminders += statement.getLong(0) to statement.getLong(1)
+    }
+    reminders
+  }
+
+  internal fun markReminderDelivered(eventId: Long, insight: Boolean = false): Boolean = synchronized(connection) {
+    val table = if (insight) "notification_insights" else "notification_rule_results"
+    if (scalarText("SELECT reminder_status FROM $table WHERE event_id = ?", eventId) != "pending") return@synchronized false
+    execute("UPDATE $table SET reminder_status = 'delivered' WHERE event_id = ?", eventId)
     true
   }
 
-  internal fun markReminderUnavailable(eventId: Long) = synchronized(connection) {
-    execute("UPDATE notification_rule_results SET reminder_status = 'permission_missing' WHERE event_id = ?", eventId)
+  internal fun markReminderUnavailable(eventId: Long, insight: Boolean = false) = synchronized(connection) {
+    val table = if (insight) "notification_insights" else "notification_rule_results"
+    execute("UPDATE $table SET reminder_status = 'permission_missing' WHERE event_id = ?", eventId)
+  }
+
+  // ---- money and upcoming insights ------------------------------------------------------
+
+  private fun saveInsight(id: Long, insight: NotificationInsight) {
+    if (insight.isEmpty) {
+      execute("DELETE FROM notification_insights WHERE event_id = ?", id)
+      return
+    }
+    val money = insight.money
+    val action = insight.action
+    execute(
+      "INSERT INTO notification_insights(event_id, amount_minor, currency, direction, merchant, merchant_key, spend_category, channel, action_kind, due_at, due_has_time, action_amount_minor, action_currency, subscription, evidence, version) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(event_id) DO UPDATE SET amount_minor=excluded.amount_minor, currency=excluded.currency, direction=excluded.direction, " +
+        "merchant=excluded.merchant, merchant_key=excluded.merchant_key, spend_category=excluded.spend_category, channel=excluded.channel, action_kind=excluded.action_kind, due_at=excluded.due_at, " +
+        "due_has_time=excluded.due_has_time, action_amount_minor=excluded.action_amount_minor, action_currency=excluded.action_currency, subscription=excluded.subscription, evidence=excluded.evidence, version=excluded.version",
+      id, money?.amountMinor, money?.currency, money?.direction?.wire, money?.merchant, InsightExtractor.merchantKey(money?.merchant), money?.spendCategory, money?.channel,
+      action?.kind?.wire, action?.dueAt, if (action?.hasTime == true) 1L else 0L, action?.amountMinor, action?.currency, if (insight.subscription) 1L else 0L, insight.evidence, InsightExtractor.VERSION.toLong(),
+    )
+  }
+
+  private fun backfillInsights() {
+    val rows = mutableListOf<Pair<Long, NotificationInsight>>()
+    connection.prepare("SELECT id, title, body, received_at FROM notification_events").use { statement ->
+      while (statement.step()) rows += statement.getLong(0) to InsightExtractor.extract(statement.nullableText(1), statement.nullableText(2), statement.getLong(3))
+    }
+    rows.forEach { (id, insight) -> saveInsight(id, insight) }
+  }
+
+  fun moneySummary(from: Long, to: Long): MoneySummary = synchronized(connection) {
+    val rows = mutableListOf<MoneyRow>()
+    connection.prepare(
+      "SELECT i.event_id, i.amount_minor, i.currency, i.direction, i.merchant, i.spend_category, e.received_at, e.package_name, i.subscription " +
+        "FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
+        "WHERE i.amount_minor IS NOT NULL AND i.dismissed = 0 AND e.received_at >= ? AND e.received_at < ? ORDER BY e.received_at DESC",
+    ).use { statement ->
+      statement.bindLong(1, from); statement.bindLong(2, to)
+      while (statement.step()) rows += MoneyRow(
+        statement.getLong(0), statement.getLong(1), statement.getText(2), statement.getText(3), statement.nullableText(4),
+        statement.nullableText(5) ?: "other", statement.getLong(6), statement.getText(7), statement.getLong(8) == 1L,
+      )
+    }
+    val currency = rows.groupBy { it.currency }.maxByOrNull { (_, list) -> list.sumOf { it.amountMinor } }?.key ?: "INR"
+    val primary = rows.filter { it.currency == currency }
+    val debits = primary.filter { it.direction == MoneyDirection.DEBIT.wire }
+    val credits = primary.filter { it.direction == MoneyDirection.CREDIT.wire }
+    MoneySummary(
+      from, to, currency,
+      spentMinor = debits.sumOf { it.amountMinor },
+      receivedMinor = credits.sumOf { it.amountMinor },
+      debitCount = debits.size,
+      creditCount = credits.size,
+      merchants = debits.groupBy { it.merchant ?: "Unlabelled" }.map { (name, list) -> MoneyBucket(name, list.sumOf { it.amountMinor }, list.size) }.sortedByDescending { it.amountMinor }.take(8),
+      categories = debits.groupBy { it.category }.map { (name, list) -> MoneyBucket(name, list.sumOf { it.amountMinor }, list.size) }.sortedByDescending { it.amountMinor },
+      recent = primary.take(25),
+      otherCurrencies = rows.filter { it.currency != currency }.map { it.currency }.distinct(),
+    )
+  }
+
+  fun upcomingActions(now: Long = System.currentTimeMillis()): List<UpcomingAction> = synchronized(connection) {
+    val result = mutableListOf<UpcomingAction>()
+    connection.prepare(
+      "SELECT i.event_id, i.action_kind, i.due_at, i.due_has_time, i.action_amount_minor, i.action_currency, i.reminder_at, i.reminder_status, i.merchant, " +
+        "e.package_name, e.title, e.body, e.received_at FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
+        "WHERE i.action_kind IS NOT NULL AND i.dismissed = 0 AND i.due_at >= ? ORDER BY i.due_at ASC, e.received_at DESC LIMIT 100",
+    ).use { statement ->
+      statement.bindLong(1, now - 3 * MILLIS_PER_DAY)
+      while (statement.step()) result += UpcomingAction(
+        statement.getLong(0), statement.getText(1), statement.getLong(2), statement.getLong(3) == 1L,
+        if (statement.getColumnType(4) == SQLITE_NULL) null else statement.getLong(4), statement.nullableText(5),
+        if (statement.getColumnType(6) == SQLITE_NULL) null else statement.getLong(6), statement.nullableText(7), statement.nullableText(8),
+        statement.getText(9), statement.nullableText(10), statement.nullableText(11), statement.getLong(12),
+      )
+    }
+    // Repeated notifications about the same item (same app, kind, day and title) collapse to the newest.
+    result.distinctBy { listOf(it.packageName, it.kind, it.dueAt / MILLIS_PER_DAY, (it.title ?: it.body ?: "").lowercase().take(60)) }.take(50)
+  }
+
+  /** Merchants paid repeatedly at a steady amount and interval, plus explicitly flagged subscriptions. */
+  fun recurringPayments(now: Long = System.currentTimeMillis()): List<RecurringPayment> = synchronized(connection) {
+    val rows = mutableListOf<Triple<String, Long, Pair<Long, Boolean>>>()
+    val names = mutableMapOf<String, String>()
+    val currencies = mutableMapOf<String, String>()
+    connection.prepare(
+      "SELECT i.merchant_key, i.merchant, i.amount_minor, i.currency, e.received_at, i.subscription FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
+        "WHERE i.amount_minor IS NOT NULL AND i.direction = 'debit' AND i.dismissed = 0 AND i.merchant_key IS NOT NULL AND e.received_at >= ? ORDER BY e.received_at ASC",
+    ).use { statement ->
+      statement.bindLong(1, now - 400 * MILLIS_PER_DAY)
+      while (statement.step()) {
+        val key = statement.getText(0)
+        names[key] = statement.getText(1)
+        currencies[key] = statement.getText(3)
+        rows += Triple(key, statement.getLong(2), statement.getLong(4) to (statement.getLong(5) == 1L))
+      }
+    }
+    rows.groupBy { it.first }.mapNotNull { (key, list) ->
+      val flagged = list.any { it.third.second }
+      val amounts = list.map { it.second }.sorted()
+      val median = amounts[amounts.size / 2]
+      val steady = list.filter { kotlin.math.abs(it.second - median) <= median / 10 }
+      val times = steady.map { it.third.first }.sorted()
+      val gaps = times.zipWithNext { a, b -> (b - a) / MILLIS_PER_DAY }.filter { it > 0 }.sorted()
+      val gap = gaps.getOrNull(gaps.size / 2)
+      val cadence = when (gap) {
+        null -> null
+        in 6L..8L -> "weekly"
+        in 25L..35L -> "monthly"
+        in 85L..95L -> "quarterly"
+        in 355L..375L -> "yearly"
+        else -> null
+      }
+      if (cadence == null && !flagged) return@mapNotNull null
+      if (cadence != null && steady.size < 2) return@mapNotNull null
+      val last = (if (cadence != null) times.last() else list.maxOf { it.third.first })
+      RecurringPayment(names.getValue(key), if (cadence != null) median else list.last().second, currencies.getValue(key), cadence ?: "subscription", last,
+        cadence?.let { last + gap!! * MILLIS_PER_DAY }, if (cadence != null) steady.size else list.size)
+    }.sortedBy { it.nextExpectedAt ?: Long.MAX_VALUE }
+  }
+
+  fun dismissInsight(eventId: Long) = synchronized(connection) {
+    UserReminderScheduler.cancel(context, eventId, insight = true)
+    execute("UPDATE notification_insights SET dismissed = 1, reminder_at = NULL, reminder_status = NULL WHERE event_id = ?", eventId)
+  }
+
+  fun setInsightReminder(eventId: Long, at: Long): String = synchronized(connection) {
+    val status = if (context != null && UserReminderScheduler.schedule(context, eventId, at, insight = true)) "pending" else "permission_missing"
+    execute("UPDATE notification_insights SET reminder_at = ?, reminder_status = ? WHERE event_id = ?", at, status, eventId)
+    status
+  }
+
+  fun clearInsightReminder(eventId: Long) = synchronized(connection) {
+    UserReminderScheduler.cancel(context, eventId, insight = true)
+    execute("UPDATE notification_insights SET reminder_at = NULL, reminder_status = NULL WHERE event_id = ?", eventId)
   }
 
   fun previewUserRules(ruleJson: String, sampleJson: String): String = synchronized(connection) {
@@ -299,6 +459,7 @@ internal class NotificationRepository private constructor(private val connection
         ?: error("Unable to resolve stored notification identity")
       val analysis = NotificationAnalyzer.analyze(item.title, item.body, item.subtext)
       saveAnalysis(id, analysis)
+      saveInsight(id, InsightExtractor.extract(item.title, item.body, item.receivedAt))
       if (existingId == null) applyUserRules(id, item, analysis)
       val newGroupKey = duplicateGroupKey(item)
       if (oldGroupKey != null && oldGroupKey != newGroupKey) rebuildDuplicateGroup(oldGroupKey)
@@ -387,7 +548,7 @@ internal class NotificationRepository private constructor(private val connection
     else execute("UPDATE notification_events SET archived_at = NULL WHERE id = ?", id)
   }
 
-  fun delete(id: Long) = synchronized(connection) { transaction { UserReminderScheduler.cancel(context, id); execute("DELETE FROM notification_events WHERE id = ?", id); cleanupDuplicateGroups() } }
+  fun delete(id: Long) = synchronized(connection) { transaction { UserReminderScheduler.cancel(context, id); UserReminderScheduler.cancel(context, id, insight = true); execute("DELETE FROM notification_events WHERE id = ?", id); cleanupDuplicateGroups() } }
 
   fun setCategoryOverride(id: Long, category: String?) = synchronized(connection) {
     require(category == null || NotificationCategory.fromWireValue(category) != null)
@@ -414,7 +575,10 @@ internal class NotificationRepository private constructor(private val connection
   private fun cancelReminders(sql: String, vararg values: Any?) {
     connection.prepare(sql).use { statement ->
       values.forEachIndexed { index, value -> statement.bindValue(index + 1, value) }
-      while (statement.step()) UserReminderScheduler.cancel(context, statement.getLong(0))
+      while (statement.step()) {
+        UserReminderScheduler.cancel(context, statement.getLong(0))
+        UserReminderScheduler.cancel(context, statement.getLong(0), insight = true)
+      }
     }
   }
 
@@ -584,7 +748,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 6
+    private const val SCHEMA_VERSION = 7
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5

@@ -16,23 +16,23 @@ import android.os.Build
 internal object UserReminderScheduler {
   private const val CHANNEL_ID = "user_reminders"
 
-  fun schedule(context: Context, eventId: Long, dueAt: Long): Boolean {
+  fun schedule(context: Context, eventId: Long, dueAt: Long, insight: Boolean = false): Boolean {
     if (!canPostNotifications(context)) return false
     val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return false
-    val pendingIntent = reminderPendingIntent(context, eventId)
+    val pendingIntent = reminderPendingIntent(context, eventId, insight)
     return runCatching {
       alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dueAt, pendingIntent)
       true
     }.getOrDefault(false)
   }
 
-  fun cancel(context: Context?, eventId: Long) {
+  fun cancel(context: Context?, eventId: Long, insight: Boolean = false) {
     if (context == null) return
     val manager = context.getSystemService(AlarmManager::class.java) ?: return
-    runCatching { manager.cancel(reminderPendingIntent(context, eventId)) }
+    runCatching { manager.cancel(reminderPendingIntent(context, eventId, insight)) }
   }
 
-  fun show(context: Context, eventId: Long): Boolean {
+  fun show(context: Context, eventId: Long, insight: Boolean = false): Boolean {
     if (!canPostNotifications(context)) return false
     val manager = context.getSystemService(NotificationManager::class.java) ?: return false
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -55,22 +55,23 @@ internal object UserReminderScheduler {
       } else {
         @Suppress("DEPRECATION") Notification.Builder(context)
       }.setSmallIcon(R.mipmap.ic_launcher)
-        .setContentTitle("Reminder from NotifyIQ")
-        .setContentText("Review a notification saved on this device.")
+        .setContentTitle(if (insight) "Coming up in NotifyIQ" else "Reminder from NotifyIQ")
+        .setContentText(if (insight) "Something you asked to be reminded about is due." else "Review a notification saved on this device.")
         .setContentIntent(openApp)
         .setAutoCancel(true)
         .build()
-      manager.notify(eventId.toInt(), notification)
+      manager.notify(if (insight) -eventId.toInt() else eventId.toInt(), notification)
       true
     }.getOrDefault(false)
   }
 
-  fun reminderPendingIntent(context: Context, eventId: Long): PendingIntent = PendingIntent.getBroadcast(
+  fun reminderPendingIntent(context: Context, eventId: Long, insight: Boolean = false): PendingIntent = PendingIntent.getBroadcast(
     context,
     eventId.toInt(),
     Intent(context, NotificationReminderReceiver::class.java)
-      .setData(Uri.parse("notifyiq://reminder/$eventId"))
-      .putExtra(NotificationReminderReceiver.EXTRA_EVENT_ID, eventId),
+      .setData(Uri.parse(if (insight) "notifyiq://insight-reminder/$eventId" else "notifyiq://reminder/$eventId"))
+      .putExtra(NotificationReminderReceiver.EXTRA_EVENT_ID, eventId)
+      .putExtra(NotificationReminderReceiver.EXTRA_INSIGHT, insight),
     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
   )
 
@@ -82,21 +83,27 @@ class NotificationReminderReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val eventId = intent.getLongExtra(EXTRA_EVENT_ID, -1L)
     if (eventId <= 0L) return
+    val insight = intent.getBooleanExtra(EXTRA_INSIGHT, false)
     val repository = NotificationRepository(context)
-    if (!repository.markReminderDelivered(eventId)) return
-    if (!UserReminderScheduler.show(context, eventId)) repository.markReminderUnavailable(eventId)
+    if (!repository.markReminderDelivered(eventId, insight)) return
+    if (!UserReminderScheduler.show(context, eventId, insight)) repository.markReminderUnavailable(eventId, insight)
   }
 
-  companion object { const val EXTRA_EVENT_ID = "notifyiq.reminder.event_id" }
+  companion object {
+    const val EXTRA_EVENT_ID = "notifyiq.reminder.event_id"
+    const val EXTRA_INSIGHT = "notifyiq.reminder.insight"
+  }
 }
 
 class ReminderBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
-    NotificationRepository(context).pendingReminders().forEach { (eventId, dueAt) ->
-      if (!UserReminderScheduler.schedule(context, eventId, dueAt)) {
-        NotificationRepository(context).markReminderUnavailable(eventId)
-      }
+    val repository = NotificationRepository(context)
+    repository.pendingReminders().forEach { (eventId, dueAt) ->
+      if (!UserReminderScheduler.schedule(context, eventId, dueAt)) repository.markReminderUnavailable(eventId)
+    }
+    repository.pendingInsightReminders().forEach { (eventId, dueAt) ->
+      if (!UserReminderScheduler.schedule(context, eventId, dueAt, insight = true)) repository.markReminderUnavailable(eventId, insight = true)
     }
   }
 }

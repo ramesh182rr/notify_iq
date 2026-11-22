@@ -54,3 +54,27 @@ internal data class DailyOverviewResult(
   val hours: List<OverviewCount>,
   val sources: List<NotificationRecord>,
 )
+
+internal data class MoneyRow(
+  val eventId: Long, val amountMinor: Long, val currency: String, val direction: String, val merchant: String?,
+  val category: String, val receivedAt: Long, val packageName: String, val subscription: Boolean,
+)
+
+internal data class MoneyBucket(val label: String, val amountMinor: Long, val count: Int)
+
+internal data class MoneySummary(
+  val from: Long, val to: Long, val currency: String, val spentMinor: Long, val receivedMinor: Long,
+  val debitCount: Int, val creditCount: Int, val merchants: List<MoneyBucket>, val categories: List<MoneyBucket>,
+  val recent: List<MoneyRow>, val otherCurrencies: List<String>,
+)
+
+internal data class UpcomingAction(
+  val eventId: Long, val kind: String, val dueAt: Long, val hasTime: Boolean, val amountMinor: Long?, val currency: String?,
+  val reminderAt: Long?, val reminderStatus: String?, val merchant: String?, val packageName: String, val title: String?,
+  val body: String?, val receivedAt: Long,
+)
+
+internal data class RecurringPayment(
+  val merchant: String, val amountMinor: Long, val currency: String, val cadence: String, val lastPaidAt: Long,
+  val nextExpectedAt: Long?, val occurrences: Int,
+)

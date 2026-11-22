@@ -3,8 +3,10 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Card, CategoryAvatar, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
 import type { ScreenKey } from '../../navigation/screens';
-import type { DailyOverview, ListenerStatus, NotificationItem } from '../../native/NativeNotifyIQ';
-import { getDailyOverview, getRecentNotifications } from '../../native/notifyIQ';
+import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
+import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions } from '../../native/notifyIQ';
+import type { InsightsSection } from '../insights/InsightsHub';
+import { actionKinds, dueLabel, formatMoney } from '../money/format';
 import { appDisplayName, categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
 type HomeScreenProps = {
@@ -18,6 +20,7 @@ type HomeScreenProps = {
   onOpenSettings: () => void;
   onRetryStatus: () => void;
   onNavigate: (screen: ScreenKey) => void;
+  onOpenInsights?: (section: InsightsSection) => void;
 };
 
 const tips = [
@@ -46,11 +49,13 @@ function greeting(date: Date) {
 
 export function HomeScreen({
   theme, refreshKey = 0, listenerStatus, statusError, statusLoading, settingsOpening, settingsError,
-  onOpenSettings, onRetryStatus, onNavigate,
+  onOpenSettings, onRetryStatus, onNavigate, onOpenInsights,
 }: HomeScreenProps) {
   const [overview, setOverview] = useState<DailyOverview | null>(null);
   const [recent, setRecent] = useState<ReadonlyArray<NotificationItem>>([]);
   const [loadError, setLoadError] = useState(false);
+  const [upcoming, setUpcoming] = useState<ReadonlyArray<UpcomingAction>>([]);
+  const [money, setMoney] = useState<MoneySummary | null>(null);
   const now = new Date();
   const accessOn = listenerStatus?.accessGranted === true;
 
@@ -62,6 +67,18 @@ export function HomeScreen({
       setLoadError(false);
     } catch {
       setLoadError(true);
+    }
+    try {
+      const today = new Date();
+      const [next, month] = await Promise.all([
+        getUpcomingActions(),
+        getMoneySummary(new Date(today.getFullYear(), today.getMonth(), 1).getTime(), Date.now() + 60_000),
+      ]);
+      setUpcoming(next.filter(item => item.dueAt >= Date.now() - 86_400_000));
+      setMoney(month);
+    } catch {
+      setUpcoming([]);
+      setMoney(null);
     }
   }, []);
 
@@ -75,6 +92,7 @@ export function HomeScreen({
   const peakHour = [...(overview?.hours ?? [])].sort((a, b) => b.count - a.count)[0];
   const tip = tips[Math.floor(now.getTime() / 86_400_000) % tips.length];
   const colors = theme.colors;
+  const openInsights = (section: InsightsSection) => (onOpenInsights ? onOpenInsights(section) : onNavigate('insights'));
 
   return (
     <View style={styles.content}>
@@ -183,6 +201,50 @@ export function HomeScreen({
                 <Text numberOfLines={1} style={[styles.cardBody, styles.flex, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
               </View>
             ))}
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      {accessOn && upcoming.length ? (
+        <FadeIn delay={150}>
+          <SectionHeader theme={theme} title="Coming up" action="See all" onAction={() => openInsights('upcoming')} />
+          <Card theme={theme} style={styles.listCard}>
+            {upcoming.slice(0, 3).map((item, index) => {
+              const kind = actionKinds[item.kind] ?? actionKinds.task;
+              const due = dueLabel(item.dueAt, item.hasTime);
+              return (
+                <Pressable key={item.eventId} accessibilityRole="button" accessibilityLabel={`${kind.label} ${due.text}: ${item.title ?? ''}`}
+                  onPress={() => openInsights('upcoming')}
+                  style={({ pressed }) => [styles.latestRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, pressed && styles.pressed]}>
+                  <View style={[styles.upcomingIcon, { backgroundColor: colors.brandSoft }]}><Text style={styles.attentionEmoji}>{kind.emoji}</Text></View>
+                  <View style={styles.flex}>
+                    <Text style={[styles.appName, { color: due.tone === 'overdue' ? colors.danger : due.tone === 'soon' ? colors.warning : colors.brand }]}>{kind.label} · {due.text}</Text>
+                    <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
+                  </View>
+                  {item.amountMinor != null && item.currency ? <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{formatMoney(item.amountMinor, item.currency)}</Text> : null}
+                </Pressable>
+              );
+            })}
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      {accessOn && money && (money.debitCount > 0 || money.creditCount > 0) ? (
+        <FadeIn delay={170}>
+          <Card theme={theme} onPress={() => openInsights('money')} accessibilityLabel={`This month spent ${formatMoney(money.spentMinor, money.currency)}. Open money insights.`}>
+            <View style={styles.rowBetween}>
+              <View>
+                <Text style={[styles.appName, { color: colors.textSecondary }]}>THIS MONTH · FROM PAYMENT ALERTS</Text>
+                <Text style={[styles.moneyBig, { color: colors.textPrimary }]}>{formatMoney(money.spentMinor, money.currency)} <Text style={[styles.cardBody, { color: colors.textSecondary }]}>spent</Text></Text>
+              </View>
+              <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
+            </View>
+            <View style={styles.moneyChips}>
+              {money.merchants.slice(0, 3).map(row => (
+                <Pill key={row.label} label={`${row.label} ${formatMoney(row.amountMinor, money.currency, { compact: true })}`} color={colors.brand} background={colors.brandSoft} />
+              ))}
+              {money.receivedMinor > 0 ? <Pill label={`In ${formatMoney(money.receivedMinor, money.currency, { compact: true })}`} color={colors.success} background={colors.surfaceMuted} /> : null}
+            </View>
           </Card>
         </FadeIn>
       ) : null}
@@ -310,4 +372,7 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
   promise: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 14 },
   promiseText: { fontSize: 12, fontWeight: '600' },
+  upcomingIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  moneyBig: { fontSize: 26, fontWeight: '900', letterSpacing: -0.6, marginTop: 2 },
+  moneyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });
