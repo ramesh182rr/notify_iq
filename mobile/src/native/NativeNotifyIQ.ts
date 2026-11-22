@@ -90,6 +90,9 @@ export type MoneyAnalytics = {
   recent: ReadonlyArray<MoneyTransaction>;
   otherCurrencies: ReadonlyArray<string>;
 };
+export type BackupResult = { status: string; count: number };
+export type AppDirectoryEntry = { packageName: string; label: string; iconUri: string | null };
+export type InstallInfo = { source: string; sdk: number };
 export type SecuritySettings = { appLock: boolean; deviceSecure: boolean };
 export type UpcomingAction = {
   eventId: number;
@@ -162,6 +165,14 @@ export interface Spec extends TurboModule {
   getMoneySummary(from: number, to: number): Promise<MoneySummary>;
   getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalytics>;
   setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void>;
+  getNotification(id: number): Promise<NotificationItem | null>;
+  exportBackup(password: string): Promise<BackupResult>;
+  importBackup(password: string): Promise<BackupResult>;
+  getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>>;
+  getUiPreference(key: string): Promise<string | null>;
+  setUiPreference(key: string, value: string): Promise<void>;
+  getInstallInfo(): Promise<InstallInfo>;
+  openAppDetailsSettings(): Promise<void>;
   getSecuritySettings(): Promise<SecuritySettings>;
   setAppLock(enabled: boolean): Promise<void>;
   authenticate(): Promise<boolean>;
@@ -172,8 +183,14 @@ export interface Spec extends TurboModule {
   clearInsightReminder(eventId: number): Promise<void>;
 }
 
+let reportedPath = false;
+
 export function getNativeNotifyIQ(): Spec | null {
   const turbo = TurboModuleRegistry.get<Spec>('NotifyIQ');
-  const legacy = NativeModules.NotifyIQ as Spec | undefined;
+  const legacy = turbo ? undefined : (NativeModules.NotifyIQ as Spec | undefined);
+  if (__DEV__ && !reportedPath) {
+    reportedPath = true;
+    console.info(`NotifyIQ native module path: ${turbo ? 'TurboModule' : legacy ? 'legacy interop' : 'missing'}`);
+  }
   return turbo ?? legacy ?? null;
 }

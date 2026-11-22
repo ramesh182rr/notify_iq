@@ -24,6 +24,8 @@ internal data class NotificationFilters(
   val beforeId: Long = 0,
   val includeArchived: Boolean = false,
   val limit: Int = 50,
+  /** When set, returns only this event (used to open the source of an insight). */
+  val id: Long = 0,
 )
 
 internal class NotificationRepository private constructor(private val connection: SQLiteConnection, private val context: Context?) {
@@ -121,6 +123,18 @@ internal class NotificationRepository private constructor(private val connection
         connection.execSQL("PRAGMA user_version = 8")
       }
       version = 8
+    }
+    if (version == 8) {
+      transaction {
+        // Indexed duplicate lookup: store each event's content fingerprint instead of rehashing the window.
+        connection.execSQL("ALTER TABLE notification_events ADD COLUMN content_fingerprint TEXT")
+        connection.execSQL("CREATE INDEX idx_events_fingerprint ON notification_events(package_name, content_fingerprint, received_at)")
+        backfillFingerprints()
+        // Readable names and icons of apps that posted captured notifications (no notification content).
+        connection.execSQL("CREATE TABLE app_directory (package_name TEXT PRIMARY KEY NOT NULL, label TEXT NOT NULL, icon_file TEXT, updated_at INTEGER NOT NULL)")
+        connection.execSQL("PRAGMA user_version = 9")
+      }
+      version = 9
     }
     // Recompute insights when the deterministic extractor changes; user overrides and dismissals are kept.
     if ((scalarLong("SELECT COUNT(*) FROM notification_insights WHERE version < ?", InsightExtractor.VERSION.toLong()) ?: 0L) > 0L) {
@@ -574,6 +588,7 @@ internal class NotificationRepository private constructor(private val connection
       saveInsight(id, InsightExtractor.extract(item.title, item.body, item.receivedAt))
       if (existingId == null) applyUserRules(id, item, analysis)
       val newGroupKey = duplicateGroupKey(item)
+      if (hasFingerprintColumn()) execute("UPDATE notification_events SET content_fingerprint = ? WHERE id = ?", newGroupKey?.fingerprint, id)
       if (oldGroupKey != null && oldGroupKey != newGroupKey) rebuildDuplicateGroup(oldGroupKey)
       if (newGroupKey != null) rebuildDuplicateGroup(newGroupKey)
     }
@@ -600,6 +615,7 @@ internal class NotificationRepository private constructor(private val connection
       where += "e.id IN (SELECT rowid FROM notification_events_fts WHERE notification_events_fts MATCH ?)"
       args += queryExpression
     }
+    if (filters.id > 0) { where += "e.id = ?"; args += filters.id }
     if (filters.packageName.isNotBlank()) { where += "e.package_name = ?"; args += filters.packageName.trim() }
     if (filters.category.isNotBlank()) { where += "COALESCE(a.category_override, rr.category, a.category) = ?"; args += filters.category }
     if (filters.groupName.isNotBlank()) { where += "instr(COALESCE(rr.groups_json, '[]'), ?) > 0"; args += JSONObject.quote(filters.groupName.trim()) }
@@ -682,7 +698,10 @@ internal class NotificationRepository private constructor(private val connection
     }
   }
 
-  fun clear() = synchronized(connection) { transaction { cancelReminders("SELECT id FROM notification_events"); connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups() } }
+  fun clear() = synchronized(connection) {
+    transaction { cancelReminders("SELECT id FROM notification_events"); connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups(); connection.execSQL("DELETE FROM app_directory") }
+    context?.let { AppIconCache.clear(it) }
+  }
 
   private fun cancelReminders(sql: String, vararg values: Any?) {
     connection.prepare(sql).use { statement ->
@@ -731,10 +750,100 @@ internal class NotificationRepository private constructor(private val connection
 
   private fun normalizeForGrouping(value: String): String = value.trim().lowercase().replace(Regex("\\s+"), " ")
 
+  private var fingerprintColumn: Boolean? = null
+
+  /** False only while running pre-v9 migrations (v4 backfill) before the column exists. */
+  private fun hasFingerprintColumn(): Boolean = fingerprintColumn ?: connection.prepare("PRAGMA table_info(notification_events)").use { statement ->
+    var found = false
+    while (statement.step()) if (statement.getText(1) == "content_fingerprint") found = true
+    found
+  }.also { if (it) fingerprintColumn = true }
+
+  private fun backfillFingerprints() {
+    fingerprintColumn = true
+    val rows = mutableListOf<Pair<Long, String?>>()
+    connection.prepare("SELECT id, package_name, notification_key, title, body, subtext, posted_at, received_at FROM notification_events").use { s ->
+      while (s.step()) {
+        val item = CapturedNotification(NotificationIdentity(s.getText(1), s.getText(2)), s.nullableText(3), s.nullableText(4), s.nullableText(5), s.getLong(6), s.getLong(7))
+        rows += s.getLong(0) to duplicateGroupKey(item)?.fingerprint
+      }
+    }
+    rows.forEach { (id, fingerprint) -> execute("UPDATE notification_events SET content_fingerprint = ? WHERE id = ?", fingerprint, id) }
+  }
+
+  // ---- encrypted backup support -------------------------------------------------------------
+
+  /** Consistent single-file copy of the whole database (used as the backup payload). */
+  fun snapshotTo(target: File) = synchronized(connection) {
+    target.delete()
+    connection.execSQL("VACUUM INTO '${target.absolutePath.replace("'", "''")}'")
+  }
+
+  fun eventCount(): Long = synchronized(connection) { scalarLong("SELECT COUNT(*) FROM notification_events") ?: 0L }
+
+  /**
+   * Replaces all NotifyIQ data with a backup copy. [source] must already be opened through
+   * NotificationRepository(source) so it is migrated to this schema version.
+   */
+  fun replaceWith(source: File): Long = synchronized(connection) {
+    cancelReminders("SELECT id FROM notification_events")
+    val path = source.absolutePath.replace("'", "''")
+    connection.execSQL("ATTACH DATABASE '$path' AS src")
+    try {
+      transaction {
+        connection.execSQL("DELETE FROM notification_events")
+        connection.execSQL("DELETE FROM duplicate_groups")
+        connection.execSQL("DELETE FROM app_directory")
+        connection.execSQL("DELETE FROM app_preferences")
+        connection.execSQL("INSERT INTO app_preferences SELECT * FROM src.app_preferences")
+        connection.execSQL("INSERT INTO notification_events SELECT * FROM src.notification_events")
+        connection.execSQL("INSERT INTO notification_analysis SELECT * FROM src.notification_analysis")
+        connection.execSQL("INSERT INTO notification_rule_results SELECT * FROM src.notification_rule_results")
+        connection.execSQL("INSERT INTO notification_insights SELECT * FROM src.notification_insights")
+        connection.execSQL("INSERT INTO duplicate_groups SELECT * FROM src.duplicate_groups")
+        connection.execSQL("INSERT INTO duplicate_group_members SELECT * FROM src.duplicate_group_members")
+        // Icon files belong to the old device; labels are kept and icons regenerate on new captures.
+        connection.execSQL("INSERT INTO app_directory(package_name, label, icon_file, updated_at) SELECT package_name, label, NULL, updated_at FROM src.app_directory")
+      }
+    } finally {
+      connection.execSQL("DETACH DATABASE src")
+    }
+    connection.execSQL("INSERT INTO notification_events_fts(notification_events_fts) VALUES ('rebuild')")
+    context?.let { ctx ->
+      pendingReminders().forEach { (id, at) -> if (!UserReminderScheduler.schedule(ctx, id, at)) markReminderUnavailable(id) }
+      pendingInsightReminders().forEach { (id, at) -> if (!UserReminderScheduler.schedule(ctx, id, at, insight = true)) markReminderUnavailable(id, insight = true) }
+    }
+    eventCount()
+  }
+
+  // ---- app directory (labels and icons of apps that posted captured notifications) -------
+
+  fun recordApp(packageName: String, label: String, iconFile: String?) = synchronized(connection) {
+    execute(
+      "INSERT INTO app_directory(package_name, label, icon_file, updated_at) VALUES (?, ?, ?, ?) " +
+        "ON CONFLICT(package_name) DO UPDATE SET label = excluded.label, icon_file = COALESCE(excluded.icon_file, app_directory.icon_file), updated_at = excluded.updated_at",
+      packageName, label, iconFile, System.currentTimeMillis(),
+    )
+  }
+
+  fun appDirectory(): List<AppDirectoryEntry> = synchronized(connection) {
+    val entries = mutableListOf<AppDirectoryEntry>()
+    connection.prepare("SELECT package_name, label, icon_file FROM app_directory ORDER BY label COLLATE NOCASE").use { s ->
+      while (s.step()) entries += AppDirectoryEntry(s.getText(0), s.getText(1), s.nullableText(2))
+    }
+    entries
+  }
+
   private fun rebuildDuplicateGroup(key: DuplicateGroupKey) {
     execute("DELETE FROM duplicate_groups WHERE package_name = ? AND content_fingerprint = ? AND window_start = ?", key.packageName, key.fingerprint, key.windowStart)
     val eventIds = mutableListOf<Long>()
-    connection.prepare("SELECT id, title, body, subtext FROM notification_events WHERE package_name = ? AND received_at >= ? AND received_at < ?").use { statement ->
+    if (hasFingerprintColumn()) {
+      connection.prepare("SELECT id FROM notification_events WHERE package_name = ? AND content_fingerprint = ? AND received_at >= ? AND received_at < ?").use { statement ->
+        statement.bindText(1, key.packageName); statement.bindText(2, key.fingerprint)
+        statement.bindLong(3, key.windowStart); statement.bindLong(4, key.windowStart + DUPLICATE_WINDOW_MILLIS)
+        while (statement.step()) eventIds += statement.getLong(0)
+      }
+    } else connection.prepare("SELECT id, title, body, subtext FROM notification_events WHERE package_name = ? AND received_at >= ? AND received_at < ?").use { statement ->
       statement.bindText(1, key.packageName)
       statement.bindLong(2, key.windowStart)
       statement.bindLong(3, key.windowStart + DUPLICATE_WINDOW_MILLIS)
@@ -860,7 +969,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 8
+    private const val SCHEMA_VERSION = 9
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5
@@ -873,6 +982,11 @@ internal class NotificationRepository private constructor(private val connection
     @Synchronized private fun connectionFor(file: File): SQLiteConnection {
       file.parentFile?.mkdirs()
       return connections.getOrPut(file.absolutePath) { driver.open(file.absolutePath) }
+    }
+
+    /** Closes a cached connection to a temporary database (backup import) before the file is deleted. */
+    @Synchronized internal fun release(file: File) {
+      connections.remove(file.absolutePath)?.let { runCatching { it.close() } }
     }
   }
 }

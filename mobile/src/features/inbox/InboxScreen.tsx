@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
+import { AppPicker } from '../../components/AppPicker';
 
 import {
   clearNotificationHistory,
@@ -16,9 +18,9 @@ import {
 import type { NotificationItem } from '../../native/NativeNotifyIQ';
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
-import { appDisplayName, categoryVisual, priorityColor, relativeTime } from '../../theme/tokens';
+import { categoryVisual, priorityColor, relativeTime } from '../../theme/tokens';
 import { readableTextOn } from '../../theme/contrast';
-import { CategoryAvatar, Pill } from '../../components/ui';
+import { Pill } from '../../components/ui';
 
 type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
@@ -41,6 +43,7 @@ const decodeSavedSearches = (value: string): SavedSearch[] => {
 };
 
 export function InboxScreen({ theme, refreshKey, searchMode = false, listenerStatus, statusLoading = false, statusError = null }: Props) {
+  const { name: appName } = useAppDirectory();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
   const [error, setError] = useState(false);
@@ -49,6 +52,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
   const [clearing, setClearing] = useState(false);
   const [query, setQuery] = useState('');
   const [packageName, setPackageName] = useState('');
+  const [pickingApp, setPickingApp] = useState(false);
   const [range, setRange] = useState<DateRange>('all');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [category, setCategory] = useState('');
@@ -213,15 +217,14 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
         onChangeText={setQuery}
         style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
       />
-      <TextInput
-        accessibilityLabel="Filter by app package"
-        placeholder="Filter by app package"
-        placeholderTextColor={theme.colors.textSecondary}
-        value={packageName}
-        onChangeText={setPackageName}
-        autoCapitalize="none"
-        style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
-      />
+      <Pressable accessibilityRole="button" accessibilityLabel={`Filter by app: ${packageName ? appName(packageName) : 'all apps'}`} onPress={() => setPickingApp(true)}
+        style={[styles.input, styles.appField, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+        {packageName ? <AppIcon theme={theme} packageName={packageName} size={26} /> : null}
+        <Text style={[styles.flex, { color: theme.colors.textPrimary }]}>App: {packageName ? appName(packageName) : 'All apps'}</Text>
+        <Text style={{ color: theme.colors.textSecondary }}>▾</Text>
+      </Pressable>
+      <AppPicker theme={theme} visible={pickingApp} title="Filter by app" allowAll
+        onPick={value => { setPackageName(value ?? ''); setPickingApp(false); }} onClose={() => setPickingApp(false)} />
       <View style={styles.row}>
         {(['all', '7days', 'today'] as const).map(value => (
           <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: range === value }} onPress={() => setRange(value)} style={[styles.chip, { backgroundColor: range === value ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -323,9 +326,9 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
         return (
         <View key={item.id} style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: item.priority === 'urgent' ? theme.colors.danger : theme.colors.border, shadowColor: theme.colors.shadow }]}>
           <View style={styles.itemHeader}>
-            <CategoryAvatar theme={theme} category={item.category} size={42} />
+            <AppIcon theme={theme} packageName={item.packageName} category={item.category} size={42} />
             <View style={styles.flex}>
-              <Text numberOfLines={1} style={[styles.app, { color: theme.colors.textPrimary }]}>{appDisplayName(item.packageName)}</Text>
+              <Text numberOfLines={1} style={[styles.app, { color: theme.colors.textPrimary }]}>{appName(item.packageName)}</Text>
               <Text numberOfLines={1} style={[styles.time, { color: theme.colors.textSecondary }]}>{relativeTime(item.receivedAt)} · {new Date(item.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
             </View>
             {item.saved ? <Text accessibilityLabel="Saved" style={styles.savedStar}>★</Text> : null}
@@ -467,6 +470,7 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 14, fontWeight: '700' },
   app: { fontSize: 15, fontWeight: '800' },
   flex: { flex: 1 },
+  appField: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
   itemTitle: { fontSize: 16, fontWeight: '700' },
   body: { fontSize: 14, lineHeight: 20 },
   time: { fontSize: 12, marginTop: 1 },

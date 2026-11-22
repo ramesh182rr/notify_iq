@@ -93,3 +93,5 @@ internal data class MoneyAnalytics(
   val biggest: MoneyRow?, val busiestDay: MoneyDay?, val mostFrequent: MoneyBucket?, val smallSpends: MoneyBucket,
   val weekendShare: Double, val projectedMonthSpentMinor: Long?, val recent: List<MoneyRow>, val otherCurrencies: List<String>,
 )
+
+internal data class AppDirectoryEntry(val packageName: String, val label: String, val iconFile: String?)

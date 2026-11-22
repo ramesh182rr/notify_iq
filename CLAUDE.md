@@ -36,6 +36,8 @@ Model benchmark app (isolated Kotlin 2.4.0 project, never part of the production
 - `./gradlew -p ../model-benchmark :app:assembleDebug :app:assembleDebugAndroidTest` from `mobile/android/`
 - Model files go in the benchmark app's external files dir on the emulator. Weights never go in Git or the production app.
 
+End-to-end UI checks: with the debug app and `dev-fixture-poster` installed, Metro on 8093 and an emulator running, `python3 -I mobile/e2e/notifyiq_e2e.py` (23 checks, cleans up after itself). Note that `connectedDebugAndroidTest` uninstalls the app when it finishes.
+
 Run tests only when asked or when verifying a completed task, and report exact commands and outcomes.
 
 ## Environment facts

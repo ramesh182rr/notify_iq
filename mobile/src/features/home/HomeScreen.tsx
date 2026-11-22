@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 
 import { readableTextOn } from '../../theme/contrast';
-import { Card, CategoryAvatar, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
+import { Card, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
 import type { ScreenKey } from '../../navigation/screens';
 import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
 import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions } from '../../native/notifyIQ';
 import type { InsightsSection } from '../insights/InsightsHub';
 import { LegalScreen } from '../legal/LegalScreen';
 import { actionKinds, dueLabel, formatMoney } from '../money/format';
-import { appDisplayName, categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
+import { categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
 type HomeScreenProps = {
   theme: AppTheme;
@@ -53,6 +54,7 @@ export function HomeScreen({
   theme, refreshKey = 0, listenerStatus, statusError, statusLoading, settingsOpening, settingsError,
   onOpenSettings, onRetryStatus, onNavigate, onOpenInsights,
 }: HomeScreenProps) {
+  const { name: appName } = useAppDirectory();
   const [overview, setOverview] = useState<DailyOverview | null>(null);
   const [recent, setRecent] = useState<ReadonlyArray<NotificationItem>>([]);
   const [loadError, setLoadError] = useState(false);
@@ -201,7 +203,7 @@ export function HomeScreen({
             {attention.slice(0, 2).map(item => (
               <View key={item.id} style={styles.miniRow}>
                 <Pill label={item.priority === 'urgent' ? 'Urgent' : 'High'} color={readableTextOn(priorityColor(theme, item.priority))} background={priorityColor(theme, item.priority)} />
-                <Text numberOfLines={1} style={[styles.cardBody, styles.flex, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
+                <Text numberOfLines={1} style={[styles.cardBody, styles.flex, { color: colors.textPrimary }]}>{item.title || item.body || appName(item.packageName)}</Text>
               </View>
             ))}
           </Card>
@@ -222,7 +224,7 @@ export function HomeScreen({
                   <View style={[styles.upcomingIcon, { backgroundColor: colors.brandSoft }]}><Text style={styles.attentionEmoji}>{kind.emoji}</Text></View>
                   <View style={styles.flex}>
                     <Text style={[styles.appName, { color: due.tone === 'overdue' ? colors.danger : due.tone === 'soon' ? colors.warning : colors.brand }]}>{kind.label} · {due.text}</Text>
-                    <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
+                    <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || item.body || appName(item.packageName)}</Text>
                   </View>
                   {item.amountMinor != null && item.currency ? <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{formatMoney(item.amountMinor, item.currency)}</Text> : null}
                 </Pressable>
@@ -262,7 +264,7 @@ export function HomeScreen({
             <HourChart theme={theme} hours={overview?.hours ?? []} color={colors.brand} height={64} />
             {topApps.length ? <View style={styles.topApps}>
               {topApps.map(row => (
-                <StatBar key={row.label} theme={theme} label={appDisplayName(row.label)} value={row.count} max={topApps[0].count} color={colors.heroAccent} />
+                <StatBar key={row.label} theme={theme} label={appName(row.label)} value={row.count} max={topApps[0].count} color={colors.heroAccent} />
               ))}
             </View> : null}
           </Card>
@@ -274,16 +276,16 @@ export function HomeScreen({
           <SectionHeader theme={theme} title="Latest" action="See all" onAction={() => onNavigate('inbox')} />
           <Card theme={theme} style={styles.listCard}>
             {today.slice(0, 4).map((item, index) => (
-              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${appDisplayName(item.packageName)}: ${item.title ?? ''}. Open Inbox.`}
+              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${appName(item.packageName)}: ${item.title ?? ''}. Open Inbox.`}
                 onPress={() => onNavigate('inbox')}
                 style={({ pressed }) => [styles.latestRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, pressed && styles.pressed]}>
-                <CategoryAvatar theme={theme} category={item.category} size={40} />
+                <AppIcon theme={theme} packageName={item.packageName} category={item.category} size={40} />
                 <View style={styles.flex}>
                   <View style={styles.rowBetween}>
-                    <Text numberOfLines={1} style={[styles.appName, { color: colors.textSecondary }]}>{appDisplayName(item.packageName)}</Text>
+                    <Text numberOfLines={1} style={[styles.appName, { color: colors.textSecondary }]}>{appName(item.packageName)}</Text>
                     <Text style={[styles.time, { color: colors.textSecondary }]}>{relativeTime(item.receivedAt)}</Text>
                   </View>
-                  <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || appDisplayName(item.packageName)}</Text>
+                  <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || appName(item.packageName)}</Text>
                   {item.body ? <Text numberOfLines={1} style={[styles.cardBody, { color: colors.textSecondary }]}>{item.body}</Text> : null}
                 </View>
               </Pressable>

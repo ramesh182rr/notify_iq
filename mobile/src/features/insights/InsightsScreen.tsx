@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppDirectory } from '../../app/AppDirectory';
 
 import { CategoryAvatar, CategoryStack, HourChart, StatBar } from '../../components/ui';
-import { appDisplayName, categoryVisual } from '../../theme/tokens';
+import { categoryVisual } from '../../theme/tokens';
 
 import { getDailyOverview } from '../../native/notifyIQ';
 import type { DailyOverview, ListenerStatus, NotificationItem } from '../../native/NativeNotifyIQ';
@@ -16,6 +17,7 @@ const categoryNames: Record<string, string> = {
 const ignorePromise = (promise: Promise<unknown>) => promise.catch(() => undefined);
 
 export function InsightsScreen({ theme, refreshKey, status, statusLoading, statusError }: Props) {
+  const { name: appName } = useAppDirectory();
   const [overview, setOverview] = useState<DailyOverview | null>(null);
   const [selectedSource, setSelectedSource] = useState<NotificationItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
             <View style={cardStyle}>
               <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Most active apps</Text>
               {overview.apps.map(row => (
-                <StatBar key={row.label} theme={theme} label={appDisplayName(row.label)} value={row.count}
+                <StatBar key={row.label} theme={theme} label={appName(row.label)} value={row.count}
                   max={overview.apps[0]?.count ?? 1} color={theme.colors.heroAccent} />
               ))}
             </View>

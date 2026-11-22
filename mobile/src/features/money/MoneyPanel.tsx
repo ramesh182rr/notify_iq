@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { useAppDirectory } from '../../app/AppDirectory';
 
 import { CalendarHeatmap, ChangeBadge, ColumnChart, FlowChart, Treemap } from '../../components/charts';
+import { SourceNotificationSheet } from '../../components/SourceNotificationSheet';
 import { Card, FadeIn, SectionHeader } from '../../components/ui';
 import type { MoneyAnalytics, MoneyTransaction, RecurringPayment } from '../../native/NativeNotifyIQ';
 import { dismissInsight, getMoneyAnalytics, getRecurringPayments, setMoneyCategory } from '../../native/notifyIQ';
-import { appDisplayName, relativeTime, type AppTheme } from '../../theme/tokens';
+import { relativeTime, type AppTheme } from '../../theme/tokens';
 import { categoryMeta, formatMoney, incomeCategoryKeys, spendCategoryKeys } from './format';
 
 type Props = { theme: AppTheme; refreshKey: number };
@@ -31,6 +33,7 @@ function rangeBounds(range: Range, now = new Date()) {
 }
 
 export function MoneyPanel({ theme, refreshKey }: Props) {
+  const { name: appName } = useAppDirectory();
   const [range, setRange] = useState<Range>('month');
   const [mode, setMode] = useState<Mode>('spending');
   const [data, setData] = useState<MoneyAnalytics | null>(null);
@@ -39,6 +42,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editing, setEditing] = useState<MoneyTransaction | null>(null);
   const [applyToPlace, setApplyToPlace] = useState(true);
+  const [sourceId, setSourceId] = useState<number | null>(null);
   const colors = theme.colors;
 
   const load = useCallback(async () => {
@@ -281,11 +285,13 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
                 <View key={row.eventId} style={[styles.txRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
                   <View style={[styles.catIcon, { backgroundColor: `${meta.color}33` }]}><Text style={styles.catEmoji}>{meta.emoji}</Text></View>
                   <View style={styles.flex}>
-                    <Text numberOfLines={1} style={[styles.catLabel, { color: colors.textPrimary }]}>{row.merchant ?? (debit ? 'Payment' : 'Money received')}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View the notification for ${row.merchant ?? 'this payment'}`} hitSlop={6} onPress={() => setSourceId(row.eventId)}>
+                      <Text numberOfLines={1} style={[styles.catLabel, { color: colors.textPrimary }]}>{row.merchant ?? (debit ? 'Payment' : 'Money received')} <Text style={[styles.note, { color: colors.brand }]}>View source ›</Text></Text>
+                    </Pressable>
                     <Pressable accessibilityRole="button" accessibilityLabel={`Category ${meta.label}. Change category`} hitSlop={6} onPress={() => { setEditing(row); setApplyToPlace(row.merchant != null); }}>
                       <Text style={[styles.note, { color: colors.brand }]}>{meta.label}{row.categoryEdited ? ' · yours' : ''} ✎</Text>
                     </Pressable>
-                    <Text style={[styles.note, { color: colors.textSecondary }]}>{relativeTime(row.receivedAt)} · {appDisplayName(row.packageName)}</Text>
+                    <Text style={[styles.note, { color: colors.textSecondary }]}>{relativeTime(row.receivedAt)} · {appName(row.packageName)}</Text>
                   </View>
                   <View style={styles.amountCol}>
                     <Text style={[styles.catAmount, { color: debit ? colors.textPrimary : colors.success }]}>{debit ? '−' : '+'}{formatMoney(row.amountMinor, row.currency)}</Text>
@@ -301,6 +307,8 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
         </FadeIn>
       ) : null}
 
+      <SourceNotificationSheet theme={theme} eventId={sourceId} onClose={() => setSourceId(null)}
+        note="The amount, place and category were read from this notification. If something is wrong, change the category or mark it as not a payment." />
       <Modal visible={editing !== null} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <View style={styles.backdrop}>
           <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>

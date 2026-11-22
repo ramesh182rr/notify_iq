@@ -4,7 +4,7 @@
  * Every statement here must stay true of the shipped build. When behaviour changes (permissions,
  * storage, network, retention, new data), update this file and bump LEGAL_VERSION / LEGAL_UPDATED.
  */
-export const LEGAL_VERSION = '1.0';
+export const LEGAL_VERSION = '1.1';
 export const LEGAL_UPDATED = '22 November 2026';
 
 export type LegalSection = { heading: string; body?: string; bullets?: string[] };
@@ -45,8 +45,13 @@ export const privacyPolicy: LegalDocument = {
         'The notification details listed above, in a private database inside NotifyIQ’s own storage on this phone. Other apps cannot read it.',
         'Information NotifyIQ works out from them: a category, a priority, repeat groups, money amounts and the place paid, due dates, renewals, appointments and tasks.',
         'Your settings: rules, saved searches, excluded apps, retention period, category corrections, reminders and app lock.',
+        'The name and icon of each app that posted a saved notification, so lists can show real app names. These contain no notification content.',
       ],
       body: 'This data is excluded from Android cloud backup and from phone-to-phone transfer, so it does not leave the device that way either.',
+    },
+    {
+      heading: 'Encrypted backups you choose to make',
+      body: 'If you use Export backup, NotifyIQ writes one file containing your NotifyIQ data, encrypted with a password you choose (AES-256), to the place you pick in Android’s file picker. Where that file goes afterwards, for example a USB drive or a cloud folder, is up to you and that service. Without the password nobody, including the developer, can read it. Restoring a backup replaces the data on the phone.',
     },
     {
       heading: 'Money and date insights',
@@ -71,6 +76,7 @@ export const privacyPolicy: LegalDocument = {
         'Turn Notification access off at any time from the Privacy tab or Android settings. Capture stops immediately.',
         'Exclude any app so its notifications are never read.',
         'Delete single notifications, mark misread payments or dates as not relevant, or delete all history.',
+        'Export an encrypted backup to move to a new phone, and restore it there.',
         'Turn on App lock (see Security).',
       ],
     },
@@ -160,7 +166,7 @@ export const securityOverview: LegalDocument = {
         'No network access. NotifyIQ does not have Android’s internet permission, so Android itself blocks it from opening any connection.',
         'Private storage. History is kept in NotifyIQ’s private app storage, which Android isolates from other apps. When your phone is locked, Android’s built-in storage encryption protects it.',
         'Sensitive messages are discarded. OTPs, passwords and card numbers are thrown away before saving, never stored.',
-        'No backups or transfers. NotifyIQ data is excluded from cloud backup and phone-to-phone transfer.',
+        'No automatic backups or transfers. NotifyIQ data is excluded from cloud backup and phone-to-phone transfer. Backups happen only when you export one, and they are encrypted with your password (AES-256-GCM).',
         'App lock (optional). Requires your fingerprint, face or phone PIN to open NotifyIQ.',
         'Nothing else can start NotifyIQ’s internal parts. Its notification reader, reminders and startup handler are private to the app.',
         'No logs of your content. NotifyIQ’s diagnostic messages contain only error codes, never notification text.',

@@ -52,7 +52,10 @@ class NotifyIQNotificationListener : NotificationListenerService() {
       title?.take(500), (bigText ?: text)?.take(4000), subtext?.take(500),
       sbn.postTime, now,
     )
-    enqueue { repository.upsert(record) }
+    enqueue {
+      repository.upsert(record)
+      AppIconCache.remember(applicationContext, repository, sbn.packageName, extras)
+    }
   }
 
   override fun onNotificationRemoved(sbn: StatusBarNotification) {

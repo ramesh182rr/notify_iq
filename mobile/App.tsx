@@ -10,7 +10,9 @@ import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import { InsightsHub, type InsightsSection } from './src/features/insights/InsightsHub';
 import { RulesScreen } from './src/features/rules/RulesScreen';
-import {authenticate, getListenerStatus, getSecuritySettings, openNotificationAccessSettings} from './src/native/notifyIQ';
+import {authenticate, getListenerStatus, getSecuritySettings, getUiPreference, openNotificationAccessSettings, setUiPreference} from './src/native/notifyIQ';
+import { AppDirectoryProvider } from './src/app/AppDirectory';
+import { Onboarding } from './src/features/onboarding/Onboarding';
 import { LockScreen } from './src/features/legal/LockScreen';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
@@ -23,8 +25,26 @@ import {
 function App() {
   const systemColorScheme = useColorScheme();
   const [activeScreen, setActiveScreen] = useState<ScreenKey>('home');
-  const [themePreference, setThemePreference] =
+  const [themePreference, setThemePreferenceState] =
     useState<ThemePreference>('system');
+  // Persist the chosen appearance so it survives restarts.
+  useEffect(() => {
+    getUiPreference('theme')
+      .then(saved => { if (saved === 'light' || saved === 'dark' || saved === 'system') setThemePreferenceState(saved); })
+      .catch(() => undefined);
+  }, []);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    getUiPreference('onboarding_done').then(done => setShowOnboarding(done !== '1')).catch(() => undefined);
+  }, []);
+  const finishOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    setUiPreference('onboarding_done', '1').catch(() => undefined);
+  }, []);
+  const setThemePreference = useCallback((next: ThemePreference) => {
+    setThemePreferenceState(next);
+    setUiPreference('theme', next).catch(() => undefined);
+  }, []);
   const [listenerStatus, setListenerStatus] = useState<ListenerStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [settingsOpening, setSettingsOpening] = useState(false);
@@ -106,6 +126,7 @@ function App() {
 
   return (
     <SafeAreaProvider>
+      <AppDirectoryProvider refreshKey={inboxRefreshKey}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
@@ -121,7 +142,8 @@ function App() {
           <LockScreen theme={theme} failed={unlockFailed} onUnlock={() => { unlock().catch(() => undefined); }} />
         ) : (<>
         <View style={styles.flex}>
-          <ScreenContainer theme={theme} bottomSpace={FLOATING_TAB_BAR_SPACE}>
+          {/* key per tab: each tab opens at the top instead of inheriting the previous tab's scroll offset */}
+          <ScreenContainer key={activeScreen} theme={theme} bottomSpace={FLOATING_TAB_BAR_SPACE}>
             {activeScreen === 'inbox' || activeScreen === 'search' ? (
               <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} listenerStatus={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
             ) : activeScreen === 'privacy' ? (
@@ -152,6 +174,9 @@ function App() {
         />
         </>)}
       </SafeAreaView>
+        <Onboarding theme={theme} visible={showOnboarding && locked === false} listenerStatus={listenerStatus}
+          onOpenAccessSettings={() => { handleOpenSettings().catch(() => undefined); }} onDone={finishOnboarding} />
+      </AppDirectoryProvider>
     </SafeAreaProvider>
   );
 }

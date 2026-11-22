@@ -203,6 +203,25 @@ This log distinguishes decisions already present in the supplied development kit
 - The bottom navigation becomes a floating pill bar above the gesture area; content pads itself clear of it.
 **Owner action:** back up the keystore file and its password (from `~/.gradle/gradle.properties`) to a password manager. A lost key means sideloaded installs cannot be updated, and Play uploads need an upload-key reset.
 
+### R-018 — Usability and portability batch (owner items 1–6, 15, 17, 18)
+
+**Status:** Approved by user, 2026-11-22
+**Decision:**
+- The theme choice persists (private SharedPreferences).
+- Real app names and icons come from the poster's ApplicationInfo carried in notification extras, so no package-visibility permission is needed. They are stored in `app_directory` (schema v9) with icons cached as private PNGs. Clearing history clears them.
+- First-run onboarding, including the "Allow restricted settings" step only for sideloaded installs on Android 13+.
+- "View source" opens the original notification from Money and Coming up.
+- An app picker for exclusions and the Inbox filter. It lists apps seen in history plus manual package entry, because QUERY_ALL_PACKAGES is deliberately not requested.
+- Encrypted export/import:
+  - Format: `.niqbackup`, an AES-256-GCM authenticated header with PBKDF2-HMAC-SHA256 (310,000 iterations) from a user password of at least 8 characters.
+  - Saved and opened through the Storage Access Framework, so no storage permission and still no internet.
+  - Import replaces all data after migrating older backups and rejects newer ones.
+- Duplicate grouping uses a stored, indexed `content_fingerprint`.
+- The native module is a real TurboModule (extends the generated `NativeNotifyIQSpec`; verified resolving via TurboModuleRegistry).
+- A repeatable adb-driven end-to-end suite lives at `mobile/e2e/notifyiq_e2e.py`.
+- Each tab now opens at the top, fixing scroll position leaking between tabs. This bug was found by the end-to-end suite.
+**Privacy:** the policy (v1.1) discloses the app-name/icon cache and user-initiated encrypted exports. Exports leave the device only where the user chooses to save them.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

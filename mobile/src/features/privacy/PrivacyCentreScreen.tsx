@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { clearNotificationHistory, getExcludedPackages, getRetentionDays, setAppExcluded, setRetentionDays } from '../../native/notifyIQ';
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 import { SecuritySection } from './SecuritySection';
+import { BackupSection } from './BackupSection';
+import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
+import { AppPicker } from '../../components/AppPicker';
 
 const RETENTION_OPTIONS = [7, 30, 90, -1];
 type Props = { theme: AppTheme; status: ListenerStatus | null; onOpenSettings: () => void };
@@ -13,7 +16,8 @@ const ignorePromise = (promise: Promise<unknown>) => promise.catch(() => undefin
 export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
   const [retention, setRetention] = useState(30);
   const [excluded, setExcluded] = useState<ReadonlyArray<string>>([]);
-  const [packageName, setPackageName] = useState('');
+  const [picking, setPicking] = useState(false);
+  const { name: appName } = useAppDirectory();
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
@@ -33,7 +37,6 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
     try {
       await setAppExcluded(name, exclude);
       await load();
-      setPackageName('');
     } catch {
       setError(true);
     } finally {
@@ -58,6 +61,7 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Privacy Centre</Text>
       <Text style={[styles.description, { color: theme.colors.textSecondary }]}>Control notification access, local retention and which apps NotifyIQ keeps history for.</Text>
       <SecuritySection theme={theme} />
+      <BackupSection theme={theme} onRestored={() => { ignorePromise(load()); }} />
 
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Notification access</Text>
@@ -89,13 +93,18 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Excluded apps</Text>
         <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Excluded apps are checked before notification text is read. Adding an app also deletes its existing NotifyIQ history.</Text>
-        <TextInput accessibilityLabel="App package name to exclude" autoCapitalize="none" autoCorrect={false} placeholder="Example: com.example.app" placeholderTextColor={theme.colors.textSecondary} value={packageName} onChangeText={setPackageName} style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border }]} />
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || !packageName.trim() }} disabled={busy || !packageName.trim()} onPress={() => ignorePromise(updateExclusion(packageName.trim(), true))} style={styles.action}>
-          <Text style={{ color: theme.colors.brand }}>Exclude this package</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => setPicking(true)} style={[styles.pickButton, { backgroundColor: theme.colors.brandSoft }]}>
+          <Text style={{ color: theme.colors.brand, fontWeight: '800' }}>＋ Choose an app to exclude</Text>
         </Pressable>
+        <AppPicker theme={theme} visible={picking} title="Exclude an app" onClose={() => setPicking(false)}
+          onPick={value => { setPicking(false); if (value) ignorePromise(updateExclusion(value, true)); }} />
         {excluded.length ? excluded.map(name => (
           <View key={name} style={styles.excludedRow}>
-            <Text style={[styles.copy, styles.package, { color: theme.colors.textPrimary }]}>{name}</Text>
+            <AppIcon theme={theme} packageName={name} size={32} />
+            <View style={styles.flexCol}>
+              <Text style={[styles.copy, { color: theme.colors.textPrimary, fontWeight: '700' }]}>{appName(name)}</Text>
+              <Text style={[styles.copy, styles.package, { color: theme.colors.textSecondary }]}>{name}</Text>
+            </View>
               <Pressable accessibilityRole="button" accessibilityLabel={`Allow ${name}`} onPress={() => ignorePromise(updateExclusion(name, false))} disabled={busy}>
               <Text style={{ color: theme.colors.brand }}>Allow</Text>
             </Pressable>
@@ -126,6 +135,8 @@ const styles = StyleSheet.create({
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, minHeight: 48, justifyContent: 'center' },
   action: { minHeight: 48, justifyContent: 'center' },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12 },
+  pickButton: { minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  flexCol: { flex: 1 },
   excludedRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   package: { flex: 1 },
 });

@@ -15,11 +15,29 @@ import com.facebook.react.module.annotations.ReactModule
 @ReactModule(name = NotifyIQModule.NAME)
 class NotifyIQModule(
   private val appContext: ReactApplicationContext,
-) : ReactContextBaseJavaModule(appContext) {
-  override fun getName(): String = NAME
+) : NativeNotifyIQSpec(appContext) {
+  private class PendingBackup(val export: Boolean, val password: CharArray, val promise: Promise)
+  @Volatile private var pendingBackup: PendingBackup? = null
+
+  private val backupListener = object : com.facebook.react.bridge.BaseActivityEventListener() {
+    override fun onActivityResult(activity: android.app.Activity, requestCode: Int, resultCode: Int, data: Intent?) {
+      if (requestCode != REQUEST_EXPORT && requestCode != REQUEST_IMPORT) return
+      val pending = pendingBackup ?: return
+      pendingBackup = null
+      val uri = data?.data
+      if (resultCode != android.app.Activity.RESULT_OK || uri == null) {
+        pending.password.fill('\u0000')
+        pending.promise.resolve(Arguments.createMap().apply { putString("status", "cancelled"); putDouble("count", 0.0) })
+        return
+      }
+      Thread { if (pending.export) runExport(uri, pending) else runImport(uri, pending) }.start()
+    }
+  }
+
+  init { appContext.addActivityEventListener(backupListener) }
 
   @ReactMethod
-  fun getListenerStatus(promise: Promise) {
+  override fun getListenerStatus(promise: Promise) {
     try {
       val listener = ComponentName(appContext, NotifyIQNotificationListener::class.java)
       val notificationManager = appContext.getSystemService(NotificationManager::class.java)
@@ -36,7 +54,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getRecentNotifications(limit: Double, promise: Promise) {
+  override fun getRecentNotifications(limit: Double, promise: Promise) {
     try {
       val items = NotificationRepository(appContext).notifications(NotificationFilters(limit = limit.toInt()))
       promise.resolve(toWritableArray(items))
@@ -44,7 +62,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getDailyOverview(promise: Promise) {
+  override fun getDailyOverview(promise: Promise) {
     try {
       val overview = NotificationRepository(appContext).dailyOverview()
       val result = Arguments.createMap().apply {
@@ -62,7 +80,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getMoneySummary(from: Double, to: Double, promise: Promise) {
+  override fun getMoneySummary(from: Double, to: Double, promise: Promise) {
     try {
       val summary = NotificationRepository(appContext).moneySummary(from.toLong(), to.toLong())
       fun buckets(items: List<MoneyBucket>) = Arguments.createArray().apply {
@@ -105,7 +123,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getMoneyAnalytics(from: Double, to: Double, promise: Promise) {
+  override fun getMoneyAnalytics(from: Double, to: Double, promise: Promise) {
     try {
       val a = NotificationRepository(appContext).moneyAnalytics(from.toLong(), to.toLong())
       fun breakdown(items: List<MoneyCategoryBreakdown>) = Arguments.createArray().apply {
@@ -143,13 +161,144 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun setMoneyCategory(eventId: Double, category: String, applyToMerchant: Boolean, promise: Promise) {
+  override fun setMoneyCategory(eventId: Double, category: String, applyToMerchant: Boolean, promise: Promise) {
     try { NotificationRepository(appContext).setMoneyCategory(eventId.toLong(), category, applyToMerchant); promise.resolve(null) }
     catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The category could not be changed.") }
   }
 
+  private val uiPrefs get() = appContext.getSharedPreferences("notifyiq_ui", android.content.Context.MODE_PRIVATE)
+  private val allowedUiKeys = setOf("theme", "onboarding_done")
+
   @ReactMethod
-  fun getSecuritySettings(promise: Promise) {
+  override fun getUiPreference(key: String, promise: Promise) {
+    if (key !in allowedUiKeys) { promise.reject("UNKNOWN_PREFERENCE", "Unknown preference."); return }
+    promise.resolve(uiPrefs.getString(key, null))
+  }
+
+  @ReactMethod
+  override fun setUiPreference(key: String, value: String, promise: Promise) {
+    if (key !in allowedUiKeys || value.length > 32) { promise.reject("UNKNOWN_PREFERENCE", "Unknown preference."); return }
+    uiPrefs.edit().putString(key, value).apply()
+    promise.resolve(null)
+  }
+
+  /** "store" when installed by Google Play, otherwise "sideload" (restricted settings may apply on Android 13+). */
+  @ReactMethod
+  override fun getInstallInfo(promise: Promise) {
+    val installer = runCatching {
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) appContext.packageManager.getInstallSourceInfo(appContext.packageName).installingPackageName
+      else @Suppress("DEPRECATION") appContext.packageManager.getInstallerPackageName(appContext.packageName)
+    }.getOrNull()
+    promise.resolve(Arguments.createMap().apply {
+      putString("source", if (installer == "com.android.vending") "store" else "sideload")
+      putInt("sdk", android.os.Build.VERSION.SDK_INT)
+    })
+  }
+
+  @ReactMethod
+  override fun openAppDetailsSettings(promise: Promise) {
+    try {
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", appContext.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      appContext.startActivity(intent)
+      promise.resolve(null)
+    } catch (_: Exception) { promise.reject("SETTINGS_UNAVAILABLE", "App settings could not be opened.") }
+  }
+
+  @ReactMethod
+  override fun exportBackup(password: String, promise: Promise) {
+    startBackup(true, password, promise, Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+      .setType("application/octet-stream")
+      .putExtra(Intent.EXTRA_TITLE, "NotifyIQ-backup-" + java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).format(java.util.Date()) + ".niqbackup"))
+  }
+
+  @ReactMethod
+  override fun importBackup(password: String, promise: Promise) {
+    startBackup(false, password, promise, Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"))
+  }
+
+  private fun startBackup(export: Boolean, password: String, promise: Promise, intent: Intent) {
+    if (password.length < BackupCrypto.MIN_PASSWORD_LENGTH) { promise.reject("WEAK_PASSWORD", "Use at least ${BackupCrypto.MIN_PASSWORD_LENGTH} characters."); return }
+    val activity = appContext.currentActivity ?: run { promise.reject("NO_ACTIVITY", "Open NotifyIQ and try again."); return }
+    if (pendingBackup != null) { promise.reject("BUSY", "A backup is already in progress."); return }
+    pendingBackup = PendingBackup(export, password.toCharArray(), promise)
+    runCatching { activity.startActivityForResult(intent, if (export) REQUEST_EXPORT else REQUEST_IMPORT) }
+      .onFailure { pendingBackup = null; promise.reject("PICKER_UNAVAILABLE", "The file picker could not be opened.") }
+  }
+
+  private fun runExport(uri: android.net.Uri, pending: PendingBackup) {
+    val snapshot = java.io.File(appContext.cacheDir, "backup-export.db")
+    try {
+      val repository = NotificationRepository(appContext)
+      repository.snapshotTo(snapshot)
+      val out = appContext.contentResolver.openOutputStream(uri, "wt") ?: throw java.io.IOException("No output")
+      out.use { stream -> snapshot.inputStream().use { BackupCrypto.encrypt(pending.password, it, stream) } }
+      pending.promise.resolve(Arguments.createMap().apply { putString("status", "done"); putDouble("count", repository.eventCount().toDouble()) })
+    } catch (_: Exception) {
+      Log.w(NAME, "BACKUP_EXPORT_FAILED")
+      pending.promise.reject("EXPORT_FAILED", "The backup could not be written.")
+    } finally {
+      pending.password.fill('\u0000')
+      deleteDatabaseFiles(snapshot)
+    }
+  }
+
+  private fun runImport(uri: android.net.Uri, pending: PendingBackup) {
+    val restored = java.io.File(appContext.cacheDir, "backup-import.db")
+    try {
+      deleteDatabaseFiles(restored)
+      val input = appContext.contentResolver.openInputStream(uri) ?: throw java.io.IOException("No input")
+      input.use { stream -> restored.outputStream().use { BackupCrypto.decrypt(pending.password, stream, it) } }
+      // Opening runs migrations (older backups) and rejects backups from a newer app version.
+      runCatching { NotificationRepository(restored) }.getOrElse { throw IllegalStateException("NEWER_OR_INVALID") }
+      NotificationRepository.release(restored)
+      val count = NotificationRepository(appContext).replaceWith(restored)
+      NotificationListenerRuntimeState.excludedPackages = NotificationRepository(appContext).getExcludedPackages()
+      NotificationListenerRuntimeState.exclusionsReady = true
+      pending.promise.resolve(Arguments.createMap().apply { putString("status", "done"); putDouble("count", count.toDouble()) })
+    } catch (_: BackupCrypto.WrongPasswordOrDamaged) {
+      pending.promise.reject("WRONG_PASSWORD", "Wrong password, or the file is damaged.")
+    } catch (_: BackupCrypto.NotABackup) {
+      pending.promise.reject("NOT_A_BACKUP", "This is not a NotifyIQ backup file.")
+    } catch (error: IllegalStateException) {
+      pending.promise.reject("INCOMPATIBLE_BACKUP", "This backup is from a newer version of NotifyIQ or is not valid.")
+    } catch (_: Exception) {
+      Log.w(NAME, "BACKUP_IMPORT_FAILED")
+      pending.promise.reject("IMPORT_FAILED", "The backup could not be restored.")
+    } finally {
+      pending.password.fill('\u0000')
+      NotificationRepository.release(restored)
+      deleteDatabaseFiles(restored)
+    }
+  }
+
+  private fun deleteDatabaseFiles(file: java.io.File) {
+    listOf("", "-wal", "-shm", "-journal").forEach { java.io.File(file.absolutePath + it).delete() }
+  }
+
+  @ReactMethod
+  override fun getNotification(id: Double, promise: Promise) {
+    try {
+      val items = NotificationRepository(appContext).notifications(NotificationFilters(id = id.toLong(), includeArchived = true, limit = 1))
+      if (items.isEmpty()) promise.resolve(null) else promise.resolve(toWritableMap(items.first()))
+    } catch (_: Exception) { promise.reject("NOTIFICATION_UNAVAILABLE", "The notification could not be loaded.") }
+  }
+
+  @ReactMethod
+  override fun getAppDirectory(promise: Promise) {
+    try {
+      promise.resolve(Arguments.createArray().apply {
+        NotificationRepository(appContext).appDirectory().forEach { entry -> pushMap(Arguments.createMap().apply {
+          putString("packageName", entry.packageName); putString("label", entry.label)
+          val icon = entry.iconFile?.let { java.io.File(it) }?.takeIf { it.isFile }
+          if (icon == null) putNull("iconUri") else putString("iconUri", "file://" + icon.absolutePath)
+        }) }
+      })
+    } catch (_: Exception) { promise.reject("APPS_UNAVAILABLE", "App names are unavailable.") }
+  }
+
+  @ReactMethod
+  override fun getSecuritySettings(promise: Promise) {
     promise.resolve(Arguments.createMap().apply {
       putBoolean("appLock", AppSecurity.appLock(appContext))
       putBoolean("deviceSecure", AppSecurity.isDeviceSecure(appContext))
@@ -157,7 +306,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun setAppLock(enabled: Boolean, promise: Promise) {
+  override fun setAppLock(enabled: Boolean, promise: Promise) {
     if (enabled && !AppSecurity.isDeviceSecure(appContext)) {
       promise.reject("NO_DEVICE_LOCK", "Set a screen lock in Android settings first.")
       return
@@ -167,13 +316,13 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun authenticate(promise: Promise) {
+  override fun authenticate(promise: Promise) {
     val activity = appContext.currentActivity ?: run { Log.w(NAME, "AUTH_NO_ACTIVITY"); promise.resolve(false); return }
     activity.runOnUiThread { AppSecurity.authenticate(activity) { ok -> promise.resolve(ok) } }
   }
 
   @ReactMethod
-  fun getUpcomingActions(promise: Promise) {
+  override fun getUpcomingActions(promise: Promise) {
     try {
       promise.resolve(Arguments.createArray().apply {
         NotificationRepository(appContext).upcomingActions().forEach { item -> pushMap(Arguments.createMap().apply {
@@ -193,7 +342,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getRecurringPayments(promise: Promise) {
+  override fun getRecurringPayments(promise: Promise) {
     try {
       promise.resolve(Arguments.createArray().apply {
         NotificationRepository(appContext).recurringPayments().forEach { item -> pushMap(Arguments.createMap().apply {
@@ -207,25 +356,25 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun dismissInsight(eventId: Double, promise: Promise) {
+  override fun dismissInsight(eventId: Double, promise: Promise) {
     try { NotificationRepository(appContext).dismissInsight(eventId.toLong()); promise.resolve(null) }
     catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The item could not be dismissed.") }
   }
 
   @ReactMethod
-  fun setInsightReminder(eventId: Double, at: Double, promise: Promise) {
+  override fun setInsightReminder(eventId: Double, at: Double, promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).setInsightReminder(eventId.toLong(), at.toLong())) }
     catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The reminder could not be set.") }
   }
 
   @ReactMethod
-  fun clearInsightReminder(eventId: Double, promise: Promise) {
+  override fun clearInsightReminder(eventId: Double, promise: Promise) {
     try { NotificationRepository(appContext).clearInsightReminder(eventId.toLong()); promise.resolve(null) }
     catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The reminder could not be cleared.") }
   }
 
   @ReactMethod
-  fun searchNotifications(query: String, packageName: String, category: String, groupName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
+  override fun searchNotifications(query: String, packageName: String, category: String, groupName: String, from: Double, to: Double, beforeReceivedAt: Double, beforeId: Double, includeArchived: Boolean, limit: Double, promise: Promise) {
     try {
       val filters = NotificationFilters(query = query, packageName = packageName, category = category, groupName = groupName, from = from.toLong(), to = to.toLong(), beforeReceivedAt = beforeReceivedAt.toLong(), beforeId = beforeId.toLong(), includeArchived = includeArchived, limit = limit.toInt())
       promise.resolve(toWritableArray(NotificationRepository(appContext).notifications(filters)))
@@ -233,70 +382,70 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun setNotificationSaved(id: Double, saved: Boolean, promise: Promise) = updateEvent(promise) { it.setSaved(id.toLong(), saved) }
+  override fun setNotificationSaved(id: Double, saved: Boolean, promise: Promise) = updateEvent(promise) { it.setSaved(id.toLong(), saved) }
   @ReactMethod
-  fun setNotificationArchived(id: Double, archived: Boolean, promise: Promise) = updateEvent(promise) { it.setArchived(id.toLong(), archived) }
+  override fun setNotificationArchived(id: Double, archived: Boolean, promise: Promise) = updateEvent(promise) { it.setArchived(id.toLong(), archived) }
   @ReactMethod
-  fun setNotificationCategoryOverride(id: Double, category: String?, promise: Promise) = updateEvent(promise) { it.setCategoryOverride(id.toLong(), category) }
+  override fun setNotificationCategoryOverride(id: Double, category: String?, promise: Promise) = updateEvent(promise) { it.setCategoryOverride(id.toLong(), category) }
   @ReactMethod
-  fun deleteNotification(id: Double, promise: Promise) = updateEvent(promise) { it.delete(id.toLong()) }
+  override fun deleteNotification(id: Double, promise: Promise) = updateEvent(promise) { it.delete(id.toLong()) }
 
   @ReactMethod
-  fun getRetentionDays(promise: Promise) {
+  override fun getRetentionDays(promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).getRetentionDays()) }
     catch (_: Exception) { promise.reject("RETENTION_UNAVAILABLE", "Retention settings are unavailable.") }
   }
 
   @ReactMethod
-  fun setRetentionDays(days: Double, promise: Promise) {
+  override fun setRetentionDays(days: Double, promise: Promise) {
     try { NotificationRepository(appContext).setRetentionDays(days.toInt()); promise.resolve(null) }
     catch (_: Exception) { promise.reject("RETENTION_UPDATE_FAILED", "Retention settings could not be saved.") }
   }
 
   @ReactMethod
-  fun getUserRules(promise: Promise) {
+  override fun getUserRules(promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).getUserRules()) }
     catch (_: Exception) { promise.reject("RULES_UNAVAILABLE", "User rules could not be loaded.") }
   }
 
   @ReactMethod
-  fun saveUserRules(rulesJson: String, promise: Promise) {
+  override fun saveUserRules(rulesJson: String, promise: Promise) {
     try { NotificationRepository(appContext).setUserRules(rulesJson); promise.resolve(null) }
     catch (_: Exception) { promise.reject("RULES_INVALID", "The rule set is invalid and was not saved.") }
   }
 
   @ReactMethod
-  fun previewUserRules(rulesJson: String, sampleJson: String, promise: Promise) {
+  override fun previewUserRules(rulesJson: String, sampleJson: String, promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).previewUserRules(rulesJson, sampleJson)) }
     catch (_: Exception) { promise.reject("RULE_PREVIEW_FAILED", "The sample could not be evaluated.") }
   }
 
   @ReactMethod
-  fun reevaluateUserRules(promise: Promise) {
+  override fun reevaluateUserRules(promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).reevaluateUserRules()) }
     catch (_: Exception) { promise.reject("RULE_REEVALUATION_FAILED", "Notification history could not be re-evaluated.") }
   }
 
   @ReactMethod
-  fun getSavedSearches(promise: Promise) {
+  override fun getSavedSearches(promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).getSavedSearches()) }
     catch (_: Exception) { promise.reject("SAVED_SEARCHES_UNAVAILABLE", "Saved searches could not be loaded.") }
   }
 
   @ReactMethod
-  fun addSavedSearch(name: String, filtersJson: String, promise: Promise) {
+  override fun addSavedSearch(name: String, filtersJson: String, promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).addSavedSearch(name, filtersJson)) }
     catch (_: Exception) { promise.reject("SAVED_SEARCH_INVALID", "The saved search is invalid or the saved-search limit was reached.") }
   }
 
   @ReactMethod
-  fun deleteSavedSearch(id: String, promise: Promise) {
+  override fun deleteSavedSearch(id: String, promise: Promise) {
     try { promise.resolve(NotificationRepository(appContext).deleteSavedSearch(id)) }
     catch (_: Exception) { promise.reject("SAVED_SEARCH_DELETE_FAILED", "The saved search could not be deleted.") }
   }
 
   @ReactMethod
-  fun getRuleGroups(promise: Promise) {
+  override fun getRuleGroups(promise: Promise) {
     try { promise.resolve(Arguments.fromList(NotificationRepository(appContext).getRuleGroups())) }
     catch (_: Exception) { promise.reject("RULE_GROUPS_UNAVAILABLE", "Rule groups could not be loaded.") }
   }
@@ -307,7 +456,10 @@ class NotifyIQModule(
   }
 
   private fun toWritableArray(items: List<NotificationRecord>) = Arguments.createArray().apply {
-    items.forEach { item -> pushMap(Arguments.createMap().apply {
+    items.forEach { item -> pushMap(toWritableMap(item)) }
+  }
+
+  private fun toWritableMap(item: NotificationRecord) = Arguments.createMap().apply {
       putDouble("id", item.id.toDouble()); putString("packageName", item.packageName)
       putNullableString("title", item.title); putNullableString("body", item.body); putNullableString("subtext", item.subtext)
       putDouble("postedAt", item.postedAt.toDouble()); putDouble("receivedAt", item.receivedAt.toDouble())
@@ -322,7 +474,6 @@ class NotifyIQModule(
       putArray("matchedRuleIds", Arguments.fromList(item.matchedRuleIds))
       putNullableNumber("reminderDueAt", item.reminderDueAt)
       putNullableString("reminderStatus", item.reminderStatus)
-    }) }
   }
 
   private fun toOverviewCounts(items: List<OverviewCount>) = Arguments.createArray().apply {
@@ -338,7 +489,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun setAppExcluded(packageName: String, excluded: Boolean, promise: Promise) {
+  override fun setAppExcluded(packageName: String, excluded: Boolean, promise: Promise) {
     try {
       NotificationRepository(appContext).setExcluded(packageName, excluded)
       NotificationListenerRuntimeState.excludedPackages = NotificationRepository(appContext).getExcludedPackages()
@@ -348,7 +499,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun getExcludedPackages(promise: Promise) {
+  override fun getExcludedPackages(promise: Promise) {
     try {
       promise.resolve(Arguments.fromList(NotificationRepository(appContext).getExcludedPackages().sorted()))
     } catch (_: Exception) {
@@ -357,7 +508,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun clearNotificationHistory(promise: Promise) {
+  override fun clearNotificationHistory(promise: Promise) {
     NotifyIQNotificationListener.runAfterPendingCaptures(
       operation = { NotificationRepository(appContext).clear(); promise.resolve(null) },
       onFailure = { promise.reject("HISTORY_CLEAR_FAILED", "Notification history could not be cleared.") },
@@ -365,7 +516,7 @@ class NotifyIQModule(
   }
 
   @ReactMethod
-  fun openNotificationAccessSettings(promise: Promise) {
+  override fun openNotificationAccessSettings(promise: Promise) {
     try {
       val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -379,5 +530,7 @@ class NotifyIQModule(
 
   companion object {
     const val NAME = "NotifyIQ"
+    private const val REQUEST_EXPORT = 4101
+    private const val REQUEST_IMPORT = 4102
   }
 }

@@ -1,4 +1,4 @@
-import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type UpcomingAction} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type AppDirectoryEntry, type BackupResult, type InstallInfo, type UpcomingAction} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   const NativeNotifyIQ = getNativeNotifyIQ();
@@ -157,4 +157,36 @@ export function setAppLock(enabled: boolean): Promise<void> {
 
 export function authenticate(): Promise<boolean> {
   return requireNativeModule().authenticate();
+}
+
+export function getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>> {
+  return requireNativeModule().getAppDirectory();
+}
+
+export function getUiPreference(key: 'theme' | 'onboarding_done'): Promise<string | null> {
+  return requireNativeModule().getUiPreference(key);
+}
+
+export function setUiPreference(key: 'theme' | 'onboarding_done', value: string): Promise<void> {
+  return requireNativeModule().setUiPreference(key, value);
+}
+
+export function getInstallInfo(): Promise<InstallInfo> {
+  return requireNativeModule().getInstallInfo();
+}
+
+export function openAppDetailsSettings(): Promise<void> {
+  return requireNativeModule().openAppDetailsSettings();
+}
+
+export function getNotification(id: number): Promise<NotificationItem | null> {
+  return requireNativeModule().getNotification(id);
+}
+
+export function exportBackup(password: string): Promise<BackupResult> {
+  return requireNativeModule().exportBackup(password);
+}
+
+export function importBackup(password: string): Promise<BackupResult> {
+  return requireNativeModule().importBackup(password);
 }

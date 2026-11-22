@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppDirectory } from '../../app/AppDirectory';
 
+import { SourceNotificationSheet } from '../../components/SourceNotificationSheet';
 import { Card, FadeIn, Pill, SectionHeader } from '../../components/ui';
 import type { UpcomingAction } from '../../native/NativeNotifyIQ';
 import { clearInsightReminder, dismissInsight, getUpcomingActions, setInsightReminder } from '../../native/notifyIQ';
-import { appDisplayName, type AppTheme } from '../../theme/tokens';
+import { type AppTheme } from '../../theme/tokens';
 import { actionKinds, dueLabel, formatMoney } from './format';
 
 type Props = { theme: AppTheme; refreshKey: number };
@@ -22,10 +24,12 @@ function reminderOptions(item: UpcomingAction, now: number) {
 }
 
 export function UpcomingPanel({ theme, refreshKey }: Props) {
+  const { name: appName } = useAppDirectory();
   const [items, setItems] = useState<ReadonlyArray<UpcomingAction> | null>(null);
   const [error, setError] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sourceId, setSourceId] = useState<number | null>(null);
   const colors = theme.colors;
 
   const load = useCallback(async () => {
@@ -76,9 +80,9 @@ export function UpcomingPanel({ theme, refreshKey }: Props) {
                     <View style={[styles.icon, { backgroundColor: colors.brandSoft }]}><Text style={styles.iconText}>{kind.emoji}</Text></View>
                     <View style={styles.flex}>
                       <Text style={[styles.kind, { color: toneColor }]}>{kind.label} · {due.text}</Text>
-                      <Text numberOfLines={2} style={[styles.title, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
+                      <Text numberOfLines={2} style={[styles.title, { color: colors.textPrimary }]}>{item.title || item.body || appName(item.packageName)}</Text>
                       {item.title && item.body ? <Text numberOfLines={2} style={[styles.body, { color: colors.textSecondary }]}>{item.body}</Text> : null}
-                      <Text style={[styles.source, { color: colors.textSecondary }]}>From {appDisplayName(item.packageName)}</Text>
+                      <Text style={[styles.source, { color: colors.textSecondary }]}>From {appName(item.packageName)}</Text>
                     </View>
                     {item.amountMinor != null && item.currency ? (
                       <Text style={[styles.amount, { color: colors.textPrimary }]}>{formatMoney(item.amountMinor, item.currency)}</Text>
@@ -114,6 +118,10 @@ export function UpcomingPanel({ theme, refreshKey }: Props) {
                         <Text style={[styles.chipText, { color: colors.textPrimary }]}>🔔 Remind me</Text>
                       </Pressable>
                     ) : null}
+                    <Pressable accessibilityRole="button" accessibilityLabel="View the source notification" style={[styles.chip, { backgroundColor: colors.surfaceMuted }]}
+                      onPress={() => setSourceId(item.eventId)}>
+                      <Text style={[styles.chipText, { color: colors.textPrimary }]}>View source</Text>
+                    </Pressable>
                     <Pressable accessibilityRole="button" accessibilityLabel="Dismiss this item" style={[styles.chip, { backgroundColor: colors.surfaceMuted }]}
                       onPress={() => act(() => dismissInsight(item.eventId), 'Dismissed. The source notification is still in your Inbox.')}>
                       <Text style={[styles.chipText, { color: colors.textSecondary }]}>Not relevant</Text>
@@ -125,6 +133,8 @@ export function UpcomingPanel({ theme, refreshKey }: Props) {
           </View>
         </FadeIn>
       ))}
+      <SourceNotificationSheet theme={theme} eventId={sourceId} onClose={() => setSourceId(null)}
+        note="The date and type were read from this notification. Check the original before acting." />
     </View>
   );
 }

@@ -94,6 +94,13 @@
   - Battery/CPU measured on the emulator: about 17 ms CPU per captured notification, idle about 20 ms per 30 s, no wakelocks. Found the 50-active-notification test pitfall.
   - Play listing kit in `docs/store/`: 512 icon, feature graphic, 8 framed 2:1 screenshots from an opt-in fictional-data seeder, store text within limits, Play Console answers, and hostable privacy/terms HTML generated from the in-app legal text.
   - Emulator cleaned afterwards: demo history deleted, access off, test APK removed.
+- R-018 batch:
+  - Persistent theme, real app names and icons (schema v9 `app_directory`), first-run onboarding, View source from Money and Coming up, app picker, encrypted backup export/import, indexed duplicate fingerprints, and a TurboModule migration.
+  - New `mobile/e2e/notifyiq_e2e.py`: 23 checks covering launch, tabs, theme persistence, capture, sensitive discard, extraction, real names, picker, View source, and an encrypted export → delete → restore round trip, with search intact.
+  - Bugs found and fixed while testing:
+    - `getNotification` returned a map from a consumed array, so View source showed "no longer in history".
+    - Tabs inherited the previous tab's scroll offset.
+  - Verified the backup file has the `NIQX` header and contains no readable notification text or SQLite header; a wrong password is rejected.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -192,3 +199,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - Android 10: `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped; live lifecycle checks as above.
 - After R-016: `npm run typecheck`, eslint, `npm test` (8 suites / 47 tests); release built and audited (permissions POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC; no INTERNET).
 - After R-017: typecheck, eslint, `npm test` 47/47, unit tests, `assembleRelease`/`bundleRelease` signed with the private key (apksigner v2 verified), 16 KB OK, permissions POST_NOTIFICATIONS/RECEIVE_BOOT_COMPLETED/USE_BIOMETRIC; release smoke on the emulator passed.
+- After R-018: typecheck, eslint (0 errors), `npm test` 8 suites / 47 tests; `:app:testDebugUnitTest` 12; `:app:connectedDebugAndroidTest` 28 tests, 0 failures, 2 opt-in skipped (includes migration v1→v9, backup crypto and round trip, app directory, fingerprint grouping); `python3 -I mobile/e2e/notifyiq_e2e.py` 23/23.
