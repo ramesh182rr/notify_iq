@@ -44,7 +44,7 @@ export const privacyPolicy: LegalDocument = {
       bullets: [
         'The notification details listed above, in a private database inside NotifyIQ’s own storage on this phone. Other apps cannot read it.',
         'Information NotifyIQ works out from them: a category, a priority, repeat groups, money amounts and the place paid, due dates, renewals, appointments and tasks.',
-        'Your settings: rules, saved searches, excluded apps, retention period, category corrections, reminders, screen protection and app lock.',
+        'Your settings: rules, saved searches, excluded apps, retention period, category corrections, reminders and app lock.',
       ],
       body: 'This data is excluded from Android cloud backup and from phone-to-phone transfer, so it does not leave the device that way either.',
     },
@@ -71,7 +71,7 @@ export const privacyPolicy: LegalDocument = {
         'Turn Notification access off at any time from the Privacy tab or Android settings. Capture stops immediately.',
         'Exclude any app so its notifications are never read.',
         'Delete single notifications, mark misread payments or dates as not relevant, or delete all history.',
-        'Turn on App lock and keep Screen protection on (see Security).',
+        'Turn on App lock (see Security).',
       ],
     },
     {
@@ -152,7 +152,7 @@ export const termsOfUse: LegalDocument = {
 export const securityOverview: LegalDocument = {
   key: 'security',
   title: 'Security',
-  summary: 'NotifyIQ is built so your history never leaves your phone, and adds screen protection and an optional app lock. No app can be perfectly secure, so here is exactly what is protected and what is not.',
+  summary: 'NotifyIQ is built so your history never leaves your phone, and offers an optional app lock. No app can be perfectly secure, so here is exactly what is protected and what is not.',
   sections: [
     {
       heading: 'How your data is protected',
@@ -161,7 +161,6 @@ export const securityOverview: LegalDocument = {
         'Private storage. History is kept in NotifyIQ’s private app storage, which Android isolates from other apps. When your phone is locked, Android’s built-in storage encryption protects it.',
         'Sensitive messages are discarded. OTPs, passwords and card numbers are thrown away before saving, never stored.',
         'No backups or transfers. NotifyIQ data is excluded from cloud backup and phone-to-phone transfer.',
-        'Screen protection (on by default). Blocks screenshots and screen recording of NotifyIQ and hides its content in the recent-apps view.',
         'App lock (optional). Requires your fingerprint, face or phone PIN to open NotifyIQ.',
         'Nothing else can start NotifyIQ’s internal parts. Its notification reader, reminders and startup handler are private to the app.',
         'No logs of your content. NotifyIQ’s diagnostic messages contain only error codes, never notification text.',
@@ -172,6 +171,7 @@ export const securityOverview: LegalDocument = {
       heading: 'What NotifyIQ cannot protect against',
       bullets: [
         'Someone who knows your phone’s PIN or can unlock it. Turn on App lock for an extra step.',
+        'Screenshots, screen recording and the recent-apps preview are not blocked, so take care when sharing your screen.',
         'A rooted or compromised phone, or malware with special access to your device.',
         'Modified or fake copies of NotifyIQ from untrusted sources. Install only from the official listing.',
         'The original notifications themselves. They remain in your notification shade and in the apps that sent them.',
@@ -183,7 +183,6 @@ export const securityOverview: LegalDocument = {
       bullets: [
         'Use a strong screen lock (PIN, pattern, password or biometrics).',
         'Turn on App lock in the Privacy tab.',
-        'Keep Screen protection on.',
         'Exclude apps whose notifications you never want kept, such as banking or authenticator apps.',
         'Choose a short retention period if you only need recent history.',
       ],

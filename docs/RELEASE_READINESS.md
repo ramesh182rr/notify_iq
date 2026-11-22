@@ -57,11 +57,11 @@ Tooling note: Android SDK command-line tools 23.0 (`cmdline-tools;latest`, sha1 
 - **Sensitive content:** OTPs, passwords, card numbers (NotifyIQ gate) and Android 15 platform-redacted notifications are discarded before storage. Verified on API 29 and API 35.
 - **Storage:** private app SQLite database, excluded from backup and transfer, not debuggable in release. There is no app-level encryption; Android file-based encryption applies while the phone is locked.
 - **Components:** only the launcher activity is exported. The listener is bound with `BIND_NOTIFICATION_LISTENER_SERVICE`; receivers are private; PendingIntents are immutable.
-- **Screen protection:** on by default. With it on, `screencap` of the app returned 0/810 non-black sampled pixels; with it off, content was visible. The setting persists across relaunch.
+- **Screen protection:** built and verified (screenshots blocked), then removed at the owner's request (R-017). Screenshots and the Recents preview are not blocked, and the Security page says so.
 - **App lock:** enabling requires passing the system prompt. With the lock on, relaunch shows the system prompt. Cancelling shows a lock screen with no history or tabs. The PIN unlocks. The app relocks after more than 30 s in the background (not after 10 s). Tested with a temporary emulator PIN, which was removed afterwards. Requires `USE_BIOMETRIC`, which the policy discloses.
 - **In-app documents:** Privacy policy, Terms of use and Security (Privacy tab → Security, and the Home footer). `__tests__/LegalPolicy.test.tsx` pins the permission set to POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED and USE_BIOMETRIC, forbids network/SMS/contacts/location/storage permissions, requires backup exclusion, and allows a single exported component.
 - **Known gaps:**
-  - Signing: sideloaded test APKs use the public React Native debug key. Before real users, sign with a private key; switching keys requires uninstalling the old build.
+  - Signing: resolved in R-017. Releases are signed with a private RSA-4096 key; Android rejected a debug-signed update (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`). Back up the key.
   - No database encryption at rest beyond Android's.
   - The legal text has not been reviewed by a lawyer. The governing law and developer contact still need owner decisions.
 
@@ -88,7 +88,7 @@ Sources: [Play target API level requirements](https://support.google.com/googlep
 
 - The release signing config reads `NOTIFYIQ_UPLOAD_STORE_FILE`, `NOTIFYIQ_UPLOAD_STORE_PASSWORD`, `NOTIFYIQ_UPLOAD_KEY_ALIAS` and `NOTIFYIQ_UPLOAD_KEY_PASSWORD` from untracked Gradle properties (`~/.gradle/gradle.properties`) or environment variables. `*.keystore`/`*.jks` are git-ignored.
 - Without those values the release build falls back to the debug key, for local smoke tests only. Play rejects debug-signed uploads.
-- **Owner action:** create the upload key (`keytool -genkeypair -v -keystore notifyiq-upload.keystore -alias notifyiq-upload -keyalg RSA -keysize 2048 -validity 10000`), store it outside the repo, enrol in Play App Signing, and build the store artifact with `./gradlew :app:bundleRelease` (AAB). The universal APK is ~58 MB because it carries all four ABIs; an AAB delivers per-ABI splits.
+- **Done (R-017):** private upload key at `~/.android/notifyiq/notifyiq-upload.jks` (RSA-4096, SHA-384, 10,000-day validity), configured through the user-level `~/.gradle/gradle.properties`. **Owner action:** back up the key and password, enrol in Play App Signing, and upload the AAB from `./gradlew :app:bundleRelease`. The universal APK is ~58 MB because it carries all four ABIs; an AAB delivers per-ABI splits.
 - Version: `versionCode 1` / `versionName "1.0"`. Bump these per upload.
 
 ## 3. Privacy policy and data safety (draft for owner/legal review)

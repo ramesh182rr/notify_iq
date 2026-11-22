@@ -150,9 +150,6 @@ export function getSecuritySettings(): Promise<SecuritySettings> {
   return requireNativeModule().getSecuritySettings();
 }
 
-export function setScreenProtection(enabled: boolean): Promise<void> {
-  return requireNativeModule().setScreenProtection(enabled);
-}
 
 export function setAppLock(enabled: boolean): Promise<void> {
   return requireNativeModule().setAppLock(enabled);

@@ -7,7 +7,10 @@ import ReactTestRenderer from 'react-test-renderer';
 import { AppHeader } from '../src/components/AppHeader';
 import { BottomTabBar } from '../src/components/BottomTabBar';
 import { HomeScreen } from '../src/features/home/HomeScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { darkTheme, lightTheme } from '../src/theme/tokens';
+
+const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
 
 jest.mock('../src/components/ui', () => ({
   ...jest.requireActual('../src/components/ui'),
@@ -25,7 +28,7 @@ test('renders the home states, six tabs, and appearance choices', async () => {
 
   await ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(
-      <>
+      <SafeAreaProvider initialMetrics={metrics}>
         <AppHeader
           preference="system"
           theme={lightTheme}
@@ -47,7 +50,7 @@ test('renders the home states, six tabs, and appearance choices', async () => {
           onSelect={jest.fn()}
           theme={lightTheme}
         />
-      </>,
+      </SafeAreaProvider>,
     );
   });
 
@@ -69,7 +72,7 @@ test('renders the home states, six tabs, and appearance choices', async () => {
   expect(renderedTree).toContain('"accessibilityRole":"radiogroup"');
 
   await ReactTestRenderer.act(() => {
-    renderer.update(<BottomTabBar activeScreen="privacy" onSelect={jest.fn()} theme={darkTheme} />);
+    renderer.update(<SafeAreaProvider initialMetrics={metrics}><BottomTabBar activeScreen="privacy" onSelect={jest.fn()} theme={darkTheme} /></SafeAreaProvider>);
   });
-  expect(JSON.stringify(renderer.toJSON())).toContain(darkTheme.colors.surface);
+  expect(JSON.stringify(renderer.toJSON())).toContain(darkTheme.colors.brand);
 });

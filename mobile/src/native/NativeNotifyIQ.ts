@@ -90,7 +90,7 @@ export type MoneyAnalytics = {
   recent: ReadonlyArray<MoneyTransaction>;
   otherCurrencies: ReadonlyArray<string>;
 };
-export type SecuritySettings = { screenProtection: boolean; appLock: boolean; deviceSecure: boolean };
+export type SecuritySettings = { appLock: boolean; deviceSecure: boolean };
 export type UpcomingAction = {
   eventId: number;
   kind: string;
@@ -163,7 +163,6 @@ export interface Spec extends TurboModule {
   getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalytics>;
   setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void>;
   getSecuritySettings(): Promise<SecuritySettings>;
-  setScreenProtection(enabled: boolean): Promise<void>;
   setAppLock(enabled: boolean): Promise<void>;
   authenticate(): Promise<boolean>;
   getUpcomingActions(): Promise<ReadonlyArray<UpcomingAction>>;

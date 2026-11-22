@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { SecuritySettings } from '../../native/NativeNotifyIQ';
-import { authenticate, getSecuritySettings, setAppLock, setScreenProtection } from '../../native/notifyIQ';
+import { authenticate, getSecuritySettings, setAppLock } from '../../native/notifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 import { LegalScreen } from '../legal/LegalScreen';
 import type { LegalDocument } from '../legal/legalContent';
@@ -17,12 +17,6 @@ export function SecuritySection({ theme }: { theme: AppTheme }) {
     try { setSettings(await getSecuritySettings()); } catch { setMessage('Security settings could not be loaded.'); }
   }, []);
   useEffect(() => { load().catch(() => undefined); }, [load]);
-
-  const toggleScreen = async (value: boolean) => {
-    try { await setScreenProtection(value); setMessage(value ? 'Screen protection is on.' : 'Screen protection is off. Screenshots and the recent-apps preview can now show NotifyIQ.'); }
-    catch { setMessage('Screen protection could not be changed.'); }
-    await load();
-  };
 
   const toggleLock = async (value: boolean) => {
     try {
@@ -43,17 +37,8 @@ export function SecuritySection({ theme }: { theme: AppTheme }) {
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text accessibilityRole="header" style={[styles.title, { color: colors.textPrimary }]}>🔒 Security</Text>
       <Text style={[styles.body, { color: colors.textSecondary }]}>
-        NotifyIQ has no internet access and keeps everything on this phone. These settings add protection against people who can see or use your phone.
+        NotifyIQ has no internet access and keeps everything on this phone. App lock adds protection against people who can use your phone.
       </Text>
-
-      <View style={styles.row}>
-        <View style={styles.flex}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Screen protection</Text>
-          <Text style={[styles.body, { color: colors.textSecondary }]}>Blocks screenshots and screen recording, and hides NotifyIQ in the recent-apps view.</Text>
-        </View>
-        <Switch accessibilityLabel="Screen protection" value={settings?.screenProtection ?? true} disabled={!settings}
-          onValueChange={value => { toggleScreen(value).catch(() => undefined); }} />
-      </View>
 
       <View style={styles.row}>
         <View style={styles.flex}>

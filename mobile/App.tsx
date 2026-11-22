@@ -3,7 +3,7 @@ import {AppState, StatusBar, StyleSheet, useColorScheme, View} from 'react-nativ
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from './src/components/AppHeader';
-import { BottomTabBar } from './src/components/BottomTabBar';
+import { BottomTabBar, FLOATING_TAB_BAR_SPACE } from './src/components/BottomTabBar';
 import { ScreenContainer } from './src/components/ScreenContainer';
 import { HomeScreen } from './src/features/home/HomeScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
@@ -110,7 +110,7 @@ function App() {
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       <SafeAreaView
-        edges={['top', 'bottom']}
+        edges={['top']}
         style={[styles.flex, { backgroundColor: theme.colors.background }]}>
         <AppHeader
           preference={themePreference}
@@ -121,7 +121,7 @@ function App() {
           <LockScreen theme={theme} failed={unlockFailed} onUnlock={() => { unlock().catch(() => undefined); }} />
         ) : (<>
         <View style={styles.flex}>
-          <ScreenContainer theme={theme}>
+          <ScreenContainer theme={theme} bottomSpace={FLOATING_TAB_BAR_SPACE}>
             {activeScreen === 'inbox' || activeScreen === 'search' ? (
               <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} listenerStatus={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
             ) : activeScreen === 'privacy' ? (

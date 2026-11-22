@@ -194,6 +194,15 @@ This log distinguishes decisions already present in the supplied development kit
 - Sideloaded APKs signed with the public React Native debug key can be replaced by any APK signed with that same key. Real releases must use the private upload key and Play App Signing.
 - A rooted or compromised device, and people who know the phone PIN, are out of scope.
 
+### R-017 — Remove screen-capture blocking; private signing key; floating navigation
+
+**Status:** Requested by user, 2026-11-22
+**Decision:**
+- Remove `FLAG_SECURE` screen protection: the user found blocking screenshots and recording too restrictive. The Security page now says screenshots and the Recents preview are not blocked. App lock remains.
+- Sign releases with a private RSA-4096 key (`~/.android/notifyiq/notifyiq-upload.jks`, alias `notifyiq-upload`, cert SHA-256 `38886f7f…a4ee9872`). The key path and password are only in the user-level `~/.gradle/gradle.properties` (mode 600), never in the repo. Android now refuses debug-key-signed "updates" over these builds.
+- The bottom navigation becomes a floating pill bar above the gesture area; content pads itself clear of it.
+**Owner action:** back up the keystore file and its password (from `~/.gradle/gradle.properties`) to a password manager. A lost key means sideloaded installs cannot be updated, and Play uploads need an upload-key reset.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

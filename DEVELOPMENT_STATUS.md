@@ -85,6 +85,11 @@
   - UI renders correctly.
   - Cleaned up afterwards. Details in `docs/RELEASE_READINESS.md`.
 - Security and in-app legal (R-016): screen protection on by default (verified screenshots blocked), optional App lock via the system prompt (enable, relaunch, cancel, unlock and 30 s relock all verified), in-app Privacy policy / Terms / Security, and a manifest-drift test. Found and fixed: the prompt needs `USE_BIOMETRIC`. Exposure review confirmed no `inet` group on the app process and no AI or analytics libraries. Emulator test PIN and settings removed afterwards.
+- R-017:
+  - Screen protection removed at the owner's request; policy and security text updated.
+  - Floating pill bottom navigation, checked in light and dark themes and when scrolled.
+  - Private RSA-4096 release key generated outside the repo. Version 1.6 is signed with it (cert `38886f7f…`), and Android rejects debug-signed updates over it.
+  - Old debug-signed APKs moved to `dist/old-debug-signed/`.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -182,3 +187,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - After the accessibility pass: `npm run typecheck`, eslint (0 errors), `npm test` (7 suites / 44 tests including 33 contrast checks); two clean `assembleRelease` builds compared (404/404 entries identical).
 - Android 10: `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped; live lifecycle checks as above.
 - After R-016: `npm run typecheck`, eslint, `npm test` (8 suites / 47 tests); release built and audited (permissions POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC; no INTERNET).
+- After R-017: typecheck, eslint, `npm test` 47/47, unit tests, `assembleRelease`/`bundleRelease` signed with the private key (apksigner v2 verified), 16 KB OK, permissions POST_NOTIFICATIONS/RECEIVE_BOOT_COMPLETED/USE_BIOMETRIC; release smoke on the emulator passed.

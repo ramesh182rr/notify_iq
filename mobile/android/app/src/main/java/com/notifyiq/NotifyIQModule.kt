@@ -151,18 +151,9 @@ class NotifyIQModule(
   @ReactMethod
   fun getSecuritySettings(promise: Promise) {
     promise.resolve(Arguments.createMap().apply {
-      putBoolean("screenProtection", AppSecurity.screenProtection(appContext))
       putBoolean("appLock", AppSecurity.appLock(appContext))
       putBoolean("deviceSecure", AppSecurity.isDeviceSecure(appContext))
     })
-  }
-
-  @ReactMethod
-  fun setScreenProtection(enabled: Boolean, promise: Promise) {
-    AppSecurity.setScreenProtection(appContext, enabled)
-    val activity = appContext.currentActivity
-    if (activity == null) { promise.resolve(null); return }
-    activity.runOnUiThread { AppSecurity.applyScreenProtection(activity, enabled); promise.resolve(null) }
   }
 
   @ReactMethod

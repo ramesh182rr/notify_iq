@@ -1,6 +1,5 @@
 package com.notifyiq
 
-import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -13,12 +12,6 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "NotifyIQ"
-
-  override fun onCreate(savedInstanceState: Bundle?) {
-    // Apply before any content is drawn so screenshots and the Recents preview never show history.
-    AppSecurity.applyScreenProtection(this, AppSecurity.screenProtection(this))
-    super.onCreate(savedInstanceState)
-  }
 
   /**
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
