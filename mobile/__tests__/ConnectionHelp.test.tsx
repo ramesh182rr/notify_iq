@@ -34,7 +34,7 @@ test('shows Connecting while Android re-binds, then actionable help when it stal
   tree = JSON.stringify(renderer.toJSON());
   expect(tree).toContain('Not connected');
   expect(tree).toContain('Android hasn’t reconnected NotifyIQ');
-  expect(tree).toContain('Battery settings');
+  expect(tree).toContain('Notification access');
   expect(tree).toContain('Reconnect');
 
   await ReactTestRenderer.act(() => { renderer.update(<HomeScreen {...base} listenerStatus={{ ...status, connected: true }} />); });

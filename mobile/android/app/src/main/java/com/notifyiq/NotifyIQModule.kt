@@ -42,9 +42,9 @@ class NotifyIQModule(
       val listener = ComponentName(appContext, NotifyIQNotificationListener::class.java)
       val notificationManager = appContext.getSystemService(NotificationManager::class.java)
       val granted = notificationManager.isNotificationListenerAccessGranted(listener)
-      // Some phones do not re-bind the listener after the app process restarts; ask Android to.
       val connected = granted && NotificationListenerRuntimeState.probeConnected()
-      if (granted && !connected) requestRebind(listener, force = false)
+      // Cheap, rate-limited nudge; the full repair ladder runs from reconnectListener and app start.
+      if (granted && !connected) ListenerHealth.requestRebind(appContext)
       ListenerHealth.schedulePeriodicCheck(appContext)
       val status = Arguments.createMap().apply {
         putBoolean("accessGranted", granted)
@@ -282,20 +282,11 @@ class NotifyIQModule(
     listOf("", "-wal", "-shm", "-journal").forEach { java.io.File(file.absolutePath + it).delete() }
   }
 
-  @Volatile private var lastRebindAt = 0L
-
-  private fun requestRebind(listener: ComponentName, force: Boolean) {
-    val now = android.os.SystemClock.elapsedRealtime()
-    if (!force && now - lastRebindAt < 5_000) return
-    lastRebindAt = now
-    runCatching { android.service.notification.NotificationListenerService.requestRebind(listener) }
-      .onFailure { Log.w(NAME, "LISTENER_REBIND_FAILED ${it.javaClass.simpleName}") }
-  }
 
   @ReactMethod
   override fun reconnectListener(promise: Promise) {
-    // Gentle request first; forced re-bind (component toggle) if Android still has not connected it.
-    ListenerHealth.repairIfNeeded(appContext, retryAfterMs = 3_000L) { promise.resolve(null) }
+    // Full repair ladder (see ListenerHealth); resolves once connected or after about 17 s.
+    ListenerHealth.repairIfNeeded(appContext, graceMs = 1_500L) { promise.resolve(null) }
   }
 
   /** Opens the system battery-optimisation list (no special permission needed) so the user can exempt NotifyIQ. */
@@ -317,6 +308,33 @@ class NotifyIQModule(
       val items = NotificationRepository(appContext).notifications(NotificationFilters(id = id.toLong(), includeArchived = true, limit = 1))
       if (items.isEmpty()) promise.resolve(null) else promise.resolve(toWritableMap(items.first()))
     } catch (_: Exception) { promise.reject("NOTIFICATION_UNAVAILABLE", "The notification could not be loaded.") }
+  }
+
+  /** Apps with a launcher icon (via the manifest <queries> declaration), with label and cached icon. */
+  @ReactMethod
+  override fun getInstalledApps(promise: Promise) {
+    Thread {
+      try {
+        val pm = appContext.packageManager
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val apps = pm.queryIntentActivities(launcher, 0)
+          .mapNotNull { it.activityInfo?.applicationInfo }
+          .distinctBy { it.packageName }
+          .filter { it.packageName != appContext.packageName }
+          .map { info -> Triple(info.packageName, pm.getApplicationLabel(info).toString(), info) }
+          .sortedBy { it.second.lowercase() }
+        promise.resolve(Arguments.createArray().apply {
+          apps.forEach { (pkg, label, info) -> pushMap(Arguments.createMap().apply {
+            putString("packageName", pkg); putString("label", label)
+            val icon = AppIconCache.iconFor(appContext, pm, info)
+            if (icon == null) putNull("iconUri") else putString("iconUri", "file://$icon")
+          }) }
+        })
+      } catch (_: Exception) {
+        Log.w(NAME, "INSTALLED_APPS_UNAVAILABLE")
+        promise.reject("APPS_UNAVAILABLE", "The app list is unavailable.")
+      }
+    }.start()
   }
 
   @ReactMethod

@@ -37,9 +37,11 @@ export function useAppDirectory() {
 }
 
 /** App icon from the local cache; falls back to the category emoji, then to the app's initial. */
-export function AppIcon({ theme, packageName, category, size = 40 }: { theme: AppTheme; packageName: string; category?: string; size?: number }) {
+export function AppIcon({ theme, packageName, category, size = 40, uri: explicitUri, label }: {
+  theme: AppTheme; packageName: string; category?: string; size?: number; uri?: string | null; label?: string;
+}) {
   const { iconUri, name } = useAppDirectory();
-  const uri = iconUri(packageName);
+  const uri = explicitUri ?? iconUri(packageName);
   if (uri) {
     return <Image accessibilityIgnoresInvertColors source={{ uri }} style={{ width: size, height: size, borderRadius: size * 0.28 }} />;
   }
@@ -53,7 +55,7 @@ export function AppIcon({ theme, packageName, category, size = 40 }: { theme: Ap
   }
   return (
     <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: theme.colors.brandSoft }]}>
-      <Text style={{ fontSize: size * 0.42, fontWeight: '800', color: theme.colors.brand }}>{name(packageName).charAt(0).toUpperCase()}</Text>
+      <Text style={{ fontSize: size * 0.42, fontWeight: '800', color: theme.colors.brand }}>{(label ?? name(packageName)).charAt(0).toUpperCase()}</Text>
     </View>
   );
 }

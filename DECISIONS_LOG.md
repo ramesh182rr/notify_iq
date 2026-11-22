@@ -232,6 +232,33 @@ This log distinguishes decisions already present in the supplied development kit
 - The help card is brand-neutral and appears only if repair fails for about 30 s.
 - Navigation is reduced to Home, Inbox (search, filters panel, saved searches), Insights and Settings (Rules, notification access & apps, backup, App lock, appearance, about/legal). The theme switch moves out of the header into Settings. "Settings" was chosen over "Profile" because there is no account.
 
+### R-020 — Choose apps by name and icon; no package names in the UI
+
+**Status:** Requested by user, 2026-11-22 ("users might not be technical … app name and icon kind of lists")
+**Decision:**
+- The manifest declares a `<queries>` intent filter for `MAIN`/`LAUNCHER`. This lets NotifyIQ list apps that have a launcher icon without `QUERY_ALL_PACKAGES`, which stays forbidden by the manifest drift test. The list is read on the device only and is never stored or sent anywhere.
+- The app picker shows icon and name, with "Apps with notifications" first and then the other apps, plus search. In Privacy, "Choose apps" opens per-app Kept/Not kept switches. Switching off an app that already has history asks for confirmation, because exclusion deletes that history.
+- Manual package-name entry is removed. Package names are never shown; excluded apps are listed by name and icon with a "Keep again" action.
+- The policy is updated to version 1.3 with an "Apps on your phone" section.
+
+### R-021 — Listener repair that works after the phone force-stops NotifyIQ (supersedes R-019's repair)
+
+**Status:** Fix for owner's real-device report on 1.9/1.10, 2026-11-22 (clearing the app from Recents leaves Home on "Connecting…" even with battery unrestricted)
+**Findings (AOSP 10/13/15 source, verified on emulators):**
+- Clearing from Recents force-stops the app on many phones, which kills Android's listener binding. Stock Android re-binds at once (package-restarted handling; measured on API 29 and 35). Otherwise Android retries only once, 10 s later (`ManagedServices.onBindingDied`), and never again if that retry is blocked.
+- `requestRebind` only un-snoozes a listener that called `requestUnbind` (`setComponentState` returns early otherwise), so R-019's repair was a no-op in this state.
+- The interruption-filter query is not a valid connection probe, because Android answers it without checking the listener token.
+- The earlier component-toggle failure is explained by Android 14+ `trimApprovedListsForInvalidServices`: disabling the listener itself drops its approval.
+**Decision:**
+- Probe with `getActiveNotifications(emptyArray())`. It is token-checked and transfers no data.
+- Repair ladder, only while access is granted and the listener is not connected:
+  1. `requestRebind`.
+  2. Android 14+: static `requestUnbind(component)` followed by `requestRebind(component)`.
+  3. All versions: flip a private, unexported, do-nothing receiver (`ListenerRebindTrigger`). The resulting package-changed event makes Android re-bind every approved listener. The listener component itself is never disabled.
+- The ladder runs after app start (6 s grace), from the UI at about 4 s and 20 s, on boot and update, and from the 15-minute job. Escalation is rate-limited to once every 20 s.
+- If it still fails, the help card asks the user to switch NotifyIQ off and on in Notification access (works on every phone) instead of battery settings.
+**Limit:** the emulators cannot reproduce a phone that blocks the re-bind. The ladder is verified safe on API 29 and 35, and the Android 14+ cycle is verified to re-bind an unbound listener. Confirmation on the owner's phone is pending.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

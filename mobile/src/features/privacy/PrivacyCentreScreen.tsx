@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { clearNotificationHistory, getExcludedPackages, getRetentionDays, setAppExcluded, setRetentionDays } from '../../native/notifyIQ';
-import type { ListenerStatus } from '../../native/NativeNotifyIQ';
+import { clearNotificationHistory, getExcludedPackages, getInstalledApps, getRetentionDays, setAppExcluded, setRetentionDays } from '../../native/notifyIQ';
+import type { AppDirectoryEntry, ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 import { AppPicker } from '../../components/AppPicker';
@@ -16,6 +16,10 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
   const [excluded, setExcluded] = useState<ReadonlyArray<string>>([]);
   const [picking, setPicking] = useState(false);
   const { name: appName } = useAppDirectory();
+  const [installed, setInstalled] = useState<ReadonlyArray<AppDirectoryEntry>>([]);
+  useEffect(() => { getInstalledApps().then(setInstalled).catch(() => undefined); }, []);
+  const installedNames = new Map(installed.map(app => [app.packageName, app.label]));
+  const installedIcons = new Map(installed.map(app => [app.packageName, app.iconUri]));
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
@@ -85,25 +89,25 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
       </View>
 
       <View style={[styles.card, card]}>
-        <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Excluded apps</Text>
-        <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Excluded apps are checked before notification text is read. Adding an app also deletes its existing NotifyIQ history.</Text>
+        <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Apps NotifyIQ keeps</Text>
+        <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Choose apps whose notifications NotifyIQ should never read or keep. Switching an app off also deletes what was already kept from it.</Text>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => setPicking(true)} style={[styles.pickButton, { backgroundColor: theme.colors.brandSoft }]}>
-          <Text style={{ color: theme.colors.brand, fontWeight: '800' }}>＋ Choose an app to exclude</Text>
+          <Text style={{ color: theme.colors.brand, fontWeight: '800' }}>Choose apps</Text>
         </Pressable>
-        <AppPicker theme={theme} visible={picking} title="Exclude an app" onClose={() => setPicking(false)}
-          onPick={value => { setPicking(false); if (value) ignorePromise(updateExclusion(value, true)); }} />
+        <AppPicker theme={theme} visible={picking} mode="toggle" title="Choose which apps NotifyIQ keeps" excluded={excluded}
+          onToggle={(value, exclude) => ignorePromise(updateExclusion(value, exclude))} onClose={() => setPicking(false)} />
         {excluded.length ? excluded.map(name => (
           <View key={name} style={styles.excludedRow}>
-            <AppIcon theme={theme} packageName={name} size={32} />
+            <AppIcon theme={theme} packageName={name} size={32} uri={installedIcons.get(name)} label={installedNames.get(name)} />
             <View style={styles.flexCol}>
-              <Text style={[styles.copy, { color: theme.colors.textPrimary, fontWeight: '700' }]}>{appName(name)}</Text>
-              <Text style={[styles.copy, styles.package, { color: theme.colors.textSecondary }]}>{name}</Text>
+              <Text style={[styles.copy, { color: theme.colors.textPrimary, fontWeight: '700' }]}>{installedNames.get(name) ?? appName(name)}</Text>
+              <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Not kept</Text>
             </View>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Allow ${name}`} onPress={() => ignorePromise(updateExclusion(name, false))} disabled={busy}>
-              <Text style={{ color: theme.colors.brand }}>Allow</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Keep notifications from ${installedNames.get(name) ?? appName(name)} again`} onPress={() => ignorePromise(updateExclusion(name, false))} disabled={busy}>
+              <Text style={{ color: theme.colors.brand }}>Keep again</Text>
             </Pressable>
           </View>
-        )) : <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>No excluded apps.</Text>}
+        )) : <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>NotifyIQ keeps notifications from all apps.</Text>}
       </View>
 
       <View style={[styles.card, card]}>

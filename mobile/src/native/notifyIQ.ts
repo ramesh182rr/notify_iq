@@ -198,3 +198,7 @@ export function reconnectListener(): Promise<void> {
 export function openBatterySettings(): Promise<void> {
   return requireNativeModule().openBatterySettings();
 }
+
+export function getInstalledApps(): Promise<ReadonlyArray<AppDirectoryEntry>> {
+  return requireNativeModule().getInstalledApps();
+}

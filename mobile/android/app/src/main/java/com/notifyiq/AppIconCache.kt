@@ -45,6 +45,13 @@ internal object AppIconCache {
     return runCatching { pm.getApplicationInfo(packageName, 0) }.getOrNull()
   }
 
+  /** Icon file for an installed app, written once and reused (no notification content involved). */
+  fun iconFor(context: Context, pm: PackageManager, info: ApplicationInfo): String? {
+    val existing = File(File(context.filesDir, DIR), info.packageName.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".png")
+    if (existing.isFile) return existing.absolutePath
+    return runCatching { writeIcon(context, pm, info, info.packageName) }.getOrNull()
+  }
+
   private fun writeIcon(context: Context, pm: PackageManager, info: ApplicationInfo, packageName: String): String? {
     val drawable = pm.getApplicationIcon(info)
     val bitmap = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)

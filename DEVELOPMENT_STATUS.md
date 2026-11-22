@@ -107,6 +107,16 @@
   - If still not connected, a help card offers Reconnect, Battery settings (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, no special permission) and OEM autostart guidance.
   - The emulator re-binds promptly, so the stalled path is covered by a Jest test. The real-device fix still needs the owner's confirmation.
 - R-019 (1.9): probe-based connection status, safe brand-agnostic self-repair (requestRebind at start, boot, update, status checks and a 15-minute job). The component-toggle approach was measured harmful on Android 15 and rejected. UI moves to 4 tabs: Inbox merges search and saved searches behind a Filters panel; the Settings tab groups Rules, access & apps, backup, App lock, appearance and legal; the header is slimmed. Tests: ListenerHealthTest (probe ignores a stale flag, repair is harmless while bound, job scheduled and persisted), Settings and connection-help Jest tests, e2e updated (21/21).
+- R-021 (1.11): real fix for "Connecting…" after the app is cleared from Recents.
+  - Root cause, from AOSP source: `requestRebind` is a no-op unless the listener is snoozed. Android retries a dead binding only once.
+  - New token-checked probe and a three-step repair ladder (`requestRebind` → API 34+ unbind/rebind cycle → package-changed signal via the private `ListenerRebindTrigger`).
+  - The help card now points to switching access off and on.
+  - Tests:
+    - ListenerHealthTest: 5/5 on API 35; on API 29, 4 passed and 1 skipped (API 34+ only). Covers escalation keeping access and binding, and an unbound listener re-bound.
+    - Full instrumentation: 33 passed, 2 opt-in skipped.
+    - Jest: 51/51.
+    - e2e: 24/24 (the first run had one money-row timing miss; the rerun was clean).
+- R-020 (1.10): choose apps by name and icon. Adds a launcher `<queries>` block (no QUERY_ALL_PACKAGES), native `getInstalledApps` with cached icons, and a toggle-mode AppPicker in Privacy. Package names are no longer shown anywhere, and manual package entry is removed. Policy is now v1.3. Tests: Jest 51/51 (new AppPicker test), instrumentation 31 passed and 2 opt-in skipped, e2e 24/24 (adds a name-only picker check and switch-off/keep-again checks). Emulator cleanup: app data cleared by the e2e cleanup; notification access is off.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.

@@ -201,8 +201,8 @@ class Runner:
         self.check("inbox shows real app name", d.has("NotifyIQ Fixture Poster", exact=True))
         d.tap("Filters", exact=False)
         d.tap("Filter by app: all apps", scroll=2)
-        self.check("app picker lists captured app", d.has(f"NotifyIQ Fixture Poster, {POSTER}", exact=True))
-        d.tap(f"NotifyIQ Fixture Poster, {POSTER}")
+        self.check("app picker lists captured app by name only", d.has("NotifyIQ Fixture Poster", exact=True) and not d.has(POSTER))
+        d.tap("NotifyIQ Fixture Poster", anywhere=True)
         self.check("app filter applied", d.has("App: NotifyIQ Fixture Poster"))
         d.tap("Filter by app: NotifyIQ Fixture Poster", scroll=2)
         d.tap("All apps", anywhere=True)
@@ -225,6 +225,9 @@ class Runner:
         # Encrypted backup round trip (uses Android's document UI on the emulator)
         self.backup_round_trip()
 
+        # Choose apps: switch an app off by name/icon, then keep it again
+        self.exclusion_toggle()
+
         if not keep:
             self.cleanup()
         failed = [r for r in self.results if not r[1]]
@@ -237,6 +240,24 @@ class Runner:
         if d.find("Back to Settings", visible_band=(0, 10_000)):
             d.tap("Back to Settings", anywhere=True)
         return d.tap(label, exact=False, scroll=4)
+
+    def exclusion_toggle(self):
+        d = self.d
+        self.open_settings_page("Notification access & apps")
+        d.tap("Choose apps", scroll=8)
+        d.wait_for("Search apps")
+        self.check("app list shows names, not package names", d.has("NotifyIQ Fixture Poster", exact=True) and not d.has(POSTER))
+        d.tap("Keep notifications from NotifyIQ Fixture Poster", anywhere=True)
+        d.tap("STOP KEEPING", anywhere=True) or d.tap("Stop keeping", anywhere=True)
+        time.sleep(1.5)
+        excluded = d.sql(f"select value from app_preferences where key='excluded:{POSTER}'") == "1"
+        d.tap("Done", anywhere=True)
+        time.sleep(1)
+        shown = d.find("Keep notifications from NotifyIQ Fixture Poster again", visible_band=(0, 10_000)) is not None or d.has("Not kept")
+        self.check("switching an app off excludes it and shows it by name", excluded and shown)
+        d.tap("Keep notifications from NotifyIQ Fixture Poster again", scroll=6)
+        time.sleep(1.5)
+        self.check("keep again restores the app", d.sql(f"select count(*) from app_preferences where key='excluded:{POSTER}' and value='1'") == "0")
 
     def delete_all_history(self):
         d = self.d

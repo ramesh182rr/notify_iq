@@ -78,8 +78,8 @@ function App() {
       if (status.accessGranted && !status.connected) {
         // Android may take a moment to re-bind after the app restarts; keep checking for ~30 s.
         reconnectAttempts.current += 1;
-        // After ~6 s without a connection, ask native code to repair the binding (forced re-bind if needed).
-        if (reconnectAttempts.current === 3) reconnectListener().catch(() => undefined);
+        // After ~4 s without a connection, run the native repair ladder; try once more at ~20 s.
+        if (reconnectAttempts.current === 2 || reconnectAttempts.current === 10) reconnectListener().catch(() => undefined);
         setConnectionStalled(reconnectAttempts.current > 15);
         if (reconnectAttempts.current <= 15) setTimeout(() => { refreshListenerStatusRef.current?.(); }, 2000);
       } else {
@@ -128,6 +128,8 @@ function App() {
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState === 'background') backgroundedAt.current = Date.now();
       if (nextState === 'active') {
+        // Returning to the app after a stall starts a fresh round of checks and repairs.
+        if (reconnectAttempts.current > 15) reconnectAttempts.current = 0;
         refreshListenerStatus();
         setInboxRefreshKey(value => value + 1);
         if (backgroundedAt.current !== null && Date.now() - backgroundedAt.current > 30_000) lockIfEnabled().catch(() => undefined);

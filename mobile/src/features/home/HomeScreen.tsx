@@ -6,7 +6,7 @@ import { readableTextOn } from '../../theme/contrast';
 import { Card, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
 import type { ScreenKey } from '../../navigation/screens';
 import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
-import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions, openBatterySettings } from '../../native/notifyIQ';
+import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions } from '../../native/notifyIQ';
 import type { InsightsSection } from '../insights/InsightsHub';
 import type { SettingsPage } from '../settings/SettingsScreen';
 import { LegalScreen } from '../legal/LegalScreen';
@@ -187,15 +187,15 @@ export function HomeScreen({
           <Card theme={theme}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>⚠️ Android hasn’t reconnected NotifyIQ</Text>
             <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
-              NotifyIQ tried to reconnect automatically but your phone is still blocking it, so new notifications may not be saved.
+              NotifyIQ tried to reconnect automatically, but Android has not let it back in yet, so new notifications may not be saved.
             </Text>
-            <Text style={[styles.cardBody, { color: colors.textPrimary }]}>Tap Reconnect. If it happens again, open Battery settings and let NotifyIQ run without restrictions.</Text>
+            <Text style={[styles.cardBody, { color: colors.textPrimary }]}>Tap Reconnect. If that does not work, open Notification access, switch NotifyIQ off, then on again. This works on every Android phone.</Text>
             <View style={styles.helpRow}>
               <Pressable accessibilityRole="button" onPress={onRetryConnection} style={[styles.helpButton, { backgroundColor: colors.brand }]}>
                 <Text style={[styles.helpText, { color: colors.onBrand }]}>Reconnect</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => { openBatterySettings().catch(() => undefined); }} style={[styles.helpButton, { backgroundColor: colors.surfaceMuted }]}>
-                <Text style={[styles.helpText, { color: colors.textPrimary }]}>Battery settings</Text>
+              <Pressable accessibilityRole="button" onPress={onOpenSettings} style={[styles.helpButton, { backgroundColor: colors.surfaceMuted }]}>
+                <Text style={[styles.helpText, { color: colors.textPrimary }]}>Notification access</Text>
               </Pressable>
             </View>
           </Card>

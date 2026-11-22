@@ -171,6 +171,7 @@ export interface Spec extends TurboModule {
   exportBackup(password: string): Promise<BackupResult>;
   importBackup(password: string): Promise<BackupResult>;
   getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>>;
+  getInstalledApps(): Promise<ReadonlyArray<AppDirectoryEntry>>;
   getUiPreference(key: string): Promise<string | null>;
   setUiPreference(key: string, value: string): Promise<void>;
   getInstallInfo(): Promise<InstallInfo>;

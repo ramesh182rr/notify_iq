@@ -4,7 +4,7 @@
  * Every statement here must stay true of the shipped build. When behaviour changes (permissions,
  * storage, network, retention, new data), update this file and bump LEGAL_VERSION / LEGAL_UPDATED.
  */
-export const LEGAL_VERSION = '1.2';
+export const LEGAL_VERSION = '1.3';
 export const LEGAL_UPDATED = '22 November 2026';
 
 export type LegalSection = { heading: string; body?: string; bullets?: string[] };
@@ -28,6 +28,10 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: 'What NotifyIQ can read',
       body: 'Only notifications Android shares with NotifyIQ after you turn on Notification access in Android settings. For each notification this is the title, text, any extra line (sub-text), the name of the app that posted it, and when it arrived or was dismissed. NotifyIQ does not read your SMS inbox, contacts, photos, files, location, accounts or other apps’ data, and it does not ask for those permissions.',
+    },
+    {
+      heading: 'Apps on your phone',
+      body: 'So you can choose apps by name and icon (for example, apps NotifyIQ should never keep), NotifyIQ can see which apps on your phone have a home-screen icon. This list is shown only on your phone and is never sent anywhere. Only small copies of app icons are kept, to display the list.',
     },
     {
       heading: 'What is never saved',
