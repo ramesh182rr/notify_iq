@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { SecuritySettings } from '../../native/NativeNotifyIQ';
 import { authenticate, getSecuritySettings, setAppLock } from '../../native/notifyIQ';
 import type { AppTheme } from '../../theme/tokens';
-import { LegalScreen } from '../legal/LegalScreen';
-import type { LegalDocument } from '../legal/legalContent';
 
 export function SecuritySection({ theme }: { theme: AppTheme }) {
   const [settings, setSettings] = useState<SecuritySettings | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [legal, setLegal] = useState<LegalDocument['key'] | null>(null);
   const colors = theme.colors;
 
   const load = useCallback(async () => {
@@ -55,14 +52,6 @@ export function SecuritySection({ theme }: { theme: AppTheme }) {
 
       {message ? <Text accessibilityLiveRegion="polite" style={[styles.body, { color: colors.brand }]}>{message}</Text> : null}
 
-      <View style={styles.links}>
-        {([['privacy', 'Privacy policy'], ['terms', 'Terms of use'], ['security', 'How your data is protected']] as const).map(([key, label]) => (
-          <Pressable key={key} accessibilityRole="button" onPress={() => setLegal(key)} style={[styles.link, { backgroundColor: colors.surfaceMuted }]}>
-            <Text style={[styles.linkText, { color: colors.brand }]}>{label} ›</Text>
-          </Pressable>
-        ))}
-      </View>
-      <LegalScreen theme={theme} visible={legal !== null} initial={legal ?? 'privacy'} onClose={() => setLegal(null)} />
     </View>
   );
 }
@@ -74,7 +63,4 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   flex: { flex: 1, gap: 2 },
   label: { fontSize: 15, fontWeight: '700' },
-  links: { gap: 8 },
-  link: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' },
-  linkText: { fontSize: 14, fontWeight: '700' },
 });

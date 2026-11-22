@@ -23,17 +23,13 @@ jest.mock('../src/native/notifyIQ', () => ({
   getMoneySummary: jest.fn().mockResolvedValue({ from: 0, to: 0, currency: 'INR', spentMinor: 0, receivedMinor: 0, debitCount: 0, creditCount: 0, merchants: [], categories: [], recent: [], otherCurrencies: [] }),
 }));
 
-test('renders the home states, six tabs, and appearance choices', async () => {
+test('renders the home states and the four tabs', async () => {
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
 
   await ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(
       <SafeAreaProvider initialMetrics={metrics}>
-        <AppHeader
-          preference="system"
-          theme={lightTheme}
-          onPreferenceChange={jest.fn()}
-        />
+        <AppHeader theme={lightTheme} />
         <HomeScreen
           theme={lightTheme}
           listenerStatus={{accessGranted: false, connected: false, lastErrorCode: null}}
@@ -62,17 +58,11 @@ test('renders the home states, six tabs, and appearance choices', async () => {
   expect(renderedTree).toContain('No internet access');
   expect(renderedTree).toContain('Notification access is off');
   expect(renderedTree).toContain('Open notification access settings');
-  expect(renderedTree).toContain('System');
-  expect(renderedTree).toContain('Light');
-  expect(renderedTree).toContain('Dark');
   expect(renderedTree).not.toContain('"children":["42"]');
-  expect(renderedTree.match(/"accessibilityRole":"tab"/g) ?? []).toHaveLength(
-    6,
-  );
-  expect(renderedTree).toContain('"accessibilityRole":"radiogroup"');
+  expect(renderedTree.match(/"accessibilityRole":"tab"/g) ?? []).toHaveLength(4);
 
   await ReactTestRenderer.act(() => {
-    renderer.update(<SafeAreaProvider initialMetrics={metrics}><BottomTabBar activeScreen="privacy" onSelect={jest.fn()} theme={darkTheme} /></SafeAreaProvider>);
+    renderer.update(<SafeAreaProvider initialMetrics={metrics}><BottomTabBar activeScreen="settings" onSelect={jest.fn()} theme={darkTheme} /></SafeAreaProvider>);
   });
   expect(JSON.stringify(renderer.toJSON())).toContain(darkTheme.colors.brand);
 });

@@ -7,12 +7,11 @@ import { BottomTabBar, FLOATING_TAB_BAR_SPACE } from './src/components/BottomTab
 import { ScreenContainer } from './src/components/ScreenContainer';
 import { HomeScreen } from './src/features/home/HomeScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
-import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import { InsightsHub, type InsightsSection } from './src/features/insights/InsightsHub';
-import { RulesScreen } from './src/features/rules/RulesScreen';
-import {authenticate, getListenerStatus, getSecuritySettings, getUiPreference, openNotificationAccessSettings, setUiPreference} from './src/native/notifyIQ';
+import {authenticate, getListenerStatus, reconnectListener, getSecuritySettings, getInstallInfo, getUiPreference, openNotificationAccessSettings, setUiPreference} from './src/native/notifyIQ';
 import { AppDirectoryProvider } from './src/app/AppDirectory';
 import { Onboarding } from './src/features/onboarding/Onboarding';
+import { SettingsScreen, type SettingsPage } from './src/features/settings/SettingsScreen';
 import { LockScreen } from './src/features/legal/LockScreen';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
@@ -52,8 +51,14 @@ function App() {
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [inboxRefreshKey, setInboxRefreshKey] = useState(0);
   const [insightsSection, setInsightsSection] = useState<InsightsSection>('today');
+  const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
+  const [appVersion, setAppVersion] = useState('');
+  useEffect(() => { getInstallInfo().then(info => setAppVersion(info.versionName)).catch(() => undefined); }, []);
   const navigate = useCallback((screen: ScreenKey) => {
-    setActiveScreen(screen);
+    setActiveScreen(current => {
+      if (screen === 'settings' && current === 'settings') setSettingsPage(null);
+      return screen;
+    });
     if (screen === 'inbox') setInboxRefreshKey(value => value + 1);
   }, []);
 
@@ -63,10 +68,24 @@ function App() {
       : themePreference === 'dark';
   const theme = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
 
+  const [connectionStalled, setConnectionStalled] = useState(false);
+  const reconnectAttempts = useRef(0);
   const refreshListenerStatus = useCallback(async () => {
     setStatusLoading(true);
     try {
-      setListenerStatus(await getListenerStatus());
+      const status = await getListenerStatus();
+      setListenerStatus(status);
+      if (status.accessGranted && !status.connected) {
+        // Android may take a moment to re-bind after the app restarts; keep checking for ~30 s.
+        reconnectAttempts.current += 1;
+        // After ~6 s without a connection, ask native code to repair the binding (forced re-bind if needed).
+        if (reconnectAttempts.current === 3) reconnectListener().catch(() => undefined);
+        setConnectionStalled(reconnectAttempts.current > 15);
+        if (reconnectAttempts.current <= 15) setTimeout(() => { refreshListenerStatusRef.current?.(); }, 2000);
+      } else {
+        reconnectAttempts.current = 0;
+        setConnectionStalled(false);
+      }
       setStatusError(null);
     } catch {
       setStatusError('NotifyIQ could not read notification access status.');
@@ -74,6 +93,14 @@ function App() {
       setStatusLoading(false);
     }
   }, []);
+
+  const refreshListenerStatusRef = useRef<(() => void) | null>(null);
+  useEffect(() => { refreshListenerStatusRef.current = () => { refreshListenerStatus().catch(() => undefined); }; }, [refreshListenerStatus]);
+  const retryConnection = useCallback(() => {
+    reconnectAttempts.current = 0;
+    setConnectionStalled(false);
+    reconnectListener().catch(() => undefined).finally(() => { setTimeout(() => { refreshListenerStatus().catch(() => undefined); }, 1500); });
+  }, [refreshListenerStatus]);
 
   // App lock: history is not rendered until the person authenticates. Relocks after 30 s in the background.
   const [locked, setLocked] = useState<boolean | null>(null);
@@ -133,25 +160,21 @@ function App() {
       <SafeAreaView
         edges={['top']}
         style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-        <AppHeader
-          preference={themePreference}
-          theme={theme}
-          onPreferenceChange={setThemePreference}
-        />
+        <AppHeader theme={theme} />
         {locked !== false ? (
           <LockScreen theme={theme} failed={unlockFailed} onUnlock={() => { unlock().catch(() => undefined); }} />
         ) : (<>
         <View style={styles.flex}>
           {/* key per tab: each tab opens at the top instead of inheriting the previous tab's scroll offset */}
-          <ScreenContainer key={activeScreen} theme={theme} bottomSpace={FLOATING_TAB_BAR_SPACE}>
-            {activeScreen === 'inbox' || activeScreen === 'search' ? (
-              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} searchMode={activeScreen === 'search'} listenerStatus={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
-            ) : activeScreen === 'privacy' ? (
-              <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={handleOpenSettings} />
+          <ScreenContainer key={activeScreen === 'settings' ? `settings-${settingsPage ?? 'root'}` : activeScreen} theme={theme} bottomSpace={FLOATING_TAB_BAR_SPACE}>
+            {activeScreen === 'inbox' ? (
+              <InboxScreen theme={theme} refreshKey={inboxRefreshKey} listenerStatus={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
+            ) : activeScreen === 'settings' ? (
+              <SettingsScreen theme={theme} page={settingsPage} onPageChange={setSettingsPage} themePreference={themePreference}
+                onThemeChange={setThemePreference} listenerStatus={listenerStatus} onOpenAccessSettings={handleOpenSettings}
+                onDataChanged={() => setInboxRefreshKey(value => value + 1)} appVersion={appVersion} />
             ) : activeScreen === 'insights' ? (
               <InsightsHub theme={theme} refreshKey={inboxRefreshKey} section={insightsSection} onSectionChange={setInsightsSection} status={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
-            ) : activeScreen === 'rules' ? (
-              <RulesScreen theme={theme} />
             ) : <HomeScreen
               theme={theme}
               refreshKey={inboxRefreshKey}
@@ -163,6 +186,9 @@ function App() {
               onOpenSettings={handleOpenSettings}
               onRetryStatus={refreshListenerStatus}
               onNavigate={navigate}
+              onOpenSettingsPage={(page: SettingsPage) => { setSettingsPage(page); navigate('settings'); }}
+              connectionStalled={connectionStalled}
+              onRetryConnection={retryConnection}
               onOpenInsights={(section: InsightsSection) => { setInsightsSection(section); navigate('insights'); }}
             />}
           </ScreenContainer>

@@ -190,3 +190,11 @@ export function exportBackup(password: string): Promise<BackupResult> {
 export function importBackup(password: string): Promise<BackupResult> {
   return requireNativeModule().importBackup(password);
 }
+
+export function reconnectListener(): Promise<void> {
+  return requireNativeModule().reconnectListener();
+}
+
+export function openBatterySettings(): Promise<void> {
+  return requireNativeModule().openBatterySettings();
+}

@@ -4,7 +4,6 @@ import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 import { AppPicker } from '../../components/AppPicker';
 
 import {
-  clearNotificationHistory,
   addSavedSearch,
   deleteSavedSearch,
   getSavedSearches,
@@ -22,7 +21,7 @@ import { categoryVisual, priorityColor, relativeTime } from '../../theme/tokens'
 import { readableTextOn } from '../../theme/contrast';
 import { Pill } from '../../components/ui';
 
-type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
+type Props = { theme: AppTheme; refreshKey: number; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
 type PendingUndo = { label: string; action: () => Promise<void> };
 type SavedSearch = { id: string; name: string; query: string; packageName: string; category: string; groupName: string; dateRange: DateRange; includeArchived: boolean };
@@ -42,17 +41,17 @@ const decodeSavedSearches = (value: string): SavedSearch[] => {
   return parsed.searches.map(search => ({ ...search, groupName: search.groupName ?? '' }));
 };
 
-export function InboxScreen({ theme, refreshKey, searchMode = false, listenerStatus, statusLoading = false, statusError = null }: Props) {
+export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading = false, statusError = null }: Props) {
   const { name: appName } = useAppDirectory();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
   const [error, setError] = useState(false);
   const [actionError, setActionError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [clearing, setClearing] = useState(false);
   const [query, setQuery] = useState('');
   const [packageName, setPackageName] = useState('');
   const [pickingApp, setPickingApp] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [range, setRange] = useState<DateRange>('all');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [category, setCategory] = useState('');
@@ -98,9 +97,8 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
   }, [loadFirstPage, packageName, query, refreshKey]);
 
   useEffect(() => {
-    if (!searchMode) return;
     getSavedSearches().then(value => setSavedSearches(decodeSavedSearches(value))).catch(() => setActionError(true));
-  }, [searchMode]);
+  }, [refreshKey]);
 
   useEffect(() => {
     getRuleGroups().then(groups => setGroupOptions([...groups])).catch(() => setActionError(true));
@@ -153,26 +151,15 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     ],
   );
 
-  const confirmClear = () => Alert.alert(
-    'Delete notification history?',
-    'This removes all notifications saved on this device. This cannot be undone.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        setClearing(true);
-        try {
-          await clearNotificationHistory();
-          setItems([]);
-          setHasMore(false);
-          setError(false);
-        } catch {
-          setError(true);
-        } finally {
-          setClearing(false);
-        }
-      } },
-    ],
-  );
+
+  const removeSavedSearch = async (id: string) => {
+    try {
+      setSavedSearches(decodeSavedSearches(await deleteSavedSearch(id)));
+      setActionError(false);
+    } catch {
+      setActionError(true);
+    }
+  };
 
   const saveCurrentSearch = async () => {
     try {
@@ -188,19 +175,21 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
     }
   };
 
-  const removeSavedSearch = async (id: string) => {
-    try {
-      setSavedSearches(decodeSavedSearches(await deleteSavedSearch(id)));
-      setActionError(false);
-    } catch {
-      setActionError(true);
-    }
-  };
+  const activeFilters = (packageName ? 1 : 0) + (range !== 'all' ? 1 : 0) + (includeArchived ? 1 : 0) + (category ? 1 : 0) + (groupName ? 1 : 0);
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={[styles.title, { color: theme.colors.textPrimary }]}>{searchMode ? 'Search' : 'Inbox'}</Text>
-      {listenerStatus !== undefined ? (
+      <View style={styles.titleRow}>
+        <Text accessibilityRole="header" style={[styles.title, styles.flex, { color: theme.colors.textPrimary }]}>Inbox</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showFilters }} accessibilityLabel={`Filters${activeFilters ? `, ${activeFilters} active` : ''}`}
+          onPress={() => setShowFilters(value => !value)}
+          style={[styles.filterToggle, { backgroundColor: activeFilters || showFilters ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.filterToggleText, { color: activeFilters || showFilters ? theme.colors.brand : theme.colors.textPrimary }]}>
+            {showFilters ? 'Hide filters' : activeFilters ? `Filters · ${activeFilters}` : 'Filters'}
+          </Text>
+        </Pressable>
+      </View>
+      {listenerStatus !== undefined && (statusError || listenerStatus === null || !listenerStatus.accessGranted || !listenerStatus.connected || listenerStatus.lastErrorCode) ? (
         <View accessibilityLiveRegion="polite" style={[styles.coverage, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.coverageTitle, { color: theme.colors.textPrimary }]}>Capture coverage</Text>
           <Text style={[styles.hint, { color: statusError || listenerStatus?.lastErrorCode ? theme.colors.danger : theme.colors.textSecondary }]}>
@@ -208,15 +197,50 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           </Text>
         </View>
       ) : null}
-      <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Saved history is stored on this device and works offline. There is no account or network sync.</Text>
       <TextInput
         accessibilityLabel="Search notification text"
-        placeholder="Search saved notification text"
+        placeholder="Search your notifications"
         placeholderTextColor={theme.colors.textSecondary}
         value={query}
         onChangeText={setQuery}
         style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
       />
+      {savedSearches.length || query || activeFilters ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRail} accessibilityLabel="Saved searches">
+          {savedSearches.map(saved => (
+            <View key={saved.id} style={[styles.savedChip, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Apply saved search ${saved.name}`} onPress={() => {
+                setQuery(saved.query); setPackageName(saved.packageName); setCategory(saved.category);
+                setGroupName(saved.groupName); setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
+              }} style={styles.savedChipMain}>
+                <Text style={[styles.savedSearchTitle, { color: theme.colors.textPrimary }]}>★ {saved.name}</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Delete saved search ${saved.name}`} onPress={() => ignorePromise(removeSavedSearch(saved.id))} hitSlop={8} style={styles.savedChipRemove}>
+                <Text style={{ color: theme.colors.textSecondary, fontWeight: '800' }}>×</Text>
+              </Pressable>
+            </View>
+          ))}
+          {(query || activeFilters) && !editingSavedSearch ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Save current search" onPress={() => setEditingSavedSearch(true)} style={[styles.savedChip, styles.savedChipMain, { backgroundColor: theme.colors.brandSoft, borderColor: theme.colors.brandSoft }]}>
+              <Text style={[styles.savedSearchTitle, { color: theme.colors.brand }]}>☆ Save this search</Text>
+            </Pressable>
+          ) : null}
+        </ScrollView>
+      ) : null}
+      {editingSavedSearch ? (
+        <View style={styles.row}>
+          <TextInput accessibilityLabel="Saved search name" placeholder="Name this search" placeholderTextColor={theme.colors.textSecondary} value={saveSearchName} onChangeText={setSaveSearchName} maxLength={40}
+            style={[styles.input, styles.flex, { color: theme.colors.textPrimary, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Confirm save search" disabled={!saveSearchName.trim()} onPress={() => ignorePromise(saveCurrentSearch())} style={styles.inlineAction}>
+            <Text style={[styles.savedSearchButton, { color: theme.colors.brand }]}>Save</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cancel saving search" onPress={() => { setEditingSavedSearch(false); setSaveSearchName(''); }} style={styles.inlineAction}>
+            <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {showFilters ? (
+        <View style={[styles.filterPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Filter by app: ${packageName ? appName(packageName) : 'all apps'}`} onPress={() => setPickingApp(true)}
         style={[styles.input, styles.appField, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
         {packageName ? <AppIcon theme={theme} packageName={packageName} size={26} /> : null}
@@ -257,49 +281,14 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           ))}
         </ScrollView>
       ) : null}
-      {searchMode ? (
-        <View style={[styles.savedSearches, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.sectionLabel, { color: theme.colors.textPrimary }]}>Saved searches</Text>
-          {savedSearches.map(saved => (
-            <View key={saved.id} style={styles.savedSearchRow}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Apply saved search ${saved.name}`} onPress={() => {
-                setQuery(saved.query); setPackageName(saved.packageName); setCategory(saved.category);
-                setGroupName(saved.groupName); setRange(saved.dateRange); setIncludeArchived(saved.includeArchived);
-              }} style={styles.savedSearchApply}>
-                <Text style={[styles.savedSearchTitle, { color: theme.colors.textPrimary }]}>{saved.name}</Text>
-                <Text style={[styles.hint, { color: theme.colors.textSecondary }]} numberOfLines={1}>
-                  {[saved.query || null, saved.packageName || null, saved.category ? categoryLabel(saved.category) : null, saved.groupName || null, saved.dateRange === 'all' ? null : saved.dateRange === 'today' ? 'Today' : '7 days', saved.includeArchived ? 'Archived' : null].filter(Boolean).join(' · ') || 'All retained notifications'}
-                </Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Delete saved search ${saved.name}`} onPress={() => ignorePromise(removeSavedSearch(saved.id))} style={styles.savedSearchDelete}>
-                <Text style={{ color: theme.colors.danger }}>Delete</Text>
-              </Pressable>
-            </View>
-          ))}
-          {editingSavedSearch ? (
-            <View style={styles.row}>
-              <TextInput accessibilityLabel="Saved search name" placeholder="Search name" placeholderTextColor={theme.colors.textSecondary} value={saveSearchName} onChangeText={setSaveSearchName} maxLength={40} style={[styles.input, styles.savedSearchName, { color: theme.colors.textPrimary, borderColor: theme.colors.border }]} />
-              <Pressable accessibilityRole="button" accessibilityLabel="Save current search" disabled={!saveSearchName.trim()} onPress={() => ignorePromise(saveCurrentSearch())}>
-                <Text style={[styles.savedSearchButton, { color: theme.colors.brand }]}>Save</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Cancel saving search" onPress={() => { setEditingSavedSearch(false); setSaveSearchName(''); }}>
-                <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable accessibilityRole="button" accessibilityLabel="Save current search" onPress={() => setEditingSavedSearch(true)}>
-              <Text style={[styles.savedSearchButton, { color: theme.colors.brand }]}>Save current search</Text>
+          {activeFilters ? (
+            <Pressable accessibilityRole="button" onPress={() => { setPackageName(''); setRange('all'); setIncludeArchived(false); setCategory(''); setGroupName(''); }} style={styles.inlineAction}>
+              <Text style={{ color: theme.colors.brand, fontWeight: '700' }}>Clear filters</Text>
             </Pressable>
-          )}
+          ) : null}
         </View>
       ) : null}
-      {!searchMode ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Manage retention and app exclusions in Privacy.</Text> : null}
       {actionError ? <Text style={{ color: theme.colors.danger }}>That change could not be saved. Try again.</Text> : null}
-      {!loading && items.length > 0 ? (
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: clearing }} disabled={clearing} onPress={confirmClear} style={{ minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start' }}>
-          <Text style={{ color: theme.colors.danger }}>{clearing ? 'Deleting…' : 'Delete all history'}</Text>
-        </Pressable>
-      ) : null}
       {pendingUndo ? (
         <View accessibilityLiveRegion="polite" style={[styles.undoNotice, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={{ color: theme.colors.textPrimary }}>{pendingUndo.label}</Text>
@@ -470,6 +459,14 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 14, fontWeight: '700' },
   app: { fontSize: 15, fontWeight: '800' },
   flex: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  filterToggle: { minHeight: 44, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1, justifyContent: 'center' },
+  filterToggleText: { fontSize: 14, fontWeight: '800' },
+  filterPanel: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 12 },
+  savedChip: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 999, minHeight: 44 },
+  savedChipMain: { paddingHorizontal: 14, minHeight: 44, justifyContent: 'center' },
+  savedChipRemove: { paddingRight: 12, paddingLeft: 2, minHeight: 44, justifyContent: 'center' },
+  inlineAction: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
   appField: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48 },
   itemTitle: { fontSize: 16, fontWeight: '700' },
   body: { fontSize: 14, lineHeight: 20 },

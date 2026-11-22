@@ -6,8 +6,9 @@ import { readableTextOn } from '../../theme/contrast';
 import { Card, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
 import type { ScreenKey } from '../../navigation/screens';
 import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
-import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions } from '../../native/notifyIQ';
+import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions, openBatterySettings } from '../../native/notifyIQ';
 import type { InsightsSection } from '../insights/InsightsHub';
+import type { SettingsPage } from '../settings/SettingsScreen';
 import { LegalScreen } from '../legal/LegalScreen';
 import { actionKinds, dueLabel, formatMoney } from '../money/format';
 import { categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
@@ -24,6 +25,9 @@ type HomeScreenProps = {
   onRetryStatus: () => void;
   onNavigate: (screen: ScreenKey) => void;
   onOpenInsights?: (section: InsightsSection) => void;
+  onOpenSettingsPage?: (page: SettingsPage) => void;
+  connectionStalled?: boolean;
+  onRetryConnection?: () => void;
 };
 
 const tips = [
@@ -35,11 +39,12 @@ const tips = [
   'Change a category in the Inbox if NotifyIQ guessed wrong. Your choice sticks.',
 ];
 
-const quickActions: { key: ScreenKey; title: string; body: string }[] = [
-  { key: 'search', title: 'Search', body: 'Find anything you kept' },
-  { key: 'inbox', title: 'Inbox', body: 'Review & save' },
-  { key: 'rules', title: 'Rules', body: 'Organise automatically' },
-  { key: 'privacy', title: 'Privacy', body: 'Exclusions & retention' },
+type QuickAction = { key: string; icon: 'search' | 'insights' | 'rules' | 'privacy'; title: string; body: string; screen?: ScreenKey; page?: SettingsPage };
+const quickActions: QuickAction[] = [
+  { key: 'inbox', icon: 'search', title: 'Search & inbox', body: 'Find anything you kept', screen: 'inbox' },
+  { key: 'insights', icon: 'insights', title: 'Insights', body: 'Money and coming up', screen: 'insights' },
+  { key: 'rules', icon: 'rules', title: 'Rules', body: 'Organise automatically', page: 'rules' },
+  { key: 'privacy', icon: 'privacy', title: 'Privacy', body: 'Exclusions & retention', page: 'privacy' },
 ];
 
 function greeting(date: Date) {
@@ -52,7 +57,7 @@ function greeting(date: Date) {
 
 export function HomeScreen({
   theme, refreshKey = 0, listenerStatus, statusError, statusLoading, settingsOpening, settingsError,
-  onOpenSettings, onRetryStatus, onNavigate, onOpenInsights,
+  onOpenSettings, onRetryStatus, onNavigate, onOpenInsights, onOpenSettingsPage, connectionStalled = false, onRetryConnection,
 }: HomeScreenProps) {
   const { name: appName } = useAppDirectory();
   const [overview, setOverview] = useState<DailyOverview | null>(null);
@@ -152,7 +157,7 @@ export function HomeScreen({
             <View style={styles.heroTop}>
               <Text style={[styles.heroEyebrow, { color: colors.onHeroMuted }]}>TODAY</Text>
               <View style={[styles.liveDot, { backgroundColor: listenerStatus?.connected ? '#5BE0A0' : '#FFB547' }]} />
-              <Text style={[styles.heroEyebrow, { color: colors.onHeroMuted }]}>{listenerStatus?.connected ? 'Capturing' : 'Reconnecting'}</Text>
+              <Text style={[styles.heroEyebrow, { color: colors.onHeroMuted }]}>{listenerStatus?.connected ? 'Capturing' : connectionStalled ? 'Not connected' : 'Connecting…'}</Text>
             </View>
             <View style={styles.heroNumberRow}>
               <Text style={[styles.heroNumber, { color: colors.onHero }]}>{total}</Text>
@@ -176,6 +181,26 @@ export function HomeScreen({
           </Pressable>
         </FadeIn>
       )}
+
+      {accessOn && connectionStalled ? (
+        <FadeIn>
+          <Card theme={theme}>
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>⚠️ Android hasn’t reconnected NotifyIQ</Text>
+            <Text style={[styles.cardBody, { color: colors.textSecondary }]}>
+              NotifyIQ tried to reconnect automatically but your phone is still blocking it, so new notifications may not be saved.
+            </Text>
+            <Text style={[styles.cardBody, { color: colors.textPrimary }]}>Tap Reconnect. If it happens again, open Battery settings and let NotifyIQ run without restrictions.</Text>
+            <View style={styles.helpRow}>
+              <Pressable accessibilityRole="button" onPress={onRetryConnection} style={[styles.helpButton, { backgroundColor: colors.brand }]}>
+                <Text style={[styles.helpText, { color: colors.onBrand }]}>Reconnect</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => { openBatterySettings().catch(() => undefined); }} style={[styles.helpButton, { backgroundColor: colors.surfaceMuted }]}>
+                <Text style={[styles.helpText, { color: colors.textPrimary }]}>Battery settings</Text>
+              </Pressable>
+            </View>
+          </Card>
+        </FadeIn>
+      ) : null}
 
       {loadError ? (
         <Card theme={theme} onPress={() => { load().catch(() => undefined); }} accessibilityLabel="Retry loading today">
@@ -298,9 +323,10 @@ export function HomeScreen({
         <SectionHeader theme={theme} title="Jump back in" />
         <View style={styles.grid}>
           {quickActions.map(action => (
-            <Card key={action.key} theme={theme} style={styles.tile} onPress={() => onNavigate(action.key)} accessibilityLabel={`Open ${action.title}`}>
+            <Card key={action.key} theme={theme} style={styles.tile} accessibilityLabel={`Open ${action.title}`}
+              onPress={() => (action.page ? (onOpenSettingsPage ? onOpenSettingsPage(action.page) : onNavigate('settings')) : onNavigate(action.screen ?? 'inbox'))}>
               <View style={[styles.tileIcon, { backgroundColor: colors.brandSoft }]}>
-                <Icon name={action.key} color={colors.brand} size={22} />
+                <Icon name={action.icon} color={colors.brand} size={22} />
               </View>
               <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{action.title}</Text>
               <Text style={[styles.cardBody, { color: colors.textSecondary }]}>{action.body}</Text>
@@ -381,6 +407,9 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
   promise: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 14 },
   promiseText: { fontSize: 12, fontWeight: '600' },
+  helpRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  helpButton: { flex: 1, minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  helpText: { fontSize: 14, fontWeight: '800' },
   legalLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   legalText: { fontSize: 13, fontWeight: '700' },
   upcomingIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

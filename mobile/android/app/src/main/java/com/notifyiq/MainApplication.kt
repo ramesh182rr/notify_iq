@@ -21,6 +21,8 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    ListenerHealth.schedulePeriodicCheck(this)
+    ListenerHealth.repairIfNeeded(this, retryAfterMs = 8_000L)
     loadReactNative(this)
   }
 }

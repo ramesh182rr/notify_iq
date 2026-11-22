@@ -97,7 +97,9 @@ class NotificationReminderReceiver : BroadcastReceiver() {
 
 class ReminderBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+    if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+    ListenerHealth.schedulePeriodicCheck(context)
+    ListenerHealth.repairIfNeeded(context)
     val repository = NotificationRepository(context)
     repository.pendingReminders().forEach { (eventId, dueAt) ->
       if (!UserReminderScheduler.schedule(context, eventId, dueAt)) repository.markReminderUnavailable(eventId)

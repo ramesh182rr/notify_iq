@@ -101,6 +101,12 @@
     - `getNotification` returned a map from a consumed array, so View source showed "no longer in history".
     - Tabs inherited the previous tab's scroll offset.
   - Verified the backup file has the `NIQX` header and contains no readable notification text or SQLite header; a wrong password is rejected.
+- Real-device report (owner's phone, 1.7): after closing and reopening the app, Home stayed on "Reconnecting". Cause: the listener-connected flag is process-local. When the phone restarts the app process and does not promptly re-bind the NotificationListenerService (common with OEM battery management), the flag stays false. Fix (1.8):
+  - `getListenerStatus` calls `NotificationListenerService.requestRebind` (rate-limited) whenever access is granted but the listener is not connected.
+  - The app re-polls every 2 s for about 30 s, showing "Connecting…".
+  - If still not connected, a help card offers Reconnect, Battery settings (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, no special permission) and OEM autostart guidance.
+  - The emulator re-binds promptly, so the stalled path is covered by a Jest test. The real-device fix still needs the owner's confirmation.
+- R-019 (1.9): probe-based connection status, safe brand-agnostic self-repair (requestRebind at start, boot, update, status checks and a 15-minute job). The component-toggle approach was measured harmful on Android 15 and rejected. UI moves to 4 tabs: Inbox merges search and saved searches behind a Filters panel; the Settings tab groups Rules, access & apps, backup, App lock, appearance and legal; the header is slimmed. Tests: ListenerHealthTest (probe ignores a stale flag, repair is harmless while bound, job scheduled and persisted), Settings and connection-help Jest tests, e2e updated (21/21).
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -200,3 +206,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - After R-016: `npm run typecheck`, eslint, `npm test` (8 suites / 47 tests); release built and audited (permissions POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC; no INTERNET).
 - After R-017: typecheck, eslint, `npm test` 47/47, unit tests, `assembleRelease`/`bundleRelease` signed with the private key (apksigner v2 verified), 16 KB OK, permissions POST_NOTIFICATIONS/RECEIVE_BOOT_COMPLETED/USE_BIOMETRIC; release smoke on the emulator passed.
 - After R-018: typecheck, eslint (0 errors), `npm test` 8 suites / 47 tests; `:app:testDebugUnitTest` 12; `:app:connectedDebugAndroidTest` 28 tests, 0 failures, 2 opt-in skipped (includes migration v1→v9, backup crypto and round trip, app directory, fingerprint grouping); `python3 -I mobile/e2e/notifyiq_e2e.py` 23/23.
+- After R-019: typecheck, eslint, `npm test` 10 suites / 50 tests; `:app:connectedDebugAndroidTest` 31 tests, 0 failures, 2 opt-in skipped; e2e 21/21.

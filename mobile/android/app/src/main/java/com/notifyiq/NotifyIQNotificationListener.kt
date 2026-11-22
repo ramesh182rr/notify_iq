@@ -21,6 +21,7 @@ class NotifyIQNotificationListener : NotificationListenerService() {
 
   override fun onListenerConnected() {
     super.onListenerConnected()
+    NotificationListenerRuntimeState.instance = this
     NotificationListenerRuntimeState.connected = true
   }
 
@@ -65,6 +66,7 @@ class NotifyIQNotificationListener : NotificationListenerService() {
   }
 
   override fun onDestroy() {
+    if (NotificationListenerRuntimeState.instance === this) NotificationListenerRuntimeState.instance = null
     NotificationListenerRuntimeState.connected = false
     super.onDestroy()
   }

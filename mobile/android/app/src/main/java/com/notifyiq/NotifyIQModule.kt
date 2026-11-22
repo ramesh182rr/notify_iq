@@ -41,9 +41,14 @@ class NotifyIQModule(
     try {
       val listener = ComponentName(appContext, NotifyIQNotificationListener::class.java)
       val notificationManager = appContext.getSystemService(NotificationManager::class.java)
+      val granted = notificationManager.isNotificationListenerAccessGranted(listener)
+      // Some phones do not re-bind the listener after the app process restarts; ask Android to.
+      val connected = granted && NotificationListenerRuntimeState.probeConnected()
+      if (granted && !connected) requestRebind(listener, force = false)
+      ListenerHealth.schedulePeriodicCheck(appContext)
       val status = Arguments.createMap().apply {
-        putBoolean("accessGranted", notificationManager.isNotificationListenerAccessGranted(listener))
-        putBoolean("connected", NotificationListenerRuntimeState.connected)
+        putBoolean("accessGranted", granted)
+        putBoolean("connected", connected)
         if (NotificationListenerRuntimeState.lastErrorCode == null) putNull("lastErrorCode") else putString("lastErrorCode", NotificationListenerRuntimeState.lastErrorCode)
       }
       promise.resolve(status)
@@ -192,6 +197,7 @@ class NotifyIQModule(
     promise.resolve(Arguments.createMap().apply {
       putString("source", if (installer == "com.android.vending") "store" else "sideload")
       putInt("sdk", android.os.Build.VERSION.SDK_INT)
+      putString("versionName", runCatching { appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName }.getOrNull() ?: "")
     })
   }
 
@@ -274,6 +280,35 @@ class NotifyIQModule(
 
   private fun deleteDatabaseFiles(file: java.io.File) {
     listOf("", "-wal", "-shm", "-journal").forEach { java.io.File(file.absolutePath + it).delete() }
+  }
+
+  @Volatile private var lastRebindAt = 0L
+
+  private fun requestRebind(listener: ComponentName, force: Boolean) {
+    val now = android.os.SystemClock.elapsedRealtime()
+    if (!force && now - lastRebindAt < 5_000) return
+    lastRebindAt = now
+    runCatching { android.service.notification.NotificationListenerService.requestRebind(listener) }
+      .onFailure { Log.w(NAME, "LISTENER_REBIND_FAILED ${it.javaClass.simpleName}") }
+  }
+
+  @ReactMethod
+  override fun reconnectListener(promise: Promise) {
+    // Gentle request first; forced re-bind (component toggle) if Android still has not connected it.
+    ListenerHealth.repairIfNeeded(appContext, retryAfterMs = 3_000L) { promise.resolve(null) }
+  }
+
+  /** Opens the system battery-optimisation list (no special permission needed) so the user can exempt NotifyIQ. */
+  @ReactMethod
+  override fun openBatterySettings(promise: Promise) {
+    val intents = listOf(
+      Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", appContext.packageName, null)),
+    )
+    for (intent in intents) {
+      if (runCatching { appContext.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess) { promise.resolve(null); return }
+    }
+    promise.reject("SETTINGS_UNAVAILABLE", "Battery settings could not be opened.")
   }
 
   @ReactMethod

@@ -92,7 +92,7 @@ export type MoneyAnalytics = {
 };
 export type BackupResult = { status: string; count: number };
 export type AppDirectoryEntry = { packageName: string; label: string; iconUri: string | null };
-export type InstallInfo = { source: string; sdk: number };
+export type InstallInfo = { source: string; sdk: number; versionName: string };
 export type SecuritySettings = { appLock: boolean; deviceSecure: boolean };
 export type UpcomingAction = {
   eventId: number;
@@ -166,6 +166,8 @@ export interface Spec extends TurboModule {
   getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalytics>;
   setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void>;
   getNotification(id: number): Promise<NotificationItem | null>;
+  reconnectListener(): Promise<void>;
+  openBatterySettings(): Promise<void>;
   exportBackup(password: string): Promise<BackupResult>;
   importBackup(password: string): Promise<BackupResult>;
   getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>>;

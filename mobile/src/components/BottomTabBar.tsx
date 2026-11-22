@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 14,
   },
-  tab: { flex: 1, minHeight: 56 },
-  pill: { flex: 1, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 6 },
+  tab: { flex: 1, minHeight: 56, justifyContent: 'center' },
+  pill: { alignSelf: 'center', minWidth: 68, borderRadius: 999, alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 6, paddingHorizontal: 14 },
   label: { fontSize: 10.5 },
   pressed: { opacity: 0.6 },
 });

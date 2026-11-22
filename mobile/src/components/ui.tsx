@@ -131,7 +131,7 @@ export function CategoryStack({ theme, categories, onHero }: {
 }
 
 /** Small icon set drawn with Views so it tints with the theme and needs no icon font. */
-export function Icon({ name, color, size = 22 }: { name: 'home' | 'inbox' | 'search' | 'insights' | 'rules' | 'privacy' | 'theme'; color: string; size?: number }) {
+export function Icon({ name, color, size = 22 }: { name: 'home' | 'inbox' | 'search' | 'insights' | 'rules' | 'privacy' | 'theme' | 'settings'; color: string; size?: number }) {
   const s = size;
   const stroke = Math.max(2, Math.round(s / 11));
   switch (name) {
@@ -183,6 +183,20 @@ export function Icon({ name, color, size = 22 }: { name: 'home' | 'inbox' | 'sea
           </View>
         </View>
       );
+    case 'settings': {
+      const tooth = { w: s * 0.18, h: s * 0.24 };
+      return (
+        <View style={{ width: s, height: s, alignItems: 'center', justifyContent: 'center' }}>
+          {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => (
+            <View key={angle} style={{
+              position: 'absolute', left: (s - tooth.w) / 2, top: (s - tooth.h) / 2, width: tooth.w, height: tooth.h, borderRadius: 1.5,
+              backgroundColor: color, transform: [{ rotate: `${angle}deg` }, { translateY: -s * 0.36 }],
+            }} />
+          ))}
+          <View style={{ width: s * 0.62, height: s * 0.62, borderRadius: s, borderWidth: stroke + 1, borderColor: color }} />
+        </View>
+      );
+    }
     case 'theme':
       return (
         <View style={{ width: s, height: s, borderRadius: s, borderWidth: stroke, borderColor: color, overflow: 'hidden', flexDirection: 'row' }}>

@@ -25,7 +25,7 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-test('shows local empty state and directs retention management to Privacy', async () => {
+test('shows local empty state and keeps the inbox focused on notifications', async () => {
   jest.useFakeTimers();
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
   await ReactTestRenderer.act(() => {
@@ -37,8 +37,6 @@ test('shows local empty state and directs retention management to Privacy', asyn
 
   const rendered = JSON.stringify(renderer.toJSON());
   expect(rendered).toContain('No matching notifications');
-  expect(rendered).toContain('Manage retention and app exclusions in Privacy');
-  expect(rendered).toContain('works offline');
 });
 
 test('states that history may be incomplete when notification access is off', async () => {

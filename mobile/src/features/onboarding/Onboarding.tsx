@@ -26,9 +26,9 @@ export function Onboarding({ theme, visible, listenerStatus, onOpenAccessSetting
     ...(needsRestrictedSettings ? [{ key: 'restricted', emoji: '🛡️', title: 'One extra step for this install',
       body: 'Android protects notification access for apps installed outside the Play Store. Allow it once:',
       bullets: ['Tap “Open app info” below', 'Tap the ⋮ menu at the top right', 'Choose “Allow restricted settings” and confirm', 'Come back here'] }] : []),
-    { key: 'access', emoji: '🔔', title: 'Turn on notification access', body: 'Android asks you to allow NotifyIQ to read notifications. You can turn it off any time in the Privacy tab.' },
+    { key: 'access', emoji: '🔔', title: 'Turn on notification access', body: 'Android asks you to allow NotifyIQ to read notifications. You can turn it off any time in Settings.' },
     { key: 'done', emoji: '✨', title: 'You’re all set', body: 'A few tips to get the most out of NotifyIQ:',
-      bullets: ['Turn on App lock in the Privacy tab for extra protection', 'Exclude apps you never want kept, such as authenticator apps', 'Check Insights → Money and Coming up after a few days'] },
+      bullets: ['Turn on App lock in Settings for extra protection', 'Exclude apps you never want kept, such as authenticator apps', 'Check Insights → Money and Coming up after a few days'] },
   ], [needsRestrictedSettings]);
 
   const step = steps[Math.min(index, steps.length - 1)];

@@ -4,8 +4,6 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { clearNotificationHistory, getExcludedPackages, getRetentionDays, setAppExcluded, setRetentionDays } from '../../native/notifyIQ';
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
-import { SecuritySection } from './SecuritySection';
-import { BackupSection } from './BackupSection';
 import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 import { AppPicker } from '../../components/AppPicker';
 
@@ -58,10 +56,6 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
   const card = { backgroundColor: theme.colors.surface, borderColor: theme.colors.border };
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Privacy Centre</Text>
-      <Text style={[styles.description, { color: theme.colors.textSecondary }]}>Control notification access, local retention and which apps NotifyIQ keeps history for.</Text>
-      <SecuritySection theme={theme} />
-      <BackupSection theme={theme} onRestored={() => { ignorePromise(load()); }} />
 
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Notification access</Text>

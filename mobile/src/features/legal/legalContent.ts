@@ -4,7 +4,7 @@
  * Every statement here must stay true of the shipped build. When behaviour changes (permissions,
  * storage, network, retention, new data), update this file and bump LEGAL_VERSION / LEGAL_UPDATED.
  */
-export const LEGAL_VERSION = '1.1';
+export const LEGAL_VERSION = '1.2';
 export const LEGAL_UPDATED = '22 November 2026';
 
 export type LegalSection = { heading: string; body?: string; bullets?: string[] };
@@ -73,7 +73,7 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: 'Your controls',
       bullets: [
-        'Turn Notification access off at any time from the Privacy tab or Android settings. Capture stops immediately.',
+        'Turn Notification access off at any time from Settings → Notification access & apps, or from Android settings. Capture stops immediately.',
         'Exclude any app so its notifications are never read.',
         'Delete single notifications, mark misread payments or dates as not relevant, or delete all history.',
         'Export an encrypted backup to move to a new phone, and restore it there.',
@@ -188,7 +188,7 @@ export const securityOverview: LegalDocument = {
       heading: 'Recommended settings',
       bullets: [
         'Use a strong screen lock (PIN, pattern, password or biometrics).',
-        'Turn on App lock in the Privacy tab.',
+        'Turn on App lock in Settings.',
         'Exclude apps whose notifications you never want kept, such as banking or authenticator apps.',
         'Choose a short retention period if you only need recent history.',
       ],

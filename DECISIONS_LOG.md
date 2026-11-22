@@ -222,6 +222,16 @@ This log distinguishes decisions already present in the supplied development kit
 - Each tab now opens at the top, fixing scroll position leaking between tabs. This bug was found by the end-to-end suite.
 **Privacy:** the policy (v1.1) discloses the app-name/icon cache and user-initiated encrypted exports. Exports leave the device only where the user chooses to save them.
 
+### R-019 — Brand-agnostic listener self-repair; four-tab navigation
+
+**Status:** Requested by user, 2026-11-22 ("needs to work on all … from the base model", "make the UI clean")
+**Decision:**
+- Connection status is probed from the live listener (`activeNotifications` succeeds only while bound) instead of a process-local flag. A stale flag was the likely cause of the "Reconnecting" report.
+- Self-repair uses only `NotificationListenerService.requestRebind` (a no-op while bound). It runs at app start, `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, on status checks, and from a persisted 15-minute JobScheduler job (no new permission or library). The app also escalates to a native repair after about 6 s of polling.
+- **Rejected:** the widely suggested component enable/disable "force rebind". Measured on Android 15, disabling unbinds the listener and re-enabling did not re-bind it within 60 s, so it would stop capture.
+- The help card is brand-neutral and appears only if repair fails for about 30 s.
+- Navigation is reduced to Home, Inbox (search, filters panel, saved searches), Insights and Settings (Rules, notification access & apps, backup, App lock, appearance, about/legal). The theme switch moves out of the header into Settings. "Settings" was chosen over "Profile" because there is no account.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

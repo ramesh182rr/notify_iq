@@ -167,15 +167,19 @@ class Runner:
         if d.has("Welcome to NotifyIQ"):
             d.tap("Skip")
         self.check("app launches to Home", d.has("Your notifications, understood."))
-        for tab in ["Inbox", "Search", "Insights", "Rules", "Privacy", "Home"]:
+        for tab in ["Inbox", "Insights", "Settings", "Home"]:
             self.check(f"tab {tab} opens", d.tab(tab))
 
-        # Theme persistence
-        d.tap("Dark")
+        # Theme persistence (Settings → Appearance)
+        d.tab("Settings"); d.tap("Dark", scroll=4)
         d.launch()
+        d.tab("Settings")
+        for _ in range(4):
+            if d.find("Dark"): break
+            d.sh("input", "swipe", "540", "1700", "540", "900", "300"); time.sleep(0.5)
         dark = any(n["checked"] and (n["text"] == "Dark" or n["desc"] == "Dark") for n in d.nodes())
         self.check("theme choice survives restart", dark)
-        d.tap("System")
+        d.tap("System", scroll=4)
 
         # Capture, sensitive discard, money/date extraction
         d.sh("input", "keyevent", "KEYCODE_HOME")
@@ -195,12 +199,13 @@ class Runner:
         d.launch(6)
         d.tab("Inbox")
         self.check("inbox shows real app name", d.has("NotifyIQ Fixture Poster", exact=True))
-        d.tap("Filter by app: all apps")
+        d.tap("Filters", exact=False)
+        d.tap("Filter by app: all apps", scroll=2)
         self.check("app picker lists captured app", d.has(f"NotifyIQ Fixture Poster, {POSTER}", exact=True))
         d.tap(f"NotifyIQ Fixture Poster, {POSTER}")
         self.check("app filter applied", d.has("App: NotifyIQ Fixture Poster"))
-        d.tap("Filter by app: NotifyIQ Fixture Poster")
-        d.tap("All apps")
+        d.tap("Filter by app: NotifyIQ Fixture Poster", scroll=2)
+        d.tap("All apps", anywhere=True)
 
         # Money → view source
         d.tab("Insights"); d.tap("Money")
@@ -226,13 +231,26 @@ class Runner:
         print(f"\n{len(self.results) - len(failed)}/{len(self.results)} checks passed")
         return 0 if not failed else 1
 
+    def open_settings_page(self, label):
+        d = self.d
+        d.tab("Settings"); d.scroll_top()
+        if d.find("Back to Settings", visible_band=(0, 10_000)):
+            d.tap("Back to Settings", anywhere=True)
+        return d.tap(label, exact=False, scroll=4)
+
+    def delete_all_history(self):
+        d = self.d
+        self.open_settings_page("Notification access & apps")
+        d.tap("Delete all notification history", scroll=8)
+        d.tap("DELETE HISTORY", anywhere=True) or d.tap("Delete history", anywhere=True)
+        time.sleep(2)
+
     def backup_round_trip(self):
         d = self.d
         self.remove_backups()
         before = d.sql("select count(*) from notification_events")
         steps = {}
-        d.tab("Privacy"); d.scroll_top()
-        d.wait_for("Backup & new phone")
+        self.open_settings_page("Backup & new phone")
         steps["export button"] = d.tap("Export backup", scroll=8)
         steps["password"] = d.type_into("Backup password", "e2epass2026")
         steps["confirm"] = d.type_into("Confirm backup password", "e2epass2026")
@@ -243,14 +261,10 @@ class Runner:
         steps["picker save"] = d.tap("SAVE", anywhere=True) or d.tap("Save", anywhere=True)
         steps["saved message"] = d.wait_for("Backup saved", timeout=12)
         self.check("encrypted backup exported", all(steps.values()), ", ".join(k for k, v in steps.items() if not v) + " failed")
-        d.tab("Privacy"); d.scroll_top()
-        d.tap("Delete all notification history", scroll=8)
-        d.tap("DELETE HISTORY", anywhere=True) or d.tap("Delete history", anywhere=True)
-        time.sleep(2)
+        self.delete_all_history()
         self.check("history empty before restore", d.sql("select count(*) from notification_events") == "0")
         steps = {}
-        d.tab("Privacy"); d.scroll_top()
-        d.wait_for("Backup & new phone")
+        self.open_settings_page("Backup & new phone")
         steps["restore button"] = d.tap("Restore backup", scroll=8)
         steps["password"] = d.type_into("Backup password", "e2epass2026")
         d.hide_keyboard()
@@ -273,10 +287,7 @@ class Runner:
         for nid in (9001, 9002, 9003, 9004):
             d.cancel(nid)
         d.launch(6)
-        d.tab("Privacy")
-        d.tap("Delete all notification history", scroll=8)
-        d.tap("DELETE HISTORY", anywhere=True) or d.tap("Delete history", anywhere=True)
-        time.sleep(2)
+        self.delete_all_history()
         self.check("cleanup: history deleted", d.sql("select count(*) from notification_events") == "0")
         d.sh("cmd", "notification", "disallow_listener", LISTENER)
         d.sh("rm", "-f", "/sdcard/e2e.xml")
