@@ -30,7 +30,7 @@ class NotifyIQModule(
       }
       promise.resolve(status)
     } catch (error: Exception) {
-      Log.e(NAME, "Unable to read notification access status", error)
+      Log.e(NAME, "LISTENER_STATUS_UNAVAILABLE ${error.javaClass.simpleName}")
       promise.reject("LISTENER_STATUS_UNAVAILABLE", "Unable to read notification access status.")
     }
   }

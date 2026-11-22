@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Debug only: Metro bundle loading. Release builds have no network permission (D-011). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

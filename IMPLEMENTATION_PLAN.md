@@ -159,9 +159,9 @@ Tasks:
 
 Tasks:
 
-1. Run functional/privacy/security checklist, Android API/OEM matrix, migration/deletion/search scale, battery/thermal and accessibility checks.
-2. Review current Android/Play policy, privacy policy, data safety disclosures, retention, incident and account-deletion procedures for target regions.
-3. Secure signing, release configuration, crash reporting policy and reproducible build artifacts without sensitive payload capture.
+1. Run functional/privacy/security checklist, Android API/OEM matrix, migration/deletion/search scale, battery/thermal and accessibility checks. **Partial (2026-11-22):** the security/privacy checklist passed on the emulator (no release network permission, backup/transfer exclusion, exported components, immutable PendingIntents, content-free logging), and the opt-in 1k/10k/50k repository scale test was run. API 29/OEM matrix, battery/thermal and the accessibility pass remain. See `docs/RELEASE_READINESS.md`.
+2. Review current Android/Play policy, privacy policy, data safety disclosures, retention, incident and account-deletion procedures for target regions. **Partial:** a factual privacy-policy and data-safety draft is in `docs/RELEASE_READINESS.md`. Owner/legal review, target markets, hosted policy URL and a current Play policy check remain.
+3. Secure signing, release configuration, crash reporting policy and reproducible build artifacts without sensitive payload capture. **Partial:** release signing reads untracked `NOTIFYIQ_UPLOAD_*` properties, R8 and resource shrinking are on, there is no crash reporting (D-011), and the release smoke test passed on the emulator. The owner must create the upload key; build reproducibility has not been verified.
 4. Run closed beta, triage feedback and fix release blockers; prepare rollback and support process.
 
 **Definition of done:** No unresolved critical privacy/data-loss/lifecycle bugs; release evidence and limitations are documented; store/privacy review is complete; owner approves release. This plan does not itself claim compliance.

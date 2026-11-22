@@ -1,7 +1,7 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-22  
-**Current phase:** Phase 1 emulator lifecycle verification complete; next is Phase 7 preparation (privacy/security checklist, data-safety draft, release signing)
+**Current phase:** Phase 7 release readiness (emulator-verifiable parts); tasks 1–3 partially complete
 **Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; physical-device capture verification remains
 **Git:** `HEAD` is `3c175de` on `main`. Changes since then are uncommitted local work for owner review: CLAUDE.md, ONNX benchmark (Phase 4 close), dev Metro port, Home screen, Android 15 redaction handling and the fixture poster.
 
@@ -47,6 +47,8 @@
 - Live emulator lifecycle checks (API 35): normal capture; password fixture discarded by NotifyIQ's gate; OTP and card fixtures redacted by Android 15 before delivery; removal marks `removed_at` and keeps the row; capture resumes after process kill (system rebind ~8 s) and after force-stop; nothing captured while access is revoked; capture resumes after re-grant.
 - Found and fixed (R-012): OS-redacted sensitive notifications were stored as placeholder rows, and Android autogroup summaries were stored as empty rows. Both are now discarded or skipped in the listener (`SystemRedaction.kt`), and the fix was re-verified live.
 - Cleanup: deleted all synthetic rows through Privacy → Delete all notification history (0 events/analysis rows; retention preference 30 days kept), revoked NotifyIQ notification access, cancelled fixtures, uninstalled the poster and probe listener, removed the 8093 ADB reverse mapping.
+- Phase 7 hardening: removed `INTERNET` from the release manifest (debug-only for Metro); added data-extraction rules that exclude all data from cloud backup and device transfer; release signing now reads untracked `NOTIFYIQ_UPLOAD_*` properties with a debug-key fallback for local smoke tests; enabled R8 and resource shrinking; native/JS logging reduced to error codes. Release smoke test on the emulator passed: launch, all tabs, live capture plus classification, OTP/password discard. Checklist and privacy/data-safety draft are in `docs/RELEASE_READINESS.md`.
+- Added an opt-in `RepositoryScaleTest` (1k/10k/50k synthetic rows) covering search, paging, category filter, overview, retention cleanup and clear, with FTS consistency assertions.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -133,3 +135,8 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `npm run typecheck`, `npx eslint App.tsx src __tests__` (0 errors, 6 existing warnings), `npm test -- --runInBand --watchman=false` (4 suites / 8 tests) — passed after the Home and mock changes.
 - `./gradlew --no-daemon :app:installDebug :app:testDebugUnitTest` — passed with the listener change; app launched against Metro 8093 and all six tabs rendered without JS errors.
 - `./gradlew --no-daemon :app:connectedDebugAndroidTest` — passed on Pixel_8 API 35: 17 tests, 0 failures, after the listener change.
+- `./gradlew --no-daemon :app:assembleRelease` — passed with R8/resource shrinking; release APK installed on the emulator; `aapt2` confirmed no INTERNET permission, backup/transfer exclusions and cleartext off; launch, tabs and live capture smoke passed.
+- `./gradlew --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.notifyiq.RepositoryScaleTest -Pandroid.testInstrumentationRunnerArguments.notifyiqScale=true` — passed. 50k rows: search p50 10 ms, overview 83 ms, insert 32.6 ms/row at test density. Details are in `docs/RELEASE_READINESS.md`.
+- Release smoke cleanup: deleted history through the Privacy UI (0 rows), revoked notification access, uninstalled the fixture poster, reinstalled the debug build.
+
+- `./gradlew --no-daemon :app:connectedDebugAndroidTest` (after Phase 7 changes) — passed: 18 tests, 0 failures, 1 skipped (the opt-in scale test).

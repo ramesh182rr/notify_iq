@@ -57,7 +57,11 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
+
+def releaseSigningValue = { String name -> project.findProperty(name) ?: System.getenv(name) }
+def releaseSigningAvailable = ['NOTIFYIQ_UPLOAD_STORE_FILE', 'NOTIFYIQ_UPLOAD_STORE_PASSWORD',
+    'NOTIFYIQ_UPLOAD_KEY_ALIAS', 'NOTIFYIQ_UPLOAD_KEY_PASSWORD'].every { releaseSigningValue(it) }
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -93,16 +97,27 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release keys come only from untracked Gradle properties (~/.gradle/gradle.properties)
+        // or environment variables. Never commit keystores or passwords.
+        if (releaseSigningAvailable) {
+            release {
+                storeFile file(releaseSigningValue('NOTIFYIQ_UPLOAD_STORE_FILE'))
+                storePassword releaseSigningValue('NOTIFYIQ_UPLOAD_STORE_PASSWORD')
+                keyAlias releaseSigningValue('NOTIFYIQ_UPLOAD_KEY_ALIAS')
+                keyPassword releaseSigningValue('NOTIFYIQ_UPLOAD_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Falls back to the debug key for local release smoke tests only; Play rejects
+            // debug-signed uploads. Provide NOTIFYIQ_UPLOAD_* properties for a real release.
+            signingConfig releaseSigningAvailable ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }

@@ -46,8 +46,7 @@ function App() {
     try {
       setListenerStatus(await getListenerStatus());
       setStatusError(null);
-    } catch (error) {
-      console.warn('Unable to load notification access status', error);
+    } catch {
       setStatusError('NotifyIQ could not read notification access status.');
     } finally {
       setStatusLoading(false);
