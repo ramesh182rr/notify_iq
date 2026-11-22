@@ -1,0 +1,57 @@
+id	body	category
+C01	Rs 450 debited from A/c XX12 at ZOMATO	food
+C02	₹320 paid to Swiggy	food
+C03	Rs 210 spent at STARBUCKS COFFEE	snacks
+C04	₹60 paid to Chai Point	snacks
+C05	₹180 paid at Theobroma Bakery	snacks
+C06	Rs 1,240 spent at DMART	groceries
+C07	₹560 paid to Blinkit	groceries
+C08	Rs 2,000 spent at INDIAN OIL PETROL PUMP	fuel
+C09	Rs 1,500 debited at HPCL FUEL STATION	fuel
+C10	₹245 paid to Uber via UPI	transport
+C11	₹89 paid to Ola	transport
+C12	Rs 40 debited for Namma Metro recharge	transport
+C13	FASTag recharge of Rs 500 successful	transport
+C14	₹1,180 paid to IRCTC for train ticket	tickets
+C15	Rs 6,450 spent at INDIGO AIRLINES	tickets
+C16	₹799 paid to redBus	tickets
+C17	Rs 3,200 spent at OYO ROOMS	tickets
+C18	₹560 paid to BookMyShow	entertainment
+C19	Rs 900 spent at PVR CINEMAS	entertainment
+C20	Rs 499 debited at NETFLIX	subscriptions
+C21	₹119 paid to Spotify	subscriptions
+C22	Rs 2,345 spent at AMAZON PAY INDIA	shopping
+C23	₹1,299 paid for Myntra order	shopping
+C24	Payment of Rs 1,240 towards BESCOM electricity bill received	bills
+C25	Recharge of ₹299 successful	bills
+C26	₹599 paid to Airtel for postpaid bill	bills
+C27	₹15,000 sent to Landlord via NEFT for rent	rent
+C28	Rs 3,500 paid to MyGate society maintenance	rent
+C29	₹450 paid to Apollo Pharmacy	health
+C30	Rs 800 spent at City Clinic for consultation	health
+C31	₹3,999 paid to Udemy	education
+C32	Rs 18,000 paid to Green Valley School for school fee	education
+C33	₹650 paid to Urban Company	personal_care
+C34	Rs 400 spent at Looks Salon	personal_care
+C35	EMI of ₹6,250 debited from A/c XX7788	loans_insurance
+C36	₹2,300 paid to LIC	loans_insurance
+C37	Rs 5,000 debited towards SIP in Groww	investments
+C38	Rs 5,000 transferred to Mom via UPI	transfers
+C39	₹250 sent to Ravi Kumar using UPI	transfers
+C40	Rs.2,000 withdrawn from ATM using card	cash
+C41	₹95 paid at Coca-Cola vending machine	other
+C42	Rs 750 spent at CROSSWORD BOOKS	other
+C43	INR 85,000.00 credited to your A/c by NEFT from ACME TECH PVT LTD	salary
+C44	Salary of Rs 72,000 credited	salary
+C45	Refund of ₹499 processed to your original payment method	refund
+C46	Rs 1,050 reversed to your account for failed transaction	refund
+C47	Cashback of ₹25 credited to your Paytm wallet	cashback
+C48	₹150 reward credited for your scratch card	cashback
+C49	Interest of Rs 342 credited to your savings account	interest
+C50	Dividend of Rs 1,200 credited from Infosys	interest
+C51	You received ₹1,000 from Neha Sharma	transfers_in
+C52	Rs 1,500 credited to A/c from VPA priya@ybl	transfers_in
+C53	Karan paid you ₹450	transfers_in
+C54	₹1,200 paid to Zepto	groceries
+C55	Rs 320 spent at CAFE COFFEE DAY	snacks
+C56	₹2,499 paid to Decathlon	shopping

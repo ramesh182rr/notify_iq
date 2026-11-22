@@ -1,4 +1,4 @@
-import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneySummary, type NotificationItem, type RecurringPayment, type UpcomingAction} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type UpcomingAction} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   const NativeNotifyIQ = getNativeNotifyIQ();
@@ -136,4 +136,12 @@ export function setInsightReminder(eventId: number, at: number): Promise<string>
 
 export function clearInsightReminder(eventId: number): Promise<void> {
   return requireNativeModule().clearInsightReminder(eventId);
+}
+
+export function getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalytics> {
+  return requireNativeModule().getMoneyAnalytics(from, to);
+}
+
+export function setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void> {
+  return requireNativeModule().setMoneyCategory(eventId, category, applyToMerchant);
 }

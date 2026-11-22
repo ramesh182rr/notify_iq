@@ -170,6 +170,16 @@ This log distinguishes decisions already present in the supplied development kit
 **Status:** Observed limitation, 2026-11-22
 **Decision:** Accept and disclose. Android 15 redacts notifications it classifies as OTP-like (including standalone 4–8 digit tokens such as "A/c XX1234") for third-party listeners. NotifyIQ cannot read them and discards them per R-012. The Money screen explains that some bank alerts will be missing. Do not seek SMS permissions or any workaround. Verify the impact on physical Pixel and Samsung devices.
 
+### R-015 — Detailed money categories with user corrections
+
+**Status:** Approved by user, 2026-11-22 ("categorise … food, snacks, fuel, entertainment, tickets, transport … received as well … charts")
+**Decision:**
+- Use deterministic spending categories (19) and income categories (6).
+- Users can recategorise a payment and optionally remember the choice for that place, stored locally only.
+- Charts use plain Views rather than a new native dependency, which avoids repeating the Play/16 KB checks.
+- Totals remain labelled as derived from saved alerts.
+- The category evaluation set gates the build at ≥ 0.90.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

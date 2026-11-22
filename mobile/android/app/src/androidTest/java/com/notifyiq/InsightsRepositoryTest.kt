@@ -81,6 +81,36 @@ class InsightsRepositoryTest {
   }
 
   @Test
+  fun analyticsSplitsSpendingAndIncomeCategoriesAndHonoursPlaceRules() {
+    val repository = NotificationRepository(temporaryFolder.newFile("analytics.db"))
+    val now = System.currentTimeMillis()
+    repository.upsert(captured("f1", "Rs 450 debited from A/c XX12 at ZOMATO", now - 1_000))
+    repository.upsert(captured("f2", "Rs 2,000 spent at INDIAN OIL PETROL PUMP", now - 2_000))
+    repository.upsert(captured("f3", "₹560 paid to BookMyShow", now - 3_000))
+    repository.upsert(captured("f4", "Rs 210 spent at CROSSWORD BOOKS", now - 4_000))
+    repository.upsert(captured("i1", "Salary of Rs 72,000 credited", now - 5_000))
+    repository.upsert(captured("i2", "Cashback of ₹25 credited to your wallet", now - 6_000))
+    repository.upsert(captured("old", "Rs 1,000 spent at ZOMATO", now - day - 6 * 3_600_000L))
+
+    val analytics = repository.moneyAnalytics(now - day, now + 1_000, now)
+    assertEquals(setOf("food", "fuel", "entertainment", "other"), analytics.spendCategories.map { it.category }.toSet())
+    assertEquals(listOf("salary", "cashback"), analytics.incomeCategories.map { it.category })
+    assertEquals(322_000L, analytics.spentMinor)
+    assertEquals(7_202_500L, analytics.receivedMinor)
+    assertEquals(100_000L, analytics.previousSpentMinor)
+    assertEquals("Fuel", analytics.spendCategories.first().category.replaceFirstChar { it.uppercase() })
+    assertEquals(2_000_00L, analytics.biggest!!.amountMinor)
+
+    val books = analytics.recent.first { it.merchant == "Crossword Books" }
+    repository.setMoneyCategory(books.eventId, "education", applyToMerchant = true)
+    repository.upsert(captured("f5", "Rs 300 spent at CROSSWORD BOOKS", now - 500))
+    val updated = repository.moneyAnalytics(now - day, now + 1_000, now)
+    val education = updated.spendCategories.single { it.category == "education" }
+    assertEquals(51_000L, education.amountMinor)
+    assertTrue(updated.recent.filter { it.merchant == "Crossword Books" }.all { it.categoryEdited })
+  }
+
+  @Test
   fun migrationBackfillsInsightsForExistingHistory() {
     val file = temporaryFolder.newFile("legacy.db")
     val connection = BundledSQLiteDriver().open(file.absolutePath)

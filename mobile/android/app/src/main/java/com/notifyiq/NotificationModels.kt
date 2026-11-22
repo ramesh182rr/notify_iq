@@ -58,6 +58,7 @@ internal data class DailyOverviewResult(
 internal data class MoneyRow(
   val eventId: Long, val amountMinor: Long, val currency: String, val direction: String, val merchant: String?,
   val category: String, val receivedAt: Long, val packageName: String, val subscription: Boolean,
+  val categoryEdited: Boolean = false,
 )
 
 internal data class MoneyBucket(val label: String, val amountMinor: Long, val count: Int)
@@ -77,4 +78,18 @@ internal data class UpcomingAction(
 internal data class RecurringPayment(
   val merchant: String, val amountMinor: Long, val currency: String, val cadence: String, val lastPaidAt: Long,
   val nextExpectedAt: Long?, val occurrences: Int,
+)
+
+internal data class MoneyCategoryBreakdown(val category: String, val amountMinor: Long, val count: Int, val topMerchants: List<MoneyBucket>)
+
+internal data class MoneyDay(val dayStart: Long, val outMinor: Long, val inMinor: Long)
+
+internal data class MoneyAnalytics(
+  val from: Long, val to: Long, val currency: String, val spentMinor: Long, val receivedMinor: Long,
+  val debitCount: Int, val creditCount: Int, val previousSpentMinor: Long, val previousReceivedMinor: Long,
+  val spendCategories: List<MoneyCategoryBreakdown>, val incomeCategories: List<MoneyCategoryBreakdown>,
+  val daily: List<MoneyDay>, val weekdays: List<MoneyBucket>, val dayparts: List<MoneyBucket>,
+  val topMerchants: List<MoneyBucket>, val topSources: List<MoneyBucket>,
+  val biggest: MoneyRow?, val busiestDay: MoneyDay?, val mostFrequent: MoneyBucket?, val smallSpends: MoneyBucket,
+  val weekendShare: Double, val projectedMonthSpentMinor: Long?, val recent: List<MoneyRow>, val otherCurrencies: List<String>,
 )

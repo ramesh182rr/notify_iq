@@ -47,7 +47,7 @@ internal data class NotificationInsight(
  * [VERSION] so stored results can be recomputed.
  */
 internal object InsightExtractor {
-  const val VERSION = 1
+  const val VERSION = 2
 
   private val I = setOf(RegexOption.IGNORE_CASE)
 
@@ -112,17 +112,6 @@ internal object InsightExtractor {
     "credit", "debit", "savings", "upi", "bank", "wallet", "beneficiary",
   )
 
-  private val SPEND_CATEGORIES: List<Pair<String, List<String>>> = listOf(
-    "food" to listOf("swiggy", "zomato", "domino", "mcdonald", "kfc", "pizza", "restaurant", "cafe", "starbucks", "burger", "eatfit", "biryani"),
-    "groceries" to listOf("bigbasket", "blinkit", "zepto", "dmart", "grofers", "instamart", "jiomart", "grocery", "supermarket", "kirana"),
-    "subscriptions" to listOf("netflix", "spotify", "prime", "hotstar", "youtube", "zee5", "sonyliv", "jiocinema", "audible", "apple", "googleplay", "icloud", "linkedin"),
-    "shopping" to listOf("amazon", "flipkart", "myntra", "ajio", "meesho", "nykaa", "tatacliq", "croma", "decathlon", "ikea"),
-    "travel" to listOf("uber", "ola", "rapido", "irctc", "makemytrip", "goibibo", "indigo", "airindia", "redbus", "metro", "fastag", "cleartrip", "vistara"),
-    "fuel" to listOf("petrol", "fuel", "hpcl", "bpcl", "iocl", "indianoil", "shellpetrol"),
-    "bills" to listOf("electricity", "bescom", "tatapower", "adani", "water", "gas", "broadband", "airtel", "jio", "vodafone", "bsnl", "recharge", "dth", "tatasky", "postpaid", "bill", "insurance", "lic", "emi"),
-    "health" to listOf("pharmacy", "apollo", "medplus", "1mg", "pharmeasy", "hospital", "clinic", "diagnostic", "lab", "dental"),
-  )
-  private val SUBSCRIPTION_MERCHANTS = SPEND_CATEGORIES.first { it.first == "subscriptions" }.second
 
   // ---- actions ---------------------------------------------------------------------------
   private val SUB_STRONG = Regex("""\b(?:subscription|membership|auto-?pay|autopay|auto-?renew\w*|auto-?debit\w*|e-?mandate|mandate|standing instruction)\b.{0,60}\b(?:renew\w*|will be (?:charged|debited)|charged|debit\w*|next|billing)\b|\b(?:renews|will renew|renewal (?:date|on)|next billing|next renewal|billing date|free trial ends|trial ends)\b|\bwill be (?:charged|debited)\b.{0,60}\b(?:subscription|membership|mandate)\b""", I)
@@ -161,13 +150,16 @@ internal object InsightExtractor {
     val anchor = Instant.ofEpochMilli(postedAt).atZone(zone).toLocalDate()
     val dates = findDates(text, anchor, amounts)
     val promo = PROMO.containsMatchIn(text)
-    val failed = FAILED.containsMatchIn(text)
+    // A completed reversal or refund is real money back even when the message says the original payment failed.
+    val completedReversal = Regex("""\b(?:reversed|refunded|credited back)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
+      !Regex("""\b(?:will be|shall be|to be) (?:reversed|refunded|credited)""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+    val failed = FAILED.containsMatchIn(text) && !completedReversal
     val notYet = NOT_YET.containsMatchIn(text)
 
     val money = if (!failed && !notYet) extractMoney(text, amounts, promo, evidence) else null
     val action = extractAction(text, amounts, dates, promo, money, zone, evidence)
     val subscription = SUB_KW.containsMatchIn(text) && !promo && (money?.direction == MoneyDirection.DEBIT || action?.kind == ActionKind.SUBSCRIPTION_RENEWAL) ||
-      (money?.direction == MoneyDirection.DEBIT && money.spendCategory == "subscriptions")
+      (money?.direction == MoneyDirection.DEBIT && (money.spendCategory == "subscriptions" || MoneyCategorizer.isSubscriptionMerchant(money.merchant)))
     return NotificationInsight(money, action, subscription, evidence.joinToString("; "))
   }
 
@@ -233,11 +225,8 @@ internal object InsightExtractor {
       Regex("""\bwallet\b""").containsMatchIn(lower) -> "wallet"
       else -> null
     }
-    val category = when {
-      direction == MoneyDirection.CREDIT -> "income"
-      channel == "atm" -> "cash"
-      else -> spendCategory(merchant, lower, channel)
-    }
+    val category = if (direction == MoneyDirection.CREDIT) MoneyCategorizer.incomeCategory(merchant, text, channel)
+      else MoneyCategorizer.spendCategory(merchant, text, channel)
     evidence += "amount:${text.substring(amount.start, amount.end)}"
     evidence += "direction:${direction.wire}"
     merchant?.let { evidence += "merchant:$it" }
@@ -291,18 +280,6 @@ internal object InsightExtractor {
     } else name
   }
 
-  private fun spendCategory(merchant: String?, lower: String, channel: String?): String {
-    val key = (merchant ?: "").lowercase().replace(Regex("[^a-z0-9]"), "")
-    for ((category, words) in SPEND_CATEGORIES) {
-      if (key.isNotEmpty() && words.any { key.contains(it) }) return category
-    }
-    for ((category, words) in SPEND_CATEGORIES) {
-      if (category == "bills" && words.any { Regex("\\b$it\\b").containsMatchIn(lower) }) return category
-    }
-    if (channel == "upi" && merchant != null && merchant.split(' ').size in 1..3 && merchant.none { it.isDigit() }) return "transfers"
-    if (channel == "bank_transfer") return "transfers"
-    return "other"
-  }
 
   private fun extractAction(
     text: String, amounts: List<Amount>, dates: List<DateHit>, promo: Boolean, money: MoneyEvent?, zone: ZoneId,
@@ -419,6 +396,4 @@ internal object InsightExtractor {
 
   fun merchantKey(merchant: String?): String? = merchant?.lowercase()?.replace(Regex("[^a-z0-9]"), "")?.takeIf { it.isNotEmpty() }
 
-  @Suppress("unused")
-  internal fun isSubscriptionMerchant(merchant: String?): Boolean = merchantKey(merchant)?.let { key -> SUBSCRIPTION_MERCHANTS.any { key.contains(it) } } == true
 }

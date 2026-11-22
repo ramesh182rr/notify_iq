@@ -115,6 +115,17 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 7
     }
+    if (version == 7) {
+      transaction {
+        connection.execSQL("ALTER TABLE notification_insights ADD COLUMN category_override TEXT")
+        connection.execSQL("PRAGMA user_version = 8")
+      }
+      version = 8
+    }
+    // Recompute insights when the deterministic extractor changes; user overrides and dismissals are kept.
+    if ((scalarLong("SELECT COUNT(*) FROM notification_insights WHERE version < ?", InsightExtractor.VERSION.toLong()) ?: 0L) > 0L) {
+      transaction { backfillInsights() }
+    }
     check(version == SCHEMA_VERSION)
   }
 
@@ -308,34 +319,135 @@ internal class NotificationRepository private constructor(private val connection
     rows.forEach { (id, insight) -> saveInsight(id, insight) }
   }
 
-  fun moneySummary(from: Long, to: Long): MoneySummary = synchronized(connection) {
+  private fun merchantCategoryRules(): Map<String, String> = runCatching {
+    val json = JSONObject(scalarText("SELECT value FROM app_preferences WHERE key = 'merchant_categories_v1'") ?: "{}")
+    json.keys().asSequence().associateWith { json.getString(it) }
+  }.getOrDefault(emptyMap())
+
+  /** Money rows in range with the effective category: per-payment override, then per-merchant rule, then extracted. */
+  private fun moneyRows(from: Long, to: Long): List<MoneyRow> {
+    val rules = merchantCategoryRules()
     val rows = mutableListOf<MoneyRow>()
     connection.prepare(
-      "SELECT i.event_id, i.amount_minor, i.currency, i.direction, i.merchant, i.spend_category, e.received_at, e.package_name, i.subscription " +
+      "SELECT i.event_id, i.amount_minor, i.currency, i.direction, i.merchant, i.spend_category, e.received_at, e.package_name, i.subscription, i.category_override, i.merchant_key " +
         "FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
         "WHERE i.amount_minor IS NOT NULL AND i.dismissed = 0 AND e.received_at >= ? AND e.received_at < ? ORDER BY e.received_at DESC",
     ).use { statement ->
       statement.bindLong(1, from); statement.bindLong(2, to)
-      while (statement.step()) rows += MoneyRow(
-        statement.getLong(0), statement.getLong(1), statement.getText(2), statement.getText(3), statement.nullableText(4),
-        statement.nullableText(5) ?: "other", statement.getLong(6), statement.getText(7), statement.getLong(8) == 1L,
-      )
+      while (statement.step()) {
+        val override = statement.nullableText(9)
+        val rule = statement.nullableText(10)?.let { rules[it] }
+        rows += MoneyRow(
+          statement.getLong(0), statement.getLong(1), statement.getText(2), statement.getText(3), statement.nullableText(4),
+          override ?: rule ?: statement.nullableText(5) ?: "other", statement.getLong(6), statement.getText(7), statement.getLong(8) == 1L,
+          categoryEdited = override != null || rule != null,
+        )
+      }
     }
-    val currency = rows.groupBy { it.currency }.maxByOrNull { (_, list) -> list.sumOf { it.amountMinor } }?.key ?: "INR"
+    return rows
+  }
+
+  private fun primaryCurrency(rows: List<MoneyRow>) = rows.groupBy { it.currency }.maxByOrNull { (_, list) -> list.sumOf { it.amountMinor } }?.key ?: "INR"
+
+  private fun buckets(rows: List<MoneyRow>, key: (MoneyRow) -> String) =
+    rows.groupBy(key).map { (name, list) -> MoneyBucket(name, list.sumOf { it.amountMinor }, list.size) }.sortedByDescending { it.amountMinor }
+
+  fun moneySummary(from: Long, to: Long): MoneySummary = synchronized(connection) {
+    val rows = moneyRows(from, to)
+    val currency = primaryCurrency(rows)
     val primary = rows.filter { it.currency == currency }
     val debits = primary.filter { it.direction == MoneyDirection.DEBIT.wire }
     val credits = primary.filter { it.direction == MoneyDirection.CREDIT.wire }
     MoneySummary(
       from, to, currency,
-      spentMinor = debits.sumOf { it.amountMinor },
-      receivedMinor = credits.sumOf { it.amountMinor },
-      debitCount = debits.size,
-      creditCount = credits.size,
-      merchants = debits.groupBy { it.merchant ?: "Unlabelled" }.map { (name, list) -> MoneyBucket(name, list.sumOf { it.amountMinor }, list.size) }.sortedByDescending { it.amountMinor }.take(8),
-      categories = debits.groupBy { it.category }.map { (name, list) -> MoneyBucket(name, list.sumOf { it.amountMinor }, list.size) }.sortedByDescending { it.amountMinor },
+      spentMinor = debits.sumOf { it.amountMinor }, receivedMinor = credits.sumOf { it.amountMinor },
+      debitCount = debits.size, creditCount = credits.size,
+      merchants = buckets(debits) { it.merchant ?: "Not named in alert" }.take(8),
+      categories = buckets(debits) { it.category },
       recent = primary.take(25),
       otherCurrencies = rows.filter { it.currency != currency }.map { it.currency }.distinct(),
     )
+  }
+
+  fun moneyAnalytics(from: Long, to: Long, now: Long = System.currentTimeMillis()): MoneyAnalytics = synchronized(connection) {
+    val zone = java.time.ZoneId.systemDefault()
+    val length = (to - from).coerceAtLeast(MILLIS_PER_DAY)
+    val all = moneyRows(from - length, to)
+    val currency = primaryCurrency(all.filter { it.receivedAt >= from })
+    val rows = all.filter { it.currency == currency && it.receivedAt >= from }
+    val previous = all.filter { it.currency == currency && it.receivedAt < from }
+    val debits = rows.filter { it.direction == MoneyDirection.DEBIT.wire }
+    val credits = rows.filter { it.direction == MoneyDirection.CREDIT.wire }
+    fun localDate(at: Long) = java.time.Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
+    fun categoryBreakdown(list: List<MoneyRow>) = list.groupBy { it.category }.map { (category, items) ->
+      MoneyCategoryBreakdown(category, items.sumOf { it.amountMinor }, items.size, buckets(items) { it.merchant ?: "Not named in alert" }.take(3))
+    }.sortedByDescending { it.amountMinor }
+
+    val firstDay = localDate(from)
+    val lastDay = localDate(minOf(to, now) - 1).let { if (it.isBefore(firstDay)) firstDay else it }
+    val days = generateSequence(firstDay) { it.plusDays(1) }.takeWhile { !it.isAfter(lastDay) }.take(92).toList()
+    val byDay = rows.groupBy { localDate(it.receivedAt) }
+    val daily = days.map { day ->
+      val items = byDay[day].orEmpty()
+      MoneyDay(day.atStartOfDay(zone).toInstant().toEpochMilli(),
+        items.filter { it.direction == MoneyDirection.DEBIT.wire }.sumOf { it.amountMinor },
+        items.filter { it.direction == MoneyDirection.CREDIT.wire }.sumOf { it.amountMinor })
+    }
+    val weekdays = (1..7).map { dow ->
+      val items = debits.filter { localDate(it.receivedAt).dayOfWeek.value == dow }
+      MoneyBucket(java.time.DayOfWeek.of(dow).name.take(3).lowercase().replaceFirstChar { it.uppercase() }, items.sumOf { it.amountMinor }, items.size)
+    }
+    val dayparts = listOf("Morning" to 5..11, "Afternoon" to 12..16, "Evening" to 17..20, "Night" to (21..28)).map { (label, hours) ->
+      val items = debits.filter { row ->
+        val hour = java.time.Instant.ofEpochMilli(row.receivedAt).atZone(zone).hour
+        hour in hours || (label == "Night" && hour < 5)
+      }
+      MoneyBucket(label, items.sumOf { it.amountMinor }, items.size)
+    }
+    val spent = debits.sumOf { it.amountMinor }
+    val busiest = daily.maxByOrNull { it.outMinor }?.takeIf { it.outMinor > 0 }
+    val frequent = debits.filter { it.merchant != null }.groupBy { it.merchant!! }.maxByOrNull { it.value.size }?.takeIf { it.value.size >= 2 }
+    val small = debits.filter { it.amountMinor <= 20_000 }
+    val weekend = debits.filter { localDate(it.receivedAt).dayOfWeek.value >= 6 }.sumOf { it.amountMinor }
+    val today = localDate(now)
+    val monthProjection = if (firstDay.dayOfMonth == 1 && firstDay.month == today.month && firstDay.year == today.year && today.dayOfMonth >= 3 && spent > 0) {
+      spent / today.dayOfMonth * today.lengthOfMonth()
+    } else null
+
+    MoneyAnalytics(
+      from = from, to = to, currency = currency,
+      spentMinor = spent, receivedMinor = credits.sumOf { it.amountMinor },
+      debitCount = debits.size, creditCount = credits.size,
+      previousSpentMinor = previous.filter { it.direction == MoneyDirection.DEBIT.wire }.sumOf { it.amountMinor },
+      previousReceivedMinor = previous.filter { it.direction == MoneyDirection.CREDIT.wire }.sumOf { it.amountMinor },
+      spendCategories = categoryBreakdown(debits), incomeCategories = categoryBreakdown(credits),
+      daily = daily, weekdays = weekdays, dayparts = dayparts,
+      topMerchants = buckets(debits) { it.merchant ?: "Not named in alert" }.take(8),
+      topSources = buckets(credits) { it.merchant ?: "Not named in alert" }.take(6),
+      biggest = debits.maxByOrNull { it.amountMinor },
+      busiestDay = busiest,
+      mostFrequent = frequent?.let { MoneyBucket(it.key, it.value.sumOf { row -> row.amountMinor }, it.value.size) },
+      smallSpends = MoneyBucket("small", small.sumOf { it.amountMinor }, small.size),
+      weekendShare = if (spent > 0) weekend.toDouble() / spent else 0.0,
+      projectedMonthSpentMinor = monthProjection,
+      recent = rows.take(40),
+      otherCurrencies = all.filter { it.currency != currency && it.receivedAt >= from }.map { it.currency }.distinct(),
+    )
+  }
+
+  /** Recategorise one payment; optionally remember the choice for every payment to the same place. */
+  fun setMoneyCategory(eventId: Long, category: String, applyToMerchant: Boolean) = synchronized(connection) {
+    require(category in MoneyCategorizer.SPEND_CATEGORIES || category in MoneyCategorizer.INCOME_CATEGORIES) { "Unknown category" }
+    transaction {
+      execute("UPDATE notification_insights SET category_override = ? WHERE event_id = ?", category, eventId)
+      val merchantKey = scalarText("SELECT merchant_key FROM notification_insights WHERE event_id = ?", eventId)
+      if (applyToMerchant && merchantKey != null) {
+        val rules = JSONObject(merchantCategoryRules())
+        rules.put(merchantKey, category)
+        execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('merchant_categories_v1', ?)", rules.toString())
+        execute("UPDATE notification_insights SET category_override = NULL WHERE merchant_key = ? AND event_id != ?", merchantKey, eventId)
+      }
+    }
   }
 
   fun upcomingActions(now: Long = System.currentTimeMillis()): List<UpcomingAction> = synchronized(connection) {
@@ -748,7 +860,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 7
+    private const val SCHEMA_VERSION = 8
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5

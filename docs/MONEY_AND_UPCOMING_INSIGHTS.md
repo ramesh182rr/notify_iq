@@ -19,6 +19,30 @@ UI:
 
 Each item links back to its source, and users can mark it **Not a payment** or **Not relevant**. That removes it from totals and lists but keeps the notification. Optional reminders ("Day before, 9 AM", "Morning of, 9 AM", "1 hour before") use generic lock-screen text and their own alarm identity, and are rescheduled after reboot.
 
+## Categories and money dashboard (extractor v2, schema v8)
+
+**Spending categories:** food & dining, snacks & cafés, groceries, fuel, transport, tickets & travel, movies & fun, subscriptions, shopping, bills & recharges, rent & home, health, education, personal care, loans & insurance, investments, sent to people, cash, other.
+
+**Income categories:** salary, refunds, cashback & rewards, interest & dividends, from people, other income.
+
+`MoneyCategorizer` checks the merchant first, then message keywords. Specific categories come before general ones. Keywords of 4 characters or fewer must equal a whole merchant word ("ola" never matches "Coca-Cola", "vi" never matches "Ravi").
+
+**User corrections:** any payment can be recategorised, optionally "always for this place". That stores a local merchant rule in `app_preferences` (`merchant_categories_v1`). Per-payment overrides live in `notification_insights.category_override`. Stored insights are recomputed automatically when `InsightExtractor.VERSION` changes; overrides and dismissals are kept.
+
+**Insights → Money** (`moneyAnalytics`):
+- Money out and in, each compared with the previous period of equal length.
+- Net, count and per-day average, plus a month-end projection once at least 3 days of the month have passed.
+- A Spending | Income toggle with a category treemap and expandable category rows showing their top 3 places.
+- A daily money-flow chart with in and out on separate labelled scales, so one salary credit does not flatten everyday spending.
+- A month calendar heatmap.
+- Weekday and time-of-day spending patterns.
+- "Did you know" cards: biggest payment, biggest day, most frequent place, small spends under ₹200, weekend share.
+- Subscriptions, and a recent payments list with category editing.
+
+All charts are built from plain React Native Views, so no native chart dependency was added.
+
+**Category accuracy** (`MoneyCategoryEvaluationTest`, 56 synthetic spend and income alerts written before running): first run 55/56 correct (0.982). The only miss was a "reversed … for failed transaction" credit, which the failed-payment guard had blocked; completed reversals are now allowed through. After the fix: 1.000. The build gate is ≥ 0.90.
+
 ## Accuracy approach
 
 Precision comes first: when a message is ambiguous, nothing is extracted. Explicit negatives include:

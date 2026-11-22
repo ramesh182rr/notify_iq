@@ -47,6 +47,7 @@ export type MoneyTransaction = {
   receivedAt: number;
   packageName: string;
   subscription: boolean;
+  categoryEdited?: boolean;
 };
 export type MoneySummary = {
   from: number;
@@ -58,6 +59,34 @@ export type MoneySummary = {
   creditCount: number;
   merchants: ReadonlyArray<MoneyBucket>;
   categories: ReadonlyArray<MoneyBucket>;
+  recent: ReadonlyArray<MoneyTransaction>;
+  otherCurrencies: ReadonlyArray<string>;
+};
+export type MoneyCategoryBreakdown = { category: string; amountMinor: number; count: number; topMerchants: ReadonlyArray<MoneyBucket> };
+export type MoneyDay = { dayStart: number; outMinor: number; inMinor: number };
+export type MoneyAnalytics = {
+  from: number;
+  to: number;
+  currency: string;
+  spentMinor: number;
+  receivedMinor: number;
+  debitCount: number;
+  creditCount: number;
+  previousSpentMinor: number;
+  previousReceivedMinor: number;
+  spendCategories: ReadonlyArray<MoneyCategoryBreakdown>;
+  incomeCategories: ReadonlyArray<MoneyCategoryBreakdown>;
+  daily: ReadonlyArray<MoneyDay>;
+  weekdays: ReadonlyArray<MoneyBucket>;
+  dayparts: ReadonlyArray<MoneyBucket>;
+  topMerchants: ReadonlyArray<MoneyBucket>;
+  topSources: ReadonlyArray<MoneyBucket>;
+  biggest: MoneyTransaction | null;
+  busiestDay: MoneyDay | null;
+  mostFrequent: MoneyBucket | null;
+  smallSpends: MoneyBucket;
+  weekendShare: number;
+  projectedMonthSpentMinor: number | null;
   recent: ReadonlyArray<MoneyTransaction>;
   otherCurrencies: ReadonlyArray<string>;
 };
@@ -130,6 +159,8 @@ export interface Spec extends TurboModule {
   deleteSavedSearch(id: string): Promise<string>;
   getRuleGroups(): Promise<ReadonlyArray<string>>;
   getMoneySummary(from: number, to: number): Promise<MoneySummary>;
+  getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalytics>;
+  setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void>;
   getUpcomingActions(): Promise<ReadonlyArray<UpcomingAction>>;
   getRecurringPayments(): Promise<ReadonlyArray<RecurringPayment>>;
   dismissInsight(eventId: number): Promise<void>;

@@ -1,12 +1,13 @@
 const symbols: Record<string, string> = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
 
 /** Formats minor units; INR uses Indian digit grouping (1,23,456). No Intl dependency. */
-export function formatMoney(minor: number, currency: string, options: { compact?: boolean } = {}) {
+export function formatMoney(minor: number, currency: string, options: { compact?: boolean; whole?: boolean } = {}) {
   const symbol = symbols[currency] ?? `${currency} `;
   const major = Math.abs(minor) / 100;
   if (options.compact && major >= 100000 && currency === 'INR') return `${symbol}${trim(major / 100000)}L`;
   if (options.compact && major >= 1000) return `${symbol}${trim(major / 1000)}k`;
-  const [whole, fraction] = major.toFixed(2).split('.');
+  const dropPaise = options.whole || options.compact;
+  const [whole, fraction] = (dropPaise ? Math.round(major).toFixed(2) : major.toFixed(2)).split('.');
   const grouped = currency === 'INR' ? groupIndian(whole) : whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${symbol}${grouped}${fraction === '00' ? '' : `.${fraction}`}`;
 }
@@ -22,20 +23,46 @@ function groupIndian(whole: string) {
   return `${rest},${last3}`;
 }
 
-export const spendCategoryNames: Record<string, { label: string; emoji: string }> = {
-  food: { label: 'Food & dining', emoji: '🍽️' },
-  groceries: { label: 'Groceries', emoji: '🛒' },
-  shopping: { label: 'Shopping', emoji: '🛍️' },
-  subscriptions: { label: 'Subscriptions', emoji: '🔁' },
-  travel: { label: 'Travel & transport', emoji: '🚕' },
-  fuel: { label: 'Fuel', emoji: '⛽' },
-  bills: { label: 'Bills & utilities', emoji: '💡' },
-  health: { label: 'Health', emoji: '💊' },
-  transfers: { label: 'Transfers', emoji: '↔️' },
-  cash: { label: 'Cash withdrawals', emoji: '🏧' },
-  income: { label: 'Money in', emoji: '💰' },
-  other: { label: 'Other', emoji: '🧾' },
+export type MoneyCategoryMeta = { label: string; emoji: string; color: string };
+
+/** Spending and income categories with a distinct chart colour that reads on light and dark surfaces. */
+export const moneyCategories: Record<string, MoneyCategoryMeta> = {
+  food: { label: 'Food & dining', emoji: '🍽️', color: '#F2994A' },
+  snacks: { label: 'Snacks & cafés', emoji: '☕', color: '#C77D4A' },
+  groceries: { label: 'Groceries', emoji: '🛒', color: '#27AE60' },
+  fuel: { label: 'Fuel', emoji: '⛽', color: '#EB5757' },
+  transport: { label: 'Transport', emoji: '🚕', color: '#F2C94C' },
+  tickets: { label: 'Tickets & travel', emoji: '✈️', color: '#2D9CDB' },
+  entertainment: { label: 'Movies & fun', emoji: '🎬', color: '#BB6BD9' },
+  subscriptions: { label: 'Subscriptions', emoji: '🔁', color: '#9B51E0' },
+  shopping: { label: 'Shopping', emoji: '🛍️', color: '#E94E77' },
+  bills: { label: 'Bills & recharges', emoji: '💡', color: '#56CCF2' },
+  rent: { label: 'Rent & home', emoji: '🏠', color: '#6FCF97' },
+  health: { label: 'Health', emoji: '💊', color: '#EF6F6C' },
+  education: { label: 'Education', emoji: '🎓', color: '#5B7CFA' },
+  personal_care: { label: 'Personal care', emoji: '💇', color: '#F78FB3' },
+  loans_insurance: { label: 'Loans & insurance', emoji: '🛡️', color: '#8D99AE' },
+  investments: { label: 'Investments', emoji: '📈', color: '#1ABC9C' },
+  transfers: { label: 'Sent to people', emoji: '↗️', color: '#7F8C8D' },
+  cash: { label: 'Cash', emoji: '🏧', color: '#A0A08B' },
+  other: { label: 'Other', emoji: '🧾', color: '#9AA0A6' },
+  salary: { label: 'Salary', emoji: '💼', color: '#27AE60' },
+  refund: { label: 'Refunds', emoji: '↩️', color: '#2D9CDB' },
+  cashback: { label: 'Cashback & rewards', emoji: '🎁', color: '#F2C94C' },
+  interest: { label: 'Interest & dividends', emoji: '🏦', color: '#1ABC9C' },
+  transfers_in: { label: 'From people', emoji: '↙️', color: '#BB6BD9' },
+  other_income: { label: 'Other income', emoji: '💰', color: '#9AA0A6' },
 };
+
+export const spendCategoryKeys = ['food', 'snacks', 'groceries', 'fuel', 'transport', 'tickets', 'entertainment', 'subscriptions', 'shopping', 'bills', 'rent', 'health', 'education', 'personal_care', 'loans_insurance', 'investments', 'transfers', 'cash', 'other'];
+export const incomeCategoryKeys = ['salary', 'refund', 'cashback', 'interest', 'transfers_in', 'other_income'];
+
+export function categoryMeta(key: string): MoneyCategoryMeta {
+  return moneyCategories[key] ?? moneyCategories.other;
+}
+
+/** Kept for older callers. */
+export const spendCategoryNames = moneyCategories;
 
 export const actionKinds: Record<string, { label: string; emoji: string }> = {
   bill_due: { label: 'Bill due', emoji: '🧾' },

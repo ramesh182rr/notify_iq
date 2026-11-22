@@ -90,6 +90,64 @@ class NotifyIQModule(
     } catch (_: Exception) { promise.reject("MONEY_UNAVAILABLE", "The local money summary is unavailable.") }
   }
 
+  private fun moneyRowMap(row: MoneyRow) = Arguments.createMap().apply {
+    putDouble("eventId", row.eventId.toDouble()); putDouble("amountMinor", row.amountMinor.toDouble())
+    putString("currency", row.currency); putString("direction", row.direction)
+    if (row.merchant == null) putNull("merchant") else putString("merchant", row.merchant)
+    putString("category", row.category); putDouble("receivedAt", row.receivedAt.toDouble())
+    putString("packageName", row.packageName); putBoolean("subscription", row.subscription); putBoolean("categoryEdited", row.categoryEdited)
+  }
+
+  private fun bucketArray(items: List<MoneyBucket>) = Arguments.createArray().apply {
+    items.forEach { bucket -> pushMap(Arguments.createMap().apply {
+      putString("label", bucket.label); putDouble("amountMinor", bucket.amountMinor.toDouble()); putInt("count", bucket.count)
+    }) }
+  }
+
+  @ReactMethod
+  fun getMoneyAnalytics(from: Double, to: Double, promise: Promise) {
+    try {
+      val a = NotificationRepository(appContext).moneyAnalytics(from.toLong(), to.toLong())
+      fun breakdown(items: List<MoneyCategoryBreakdown>) = Arguments.createArray().apply {
+        items.forEach { item -> pushMap(Arguments.createMap().apply {
+          putString("category", item.category); putDouble("amountMinor", item.amountMinor.toDouble()); putInt("count", item.count)
+          putArray("topMerchants", bucketArray(item.topMerchants))
+        }) }
+      }
+      fun day(d: MoneyDay) = Arguments.createMap().apply {
+        putDouble("dayStart", d.dayStart.toDouble()); putDouble("outMinor", d.outMinor.toDouble()); putDouble("inMinor", d.inMinor.toDouble())
+      }
+      promise.resolve(Arguments.createMap().apply {
+        putDouble("from", a.from.toDouble()); putDouble("to", a.to.toDouble()); putString("currency", a.currency)
+        putDouble("spentMinor", a.spentMinor.toDouble()); putDouble("receivedMinor", a.receivedMinor.toDouble())
+        putInt("debitCount", a.debitCount); putInt("creditCount", a.creditCount)
+        putDouble("previousSpentMinor", a.previousSpentMinor.toDouble()); putDouble("previousReceivedMinor", a.previousReceivedMinor.toDouble())
+        putArray("spendCategories", breakdown(a.spendCategories)); putArray("incomeCategories", breakdown(a.incomeCategories))
+        putArray("daily", Arguments.createArray().apply { a.daily.forEach { pushMap(day(it)) } })
+        putArray("weekdays", bucketArray(a.weekdays)); putArray("dayparts", bucketArray(a.dayparts))
+        putArray("topMerchants", bucketArray(a.topMerchants)); putArray("topSources", bucketArray(a.topSources))
+        if (a.biggest == null) putNull("biggest") else putMap("biggest", moneyRowMap(a.biggest))
+        if (a.busiestDay == null) putNull("busiestDay") else putMap("busiestDay", day(a.busiestDay))
+        if (a.mostFrequent == null) putNull("mostFrequent") else putMap("mostFrequent", Arguments.createMap().apply {
+          putString("label", a.mostFrequent.label); putDouble("amountMinor", a.mostFrequent.amountMinor.toDouble()); putInt("count", a.mostFrequent.count)
+        })
+        putMap("smallSpends", Arguments.createMap().apply {
+          putString("label", a.smallSpends.label); putDouble("amountMinor", a.smallSpends.amountMinor.toDouble()); putInt("count", a.smallSpends.count)
+        })
+        putDouble("weekendShare", a.weekendShare)
+        if (a.projectedMonthSpentMinor == null) putNull("projectedMonthSpentMinor") else putDouble("projectedMonthSpentMinor", a.projectedMonthSpentMinor.toDouble())
+        putArray("recent", Arguments.createArray().apply { a.recent.forEach { pushMap(moneyRowMap(it)) } })
+        putArray("otherCurrencies", Arguments.createArray().apply { a.otherCurrencies.forEach(::pushString) })
+      })
+    } catch (_: Exception) { promise.reject("MONEY_UNAVAILABLE", "Money insights are unavailable.") }
+  }
+
+  @ReactMethod
+  fun setMoneyCategory(eventId: Double, category: String, applyToMerchant: Boolean, promise: Promise) {
+    try { NotificationRepository(appContext).setMoneyCategory(eventId.toLong(), category, applyToMerchant); promise.resolve(null) }
+    catch (_: Exception) { promise.reject("INSIGHT_UPDATE_FAILED", "The category could not be changed.") }
+  }
+
   @ReactMethod
   fun getUpcomingActions(promise: Promise) {
     try {

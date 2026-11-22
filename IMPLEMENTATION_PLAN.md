@@ -146,6 +146,7 @@ Tasks:
 
 1. [x] Deterministic extractor for money, dated actions and subscriptions, with synthetic dev and held-out accuracy sets. Dev gates: money precision ≥ 0.98, amount accuracy 1.0, action precision ≥ 0.95. See `docs/MONEY_AND_UPCOMING_INSIGHTS.md`.
 2. [x] Schema v7 `notification_insights` with backfill, cascade delete, money summary, upcoming (deduplicated) and recurring-payment queries; dismiss; insight reminders with separate alarm identity and reboot rescheduling. Covered by instrumentation tests.
+4. [x] Detailed spending and income categories, user recategorisation with per-place rules (schema v8), and the analytics dashboard: comparisons, projection, treemap, flow chart, calendar heatmap, patterns, highlights (R-015).
 3. [x] Insights → Money / Coming up, plus Home "Coming up" and "This month" cards. Verified on the emulator with synthetic alerts, including the Android 15 redaction finding (R-014).
 
 ### Phase 6 — Optional cloud foundations
@@ -218,4 +219,4 @@ The user approved applying the recommended defaults on 2026-11-21. They are reco
 
 **Next task:** Phase 7 preparation that needs no physical device: privacy/security checklist pass (log/content audit, backup exclusion, exported components), a Play data-safety and privacy-policy draft for owner review, release signing configuration (no keys in Git), and a release-build smoke test on the emulator. Physical capture/OEM verification and manual visual QA in both themes remain follow-ups. Phase 6 stays optional per D-011.
 
-The roadmap contains 47 numbered tasks total (44 original + 3 in Phase 5b). Thirty-six are implemented (Phases 0–3: 24; Phase 4: 5; Phase 5: 4; Phase 5b: 3); 11 remain: Phase 1 task 9 (physical device lifecycle), Phase 6 (6 optional cloud tasks) and Phase 7 (4 release-readiness tasks, of which 1–3 are partially done).
+The roadmap contains 48 numbered tasks total (44 original + 4 in Phase 5b). Thirty-seven are implemented; 11 remain: Phase 1 task 9 (physical device lifecycle), Phase 6 (6 optional cloud tasks) and Phase 7 (4 release-readiness tasks, of which 1–3 are partially done).
