@@ -14,6 +14,10 @@ jest.mock('../src/native/notifyIQ', () => ({
   setNotificationCategoryOverride: jest.fn().mockResolvedValue(undefined),
   setNotificationSaved: jest.fn().mockResolvedValue(undefined),
   setRetentionDays: jest.fn().mockResolvedValue(undefined),
+  getRuleGroups: jest.fn().mockResolvedValue([]),
+  getSavedSearches: jest.fn().mockResolvedValue([]),
+  addSavedSearch: jest.fn().mockResolvedValue(undefined),
+  deleteSavedSearch: jest.fn().mockResolvedValue(undefined),
 }));
 
 afterEach(() => {

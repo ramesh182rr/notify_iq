@@ -5,7 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from './src/components/AppHeader';
 import { BottomTabBar } from './src/components/BottomTabBar';
 import { ScreenContainer } from './src/components/ScreenContainer';
-import { FoundationScreen } from './src/features/foundation/FoundationScreen';
+import { HomeScreen } from './src/features/home/HomeScreen';
 import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
@@ -13,7 +13,6 @@ import { RulesScreen } from './src/features/rules/RulesScreen';
 import {getListenerStatus, openNotificationAccessSettings} from './src/native/notifyIQ';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
-import { screens } from './src/navigation/screens';
 import {
   darkTheme,
   lightTheme,
@@ -31,15 +30,16 @@ function App() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [inboxRefreshKey, setInboxRefreshKey] = useState(0);
+  const navigate = useCallback((screen: ScreenKey) => {
+    setActiveScreen(screen);
+    if (screen === 'inbox') setInboxRefreshKey(value => value + 1);
+  }, []);
 
   const isDark =
     themePreference === 'system'
       ? systemColorScheme === 'dark'
       : themePreference === 'dark';
   const theme = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
-  const activeScreenDetails = screens.find(
-    screen => screen.key === activeScreen,
-  );
 
   const refreshListenerStatus = useCallback(async () => {
     setStatusLoading(true);
@@ -100,9 +100,7 @@ function App() {
               <InsightsScreen theme={theme} refreshKey={inboxRefreshKey} status={listenerStatus} statusLoading={statusLoading} statusError={statusError} />
             ) : activeScreen === 'rules' ? (
               <RulesScreen theme={theme} />
-            ) : <FoundationScreen
-              screen={activeScreen}
-              title={activeScreenDetails?.label ?? 'Home'}
+            ) : <HomeScreen
               theme={theme}
               listenerStatus={listenerStatus}
               statusError={statusError}
@@ -111,15 +109,13 @@ function App() {
               settingsError={settingsError}
               onOpenSettings={handleOpenSettings}
               onRetryStatus={refreshListenerStatus}
+              onNavigate={navigate}
             />}
           </ScreenContainer>
         </View>
         <BottomTabBar
           activeScreen={activeScreen}
-          onSelect={(screen: ScreenKey) => {
-            setActiveScreen(screen);
-            if (screen === 'inbox') setInboxRefreshKey(value => value + 1);
-          }}
+          onSelect={navigate}
           theme={theme}
         />
       </SafeAreaView>

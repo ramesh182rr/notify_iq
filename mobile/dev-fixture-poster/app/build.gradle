@@ -1,0 +1,23 @@
+plugins {
+  id "com.android.application"
+}
+
+// Debug-only developer tool: posts synthetic notifications for NotifyIQ capture checks.
+// Never shipped; no dependencies.
+android {
+  namespace "com.notifyiq.fixtureposter"
+  compileSdk 37
+
+  defaultConfig {
+    applicationId "com.notifyiq.fixtureposter"
+    minSdk 29
+    targetSdk 35
+    versionCode 1
+    versionName "1.0"
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}

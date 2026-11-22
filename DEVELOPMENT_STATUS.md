@@ -1,9 +1,9 @@
 # NotifyIQ Development Status
 
 **Last updated:** 2026-11-22  
-**Current phase:** Phase 4 closed (both Qwen runtime candidates rejected on the emulator); next is emulator-verifiable Phase 1 lifecycle checks, then Phase 7 preparation
+**Current phase:** Phase 1 emulator lifecycle verification complete; next is Phase 7 preparation (privacy/security checklist, data-safety draft, release signing)
 **Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; physical-device capture verification remains
-**Git:** `HEAD` is `3c175de` on `main`. Changes since then (CLAUDE.md, ONNX tokenizer/generation benchmark and docs) are uncommitted local work for owner review.
+**Git:** `HEAD` is `3c175de` on `main`. Changes since then are uncommitted local work for owner review: CLAUDE.md, ONNX benchmark (Phase 4 close), dev Metro port, Home screen, Android 15 redaction handling and the fixture poster.
 
 **Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty-three are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 5; Phase 5: 4); 11 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and release readiness (4).
 
@@ -41,6 +41,12 @@
 - Recorded the Phase 4 runtime decision: do not adopt this LiteRT candidate for classification because its measured quality was far below deterministic rules; defer ONNX until text generation and corpus quality can be measured. Production remains deterministic and carries no model runtime or weights.
 - Added a dependency-free Kotlin byte-level BPE tokenizer for the pinned Qwen3 `tokenizer.json` and a greedy float16 KV-cache generation loop for ORT 1.29.0, both only in the isolated benchmark app. A host reference script (HF `tokenizers` + ORT Python 1.29.0) produced checked-in prompt-id and output fixtures. On the emulator, tokenization matched 108/108 prompts and decoding matched 108/108 outputs; 84/108 generations were token-identical to the host, with the rest consistent with float16 kernel differences.
 - Completed the ONNX 108-case emulator trial: strict valid JSON 15/108, category accuracy 0.065, macro-F1 0.097, priority accuracy 0.111, urgent FP/FN 0/1, p50/p95 latency 3.7/4.1 s, prefill p50 2.9 s, decode 22.5 tokens/s, process high-water RSS ~1.44 GiB. Most outputs were Markdown-fenced. With the fence stripped as a diagnostic only, scores rise to accuracy 0.315 and macro-F1 0.216, still far below the deterministic 0.955. Recorded decision R-011: reject both runtime candidates for classification and close Phase 4. See `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
+- Fixed the dev app attaching to another project's Metro: port 8081 on this host is used by a different React Native project, so the NotifyIQ debug build loaded a foreign or stale bundle. NotifyIQ now uses a dedicated Metro port, 8093 (`reactNativeDevServerPort` in `android/gradle.properties`, `metro.config.js`, and the `npm start` / `npm run android` scripts). Run `adb reverse tcp:8093 tcp:8093` for the emulator.
+- Replaced the Phase 0 "Foundation build" Home placeholder with a real Home screen: notification-access card plus shortcuts to Inbox, Today's overview, Rules and Privacy. Fixed the Inbox Jest mock, which was missing the rule-group and saved-search bridge functions (5 tests had been failing).
+- Added `mobile/dev-fixture-poster`, a debug-only, dependency-free app that posts or cancels synthetic notifications from `am start` extras, so multiword sensitive fixtures arrive intact.
+- Live emulator lifecycle checks (API 35): normal capture; password fixture discarded by NotifyIQ's gate; OTP and card fixtures redacted by Android 15 before delivery; removal marks `removed_at` and keeps the row; capture resumes after process kill (system rebind ~8 s) and after force-stop; nothing captured while access is revoked; capture resumes after re-grant.
+- Found and fixed (R-012): OS-redacted sensitive notifications were stored as placeholder rows, and Android autogroup summaries were stored as empty rows. Both are now discarded or skipped in the listener (`SystemRedaction.kt`), and the fix was re-verified live.
+- Cleanup: deleted all synthetic rows through Privacy → Delete all notification history (0 events/analysis rows; retention preference 30 days kept), revoked NotifyIQ notification access, cancelled fixtures, uninstalled the poster and probe listener, removed the 8093 ADB reverse mapping.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -124,3 +130,6 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `adb shell am instrument -w -e class com.notifyiq.modelbenchmark.OnnxCorpusBenchmarkTest …` — passed (1 test, 415 s): all 108 cases produced a result; metrics are in `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
 - Host reference: `uv run --no-project --with onnxruntime==1.29.0 --with tokenizers --with jinja2 --with numpy python -I mobile/model-benchmark/tools/qwen_onnx_host_reference.py …` — completed on macOS arm64; strict valid JSON 6/108.
 - Production app code was not changed in this session, so production typecheck, build and instrumentation were not re-run.
+- `npm run typecheck`, `npx eslint App.tsx src __tests__` (0 errors, 6 existing warnings), `npm test -- --runInBand --watchman=false` (4 suites / 8 tests) — passed after the Home and mock changes.
+- `./gradlew --no-daemon :app:installDebug :app:testDebugUnitTest` — passed with the listener change; app launched against Metro 8093 and all six tabs rendered without JS errors.
+- `./gradlew --no-daemon :app:connectedDebugAndroidTest` — passed on Pixel_8 API 35: 17 tests, 0 failures, after the listener change.

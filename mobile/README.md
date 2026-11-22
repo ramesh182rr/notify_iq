@@ -21,6 +21,8 @@ No notification content or sample records are present in this foundation. Do not
 
 ## Step 1: Start Metro
 
+NotifyIQ uses a dedicated Metro port, **8093** (configured in `metro.config.js`, `android/gradle.properties` → `reactNativeDevServerPort`, and the npm scripts), so it never attaches to another project's bundler on 8081. For an emulator, run `adb reverse tcp:8093 tcp:8093`.
+
 First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
 To start the Metro dev server, run the following command from the root of your React Native project:

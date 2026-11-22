@@ -145,6 +145,13 @@ This log distinguishes decisions already present in the supplied development kit
 **Evidence:** Same 108-case synthetic corpus and prompt, greedy decoding, strict JSON scoring, 6 GiB Pixel_8 API 35 AVD. LiteRT: macro-F1 0.071, valid JSON 106/108. ONNX: macro-F1 0.097, valid JSON 15/108, mostly Markdown-fenced; 0.216 macro-F1 even with fences stripped as a diagnostic. Deterministic baseline: macro-F1 0.955, priority accuracy 1.000, zero urgent errors. Both candidates fail every D-012 threshold; latency and memory figures are emulator-only.
 **Reopen when:** a different model, prompt or fine-tune shows on the same corpus that it can plausibly clear the gate (+5 pp macro-F1 over deterministic, ≥ 99% valid JSON) before device benchmarking is repeated. Prompt changes alone should first be tried on the host reference harness, which is cheap.
 
+### R-012 — Discard platform-redacted and contentless notification events
+
+**Status:** Implementation choice under R-003, 2026-11-22
+**Decision:** On Android 15+ the platform redacts notifications it classifies as sensitive (OTP-like, and in emulator testing a payment-card fixture) before an untrusted listener receives them. The title becomes the app label and the text a system placeholder. NotifyIQ treats such an event as sensitive and discards it entirely, including package/key/time metadata, exactly as it does for its own gate. Detection is locale-independent: the builder `android.appInfo` extra belongs to the `android` package instead of the posting app. A fallback compares the text with the platform's own `redacted_notification_message` string. Events with no title, text, big text or subtext (for example Android's `ranker_group` autogroup summaries) are not stored.
+**Reason:** Before this change, these events produced placeholder or empty rows in history. No secret was stored, but R-003 requires leaving no event metadata for sensitive items, and empty rows are noise. The public SDK exposes no `Ranking` sensitivity flag; the internal `hasSensitiveContent` is hidden API.
+**Limits:** Relies on current AOSP redaction behavior on API 35+. OEM builds may differ and need device verification. NotifyIQ's own deterministic gate remains the primary control.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

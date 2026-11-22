@@ -6,10 +6,10 @@ import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { AppHeader } from '../src/components/AppHeader';
 import { BottomTabBar } from '../src/components/BottomTabBar';
-import { FoundationScreen } from '../src/features/foundation/FoundationScreen';
+import { HomeScreen } from '../src/features/home/HomeScreen';
 import { darkTheme, lightTheme } from '../src/theme/tokens';
 
-test('renders the foundation states, six tabs, and appearance choices', async () => {
+test('renders the home states, six tabs, and appearance choices', async () => {
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
 
   await ReactTestRenderer.act(() => {
@@ -20,9 +20,7 @@ test('renders the foundation states, six tabs, and appearance choices', async ()
           theme={lightTheme}
           onPreferenceChange={jest.fn()}
         />
-        <FoundationScreen
-          screen="home"
-          title="Home"
+        <HomeScreen
           theme={lightTheme}
           listenerStatus={{accessGranted: false, connected: false, lastErrorCode: null}}
           statusError={null}
@@ -31,6 +29,7 @@ test('renders the foundation states, six tabs, and appearance choices', async ()
           settingsError={null}
           onOpenSettings={jest.fn()}
           onRetryStatus={jest.fn()}
+          onNavigate={jest.fn()}
         />
         <BottomTabBar
           activeScreen="home"
@@ -44,8 +43,8 @@ test('renders the foundation states, six tabs, and appearance choices', async ()
   const renderedTree = JSON.stringify(renderer.toJSON());
 
   expect(renderedTree).toContain('NotifyIQ');
-  expect(renderedTree).toContain('FOUNDATION BUILD');
-  expect(renderedTree).toContain('Local-first by design');
+  expect(renderedTree).toContain('Your notifications, understood.');
+  expect(renderedTree).toContain("Today's overview");
   expect(renderedTree).toContain('Notification access is off');
   expect(renderedTree).toContain('Open notification access settings');
   expect(renderedTree).toContain('System');

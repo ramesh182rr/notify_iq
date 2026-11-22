@@ -39,7 +39,9 @@ class NotifyIQNotificationListener : NotificationListenerService() {
     val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
     val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
     val subtext = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
-    if (SensitiveContentGate.containsSensitiveContent(listOf(title, text, bigText, subtext))) {
+    if (listOf(title, text, bigText, subtext).all { it.isNullOrBlank() }) return
+    if (SystemRedaction.isRedacted(sbn.packageName, extras) ||
+      SensitiveContentGate.containsSensitiveContent(listOf(title, text, bigText, subtext))) {
       enqueue { repository.deleteActive(sbn.packageName, sbn.key) }
       return
     }

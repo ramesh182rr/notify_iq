@@ -42,6 +42,8 @@ Run tests only when asked or when verifying a completed task, and report exact c
 
 - The only attached device is the `Pixel_8` AVD (API 35, 6 GiB guest RAM override used for model trials). There is no physical device, so never claim physical-device or OEM verification.
 - Pinned benchmark model files may be present in `/private/tmp` (`notifyiq-qwen3-onnx-q4f16.onnx`, `notifyiq-qwen3-lite-8d42ab5.litertlm`). Verify SHA-256 against `docs/MODEL_BENCHMARK_CANDIDATES.md` before use.
+- Metro for NotifyIQ runs on port **8093**. Port 8081 belongs to another project on this host, so never use it for NotifyIQ. Run `adb reverse tcp:8093 tcp:8093` before launching the debug app.
+- Live capture fixtures: build/install `mobile/dev-fixture-poster` (`./gradlew -p ../dev-fixture-poster :app:installDebug`, then `pm grant com.notifyiq.fixtureposter android.permission.POST_NOTIFICATIONS`). Post with `adb shell "am start -n com.notifyiq.fixtureposter/.PostActivity --ei id N --es title '…' --es text '…'"`; add `--ez cancel true` to remove. Android 15 redacts OTP/card-like text before listeners see it (R-012).
 - Use synthetic notification fixtures only. The 108-case corpus is `mobile/android/app/src/test/resources/notifyiq/notification-evaluation.tsv`.
 - After emulator checks, restore notification access to off and remove synthetic rows, exclusions and test rules you added. Record the cleanup in the status file.
 
