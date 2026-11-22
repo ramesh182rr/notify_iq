@@ -149,6 +149,39 @@ class NotifyIQModule(
   }
 
   @ReactMethod
+  fun getSecuritySettings(promise: Promise) {
+    promise.resolve(Arguments.createMap().apply {
+      putBoolean("screenProtection", AppSecurity.screenProtection(appContext))
+      putBoolean("appLock", AppSecurity.appLock(appContext))
+      putBoolean("deviceSecure", AppSecurity.isDeviceSecure(appContext))
+    })
+  }
+
+  @ReactMethod
+  fun setScreenProtection(enabled: Boolean, promise: Promise) {
+    AppSecurity.setScreenProtection(appContext, enabled)
+    val activity = appContext.currentActivity
+    if (activity == null) { promise.resolve(null); return }
+    activity.runOnUiThread { AppSecurity.applyScreenProtection(activity, enabled); promise.resolve(null) }
+  }
+
+  @ReactMethod
+  fun setAppLock(enabled: Boolean, promise: Promise) {
+    if (enabled && !AppSecurity.isDeviceSecure(appContext)) {
+      promise.reject("NO_DEVICE_LOCK", "Set a screen lock in Android settings first.")
+      return
+    }
+    AppSecurity.setAppLock(appContext, enabled)
+    promise.resolve(null)
+  }
+
+  @ReactMethod
+  fun authenticate(promise: Promise) {
+    val activity = appContext.currentActivity ?: run { Log.w(NAME, "AUTH_NO_ACTIVITY"); promise.resolve(false); return }
+    activity.runOnUiThread { AppSecurity.authenticate(activity) { ok -> promise.resolve(ok) } }
+  }
+
+  @ReactMethod
   fun getUpcomingActions(promise: Promise) {
     try {
       promise.resolve(Arguments.createArray().apply {

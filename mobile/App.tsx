@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {AppState, StatusBar, StyleSheet, useColorScheme, View} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,7 +10,8 @@ import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { PrivacyCentreScreen } from './src/features/privacy/PrivacyCentreScreen';
 import { InsightsHub, type InsightsSection } from './src/features/insights/InsightsHub';
 import { RulesScreen } from './src/features/rules/RulesScreen';
-import {getListenerStatus, openNotificationAccessSettings} from './src/native/notifyIQ';
+import {authenticate, getListenerStatus, getSecuritySettings, openNotificationAccessSettings} from './src/native/notifyIQ';
+import { LockScreen } from './src/features/legal/LockScreen';
 import type {ListenerStatus} from './src/native/NativeNotifyIQ';
 import type { ScreenKey } from './src/navigation/screens';
 import {
@@ -54,16 +55,42 @@ function App() {
     }
   }, []);
 
+  // App lock: history is not rendered until the person authenticates. Relocks after 30 s in the background.
+  const [locked, setLocked] = useState<boolean | null>(null);
+  const [unlockFailed, setUnlockFailed] = useState(false);
+  const backgroundedAt = useRef<number | null>(null);
+  const unlock = useCallback(async () => {
+    try {
+      const ok = await authenticate();
+      setLocked(!ok);
+      setUnlockFailed(!ok);
+    } catch {
+      setUnlockFailed(true);
+    }
+  }, []);
+  const lockIfEnabled = useCallback(async () => {
+    try {
+      const security = await getSecuritySettings();
+      if (security.appLock) { setLocked(true); await unlock(); } else { setLocked(false); }
+    } catch {
+      setLocked(false);
+    }
+  }, [unlock]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'background') backgroundedAt.current = Date.now();
       if (nextState === 'active') {
         refreshListenerStatus();
         setInboxRefreshKey(value => value + 1);
+        if (backgroundedAt.current !== null && Date.now() - backgroundedAt.current > 30_000) lockIfEnabled().catch(() => undefined);
+        backgroundedAt.current = null;
       }
     });
     refreshListenerStatus();
+    lockIfEnabled().catch(() => undefined);
     return () => subscription.remove();
-  }, [refreshListenerStatus]);
+  }, [refreshListenerStatus, lockIfEnabled]);
 
   const handleOpenSettings = useCallback(async () => {
     setSettingsOpening(true);
@@ -90,6 +117,9 @@ function App() {
           theme={theme}
           onPreferenceChange={setThemePreference}
         />
+        {locked !== false ? (
+          <LockScreen theme={theme} failed={unlockFailed} onUnlock={() => { unlock().catch(() => undefined); }} />
+        ) : (<>
         <View style={styles.flex}>
           <ScreenContainer theme={theme}>
             {activeScreen === 'inbox' || activeScreen === 'search' ? (
@@ -120,6 +150,7 @@ function App() {
           onSelect={navigate}
           theme={theme}
         />
+        </>)}
       </SafeAreaView>
     </SafeAreaProvider>
   );

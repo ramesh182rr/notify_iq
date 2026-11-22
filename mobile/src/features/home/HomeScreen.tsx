@@ -7,6 +7,7 @@ import type { ScreenKey } from '../../navigation/screens';
 import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
 import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingActions } from '../../native/notifyIQ';
 import type { InsightsSection } from '../insights/InsightsHub';
+import { LegalScreen } from '../legal/LegalScreen';
 import { actionKinds, dueLabel, formatMoney } from '../money/format';
 import { appDisplayName, categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
@@ -57,6 +58,7 @@ export function HomeScreen({
   const [loadError, setLoadError] = useState(false);
   const [upcoming, setUpcoming] = useState<ReadonlyArray<UpcomingAction>>([]);
   const [money, setMoney] = useState<MoneySummary | null>(null);
+  const [legalOpen, setLegalOpen] = useState(false);
   const now = new Date();
   const accessOn = listenerStatus?.accessGranted === true;
 
@@ -318,6 +320,10 @@ export function HomeScreen({
             <Text key={item} style={[styles.promiseText, { color: colors.textSecondary }]}>{item}</Text>
           ))}
         </View>
+        <Pressable accessibilityRole="button" onPress={() => setLegalOpen(true)} style={styles.legalLink}>
+          <Text style={[styles.legalText, { color: colors.brand }]}>Privacy policy · Terms · Security</Text>
+        </Pressable>
+        <LegalScreen theme={theme} visible={legalOpen} onClose={() => setLegalOpen(false)} />
       </FadeIn>
     </View>
   );
@@ -373,6 +379,8 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
   promise: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 14, marginTop: 14 },
   promiseText: { fontSize: 12, fontWeight: '600' },
+  legalLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  legalText: { fontSize: 13, fontWeight: '700' },
   upcomingIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   moneyBig: { fontSize: 26, fontWeight: '900', letterSpacing: -0.6, marginTop: 2 },
   moneyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

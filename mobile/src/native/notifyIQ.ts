@@ -1,4 +1,4 @@
-import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type UpcomingAction} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type UpcomingAction} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   const NativeNotifyIQ = getNativeNotifyIQ();
@@ -144,4 +144,20 @@ export function getMoneyAnalytics(from: number, to: number): Promise<MoneyAnalyt
 
 export function setMoneyCategory(eventId: number, category: string, applyToMerchant: boolean): Promise<void> {
   return requireNativeModule().setMoneyCategory(eventId, category, applyToMerchant);
+}
+
+export function getSecuritySettings(): Promise<SecuritySettings> {
+  return requireNativeModule().getSecuritySettings();
+}
+
+export function setScreenProtection(enabled: boolean): Promise<void> {
+  return requireNativeModule().setScreenProtection(enabled);
+}
+
+export function setAppLock(enabled: boolean): Promise<void> {
+  return requireNativeModule().setAppLock(enabled);
+}
+
+export function authenticate(): Promise<boolean> {
+  return requireNativeModule().authenticate();
 }

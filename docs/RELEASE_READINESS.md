@@ -50,6 +50,21 @@ AVD `NotifyIQ_API29`: Google APIs arm64, 4 GB RAM (the D-008 low-memory target),
 
 Tooling note: Android SDK command-line tools 23.0 (`cmdline-tools;latest`, sha1 verified) and `system-images;android-29;google_apis;arm64-v8a` were installed for this run.
 
+### Data exposure and security review (2026-11-22)
+
+- **Network:** the release manifest has no `INTERNET` permission. On the running release app the process groups are `9997 20242 50242`, without `inet` (3003), so the kernel denies socket creation. React Native bundles OkHttp, but it cannot connect. NotifyIQ code makes no network calls.
+- **AI and third parties:** the release APK's native libraries are the React Native, Hermes, image pipeline, safe-area and SQLite libraries only. There is no ONNX or LiteRT runtime and no Firebase, analytics, crash-reporting or Play services SDK.
+- **Sensitive content:** OTPs, passwords, card numbers (NotifyIQ gate) and Android 15 platform-redacted notifications are discarded before storage. Verified on API 29 and API 35.
+- **Storage:** private app SQLite database, excluded from backup and transfer, not debuggable in release. There is no app-level encryption; Android file-based encryption applies while the phone is locked.
+- **Components:** only the launcher activity is exported. The listener is bound with `BIND_NOTIFICATION_LISTENER_SERVICE`; receivers are private; PendingIntents are immutable.
+- **Screen protection:** on by default. With it on, `screencap` of the app returned 0/810 non-black sampled pixels; with it off, content was visible. The setting persists across relaunch.
+- **App lock:** enabling requires passing the system prompt. With the lock on, relaunch shows the system prompt. Cancelling shows a lock screen with no history or tabs. The PIN unlocks. The app relocks after more than 30 s in the background (not after 10 s). Tested with a temporary emulator PIN, which was removed afterwards. Requires `USE_BIOMETRIC`, which the policy discloses.
+- **In-app documents:** Privacy policy, Terms of use and Security (Privacy tab → Security, and the Home footer). `__tests__/LegalPolicy.test.tsx` pins the permission set to POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED and USE_BIOMETRIC, forbids network/SMS/contacts/location/storage permissions, requires backup exclusion, and allows a single exported component.
+- **Known gaps:**
+  - Signing: sideloaded test APKs use the public React Native debug key. Before real users, sign with a private key; switching keys requires uninstalling the old build.
+  - No database encryption at rest beyond Android's.
+  - The legal text has not been reviewed by a lawyer. The governing law and developer contact still need owner decisions.
+
 ### Build reproducibility
 
 Two clean `assembleRelease` builds produced APKs whose 404 zip entries are byte-identical. Only the outer container (signing block and zip metadata) differs. Play re-signs uploads with the app-signing key.

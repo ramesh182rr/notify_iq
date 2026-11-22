@@ -84,6 +84,7 @@
   - Dismissal, real process kill, force-stop, revoke/re-grant and reboot (alarm rescheduled, capture resumes) all verified.
   - UI renders correctly.
   - Cleaned up afterwards. Details in `docs/RELEASE_READINESS.md`.
+- Security and in-app legal (R-016): screen protection on by default (verified screenshots blocked), optional App lock via the system prompt (enable, relaunch, cancel, unlock and 30 s relock all verified), in-app Privacy policy / Terms / Security, and a manifest-drift test. Found and fixed: the prompt needs `USE_BIOMETRIC`. Exposure review confirmed no `inet` group on the app process and no AI or analytics libraries. Emulator test PIN and settings removed afterwards.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -180,3 +181,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - After R-015: `npm run typecheck`, eslint (0 errors), `npm test` (6 suites / 11 tests); `:app:testDebugUnitTest` (12 tests including extraction and category evaluations); `:app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped (opt-in scale).
 - After the accessibility pass: `npm run typecheck`, eslint (0 errors), `npm test` (7 suites / 44 tests including 33 contrast checks); two clean `assembleRelease` builds compared (404/404 entries identical).
 - Android 10: `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped; live lifecycle checks as above.
+- After R-016: `npm run typecheck`, eslint, `npm test` (8 suites / 47 tests); release built and audited (permissions POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC; no INTERNET).

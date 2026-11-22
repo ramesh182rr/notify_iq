@@ -180,6 +180,20 @@ This log distinguishes decisions already present in the supplied development kit
 - Totals remain labelled as derived from saved alerts.
 - The category evaluation set gates the build at ≥ 0.90.
 
+### R-016 — Screen protection on by default, optional App lock, in-app legal documents
+
+**Status:** Requested by user, 2026-11-22 ("no where the data is exposed … fully secured … privacy, terms and policy within the app")
+**Decision:**
+- `FLAG_SECURE` is on by default and applied before first draw. It blocks screenshots and screen recording and hides content in Recents; users can turn it off.
+- Optional App lock uses the platform `BiometricPrompt` (biometric or device credential) with no new dependency. It adds the normal `USE_BIOMETRIC` permission and relocks after 30 s in the background.
+- Switch state lives in a private SharedPreferences file, excluded from backup and transfer.
+- The privacy policy, terms of use and security overview ship in the app (`src/features/legal/legalContent.ts`).
+- A Jest test fails the build if the manifest gains a permission or exported component the policy does not describe.
+**Residual risks recorded:**
+- No app-level database encryption; Android file-based encryption protects data at rest while the phone is locked.
+- Sideloaded APKs signed with the public React Native debug key can be replaced by any APK signed with that same key. Real releases must use the private upload key and Play App Signing.
+- A rooted or compromised device, and people who know the phone PIN, are out of scope.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  
