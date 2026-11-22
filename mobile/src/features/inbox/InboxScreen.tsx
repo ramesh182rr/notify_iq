@@ -16,6 +16,8 @@ import {
 import type { NotificationItem } from '../../native/NativeNotifyIQ';
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
+import { appDisplayName, categoryVisual, priorityColor, relativeTime } from '../../theme/tokens';
+import { CategoryAvatar, Pill } from '../../components/ui';
 
 type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
 type DateRange = 'all' | '7days' | 'today';
@@ -314,41 +316,55 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
         <Text style={{ color: theme.colors.textSecondary }}>Loading saved notifications…</Text>
       ) : items.length === 0 ? (
         <Text style={{ color: theme.colors.textSecondary }}>No matching notifications. Saved history stays on this device.</Text>
-      ) : items.map(item => (
-        <View key={item.id} style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.app, { color: theme.colors.brand }]}>{item.packageName}</Text>
+      ) : items.map(item => {
+        const visual = categoryVisual(theme, item.category);
+        const chip = [styles.actionChip, { backgroundColor: theme.colors.surfaceMuted }];
+        return (
+        <View key={item.id} style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: item.priority === 'urgent' ? theme.colors.danger : theme.colors.border, shadowColor: theme.colors.shadow }]}>
+          <View style={styles.itemHeader}>
+            <CategoryAvatar theme={theme} category={item.category} size={42} />
+            <View style={styles.flex}>
+              <Text numberOfLines={1} style={[styles.app, { color: theme.colors.textPrimary }]}>{appDisplayName(item.packageName)}</Text>
+              <Text numberOfLines={1} style={[styles.time, { color: theme.colors.textSecondary }]}>{relativeTime(item.receivedAt)} · {new Date(item.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+            </View>
+            {item.saved ? <Text accessibilityLabel="Saved" style={styles.savedStar}>★</Text> : null}
+          </View>
           {item.title ? <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.title}</Text> : null}
-          {item.body ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.body}</Text> : null}
+          {item.body ? <Text numberOfLines={4} style={[styles.body, { color: theme.colors.textSecondary }]}>{item.body}</Text> : null}
           {item.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.subtext}</Text> : null}
-          <Text style={[styles.time, { color: theme.colors.textSecondary }]}>{new Date(item.receivedAt).toLocaleString()}</Text>
-          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text</Text>
-          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{categoryLabel(item.category)}{item.categoryOverride ? ' · changed by you' : ''} · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
-          {item.important ? <Text style={[styles.hint, { color: theme.colors.brand }]}>Marked important by a rule</Text> : null}
+          <View style={styles.chips}>
+            <Pill label={`${categoryLabel(item.category)}${item.categoryOverride ? ' · yours' : ''}`} color={visual.fg} background={visual.bg} />
+            {item.priority !== 'normal' ? <Pill label={`${item.priority} priority`} color="#FFFFFF" background={priorityColor(theme, item.priority)} /> : null}
+            {item.important ? <Pill label="Important" color={theme.colors.brand} background={theme.colors.brandSoft} /> : null}
+            {item.duplicateCount > 1 ? <Pill label={`×${item.duplicateCount} repeats`} color={theme.colors.textSecondary} background={theme.colors.surfaceMuted} /> : null}
+            {item.ruleGroups.map(group => <Pill key={group} label={`# ${group}`} color={theme.colors.info} background={theme.colors.surfaceMuted} />)}
+          </View>
+          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
           {item.includeInDigest !== null ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.includeInDigest ? 'Included in digest by a rule' : 'Excluded from digest by a rule'}</Text> : null}
-          {item.ruleGroups.length ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Groups: {item.ruleGroups.join(', ')}</Text> : null}
           {item.duplicateCount > 1 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Repeated {item.duplicateCount} times in this app within 30 minutes. All source notifications are kept.</Text> : null}
-          <Pressable accessibilityRole="button" accessibilityLabel="View notification details" onPress={() => setSelectedItem(item)}>
-            <Text style={{ color: theme.colors.brand }}>Details</Text>
-          </Pressable>
-          <View style={styles.row}>
-            <Pressable accessibilityRole="button" accessibilityLabel={item.saved ? 'Unsave notification' : 'Save notification'} onPress={() => ignorePromise(reloadAfterAction(
+          <View style={styles.actions}>
+            <Pressable accessibilityRole="button" accessibilityLabel={item.saved ? 'Unsave notification' : 'Save notification'} style={chip} onPress={() => ignorePromise(reloadAfterAction(
               () => setNotificationSaved(item.id, !item.saved),
               { label: item.saved ? 'Notification unsaved.' : 'Notification saved.', action: () => setNotificationSaved(item.id, item.saved) },
             ))}>
-              <Text style={{ color: theme.colors.brand }}>{item.saved ? 'Unsave' : 'Save'}</Text>
+              <Text style={[styles.actionText, { color: theme.colors.brand }]}>{item.saved ? '★ Saved' : '☆ Save'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={item.archivedAt == null ? 'Archive notification' : 'Restore notification'} onPress={() => ignorePromise(reloadAfterAction(
+            <Pressable accessibilityRole="button" accessibilityLabel={item.archivedAt == null ? 'Archive notification' : 'Restore notification'} style={chip} onPress={() => ignorePromise(reloadAfterAction(
               () => setNotificationArchived(item.id, item.archivedAt == null),
               { label: item.archivedAt == null ? 'Notification archived.' : 'Notification restored.', action: () => setNotificationArchived(item.id, item.archivedAt != null) },
             ))}>
-              <Text style={{ color: theme.colors.brand }}>{item.archivedAt == null ? 'Archive' : 'Restore'}</Text>
+              <Text style={[styles.actionText, { color: theme.colors.textPrimary }]}>{item.archivedAt == null ? 'Archive' : 'Restore'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Delete notification" onPress={() => confirmDelete(item)}>
-              <Text style={{ color: theme.colors.danger }}>Delete</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="View notification details" style={chip} onPress={() => setSelectedItem(item)}>
+              <Text style={[styles.actionText, { color: theme.colors.textPrimary }]}>Details</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Delete notification" style={chip} onPress={() => confirmDelete(item)}>
+              <Text style={[styles.actionText, { color: theme.colors.danger }]}>Delete</Text>
             </Pressable>
           </View>
         </View>
-      ))}
+        );
+      })}
       {!error && hasMore ? (
         <Pressable accessibilityRole="button" onPress={() => ignorePromise(loadMore())}>
           <Text style={{ color: theme.colors.brand }}>{loading ? 'Loading…' : 'Load more'}</Text>
@@ -441,11 +457,18 @@ function categoryLabel(value: string) {
 const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: 14, paddingBottom: 24 },
   title: { fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.8 },
-  card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
-  app: { fontSize: 12, fontWeight: '700' },
+  card: { borderWidth: 1, borderRadius: 20, padding: 16, gap: 8, shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
+  itemHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  savedStar: { fontSize: 20, color: '#F5A623' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  actionChip: { minHeight: 40, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  actionText: { fontSize: 14, fontWeight: '700' },
+  app: { fontSize: 15, fontWeight: '800' },
+  flex: { flex: 1 },
   itemTitle: { fontSize: 16, fontWeight: '700' },
   body: { fontSize: 14, lineHeight: 20 },
-  time: { fontSize: 11, marginTop: 4 },
+  time: { fontSize: 12, marginTop: 1 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14 },
   row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
   chipRail: { flexDirection: 'row', alignItems: 'center', gap: 10 },

@@ -371,7 +371,7 @@ internal class NotificationRepository private constructor(private val connection
       start, end,
     )
     val hours = overviewCounts(
-      "SELECT strftime('%H:00', received_at / 1000, 'unixepoch', 'localtime'), COUNT(*) FROM notification_events WHERE received_at >= ? AND received_at < ? GROUP BY 1 ORDER BY COUNT(*) DESC, 1 ASC LIMIT 5",
+      "SELECT strftime('%H:00', received_at / 1000, 'unixepoch', 'localtime'), COUNT(*) FROM notification_events WHERE received_at >= ? AND received_at < ? GROUP BY 1 ORDER BY COUNT(*) DESC, 1 ASC LIMIT 24",
       start, end,
     )
     val sources = notifications(NotificationFilters(from = start, to = end, includeArchived = true, limit = 5))

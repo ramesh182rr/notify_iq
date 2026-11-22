@@ -49,6 +49,13 @@
 - Cleanup: deleted all synthetic rows through Privacy → Delete all notification history (0 events/analysis rows; retention preference 30 days kept), revoked NotifyIQ notification access, cancelled fixtures, uninstalled the poster and probe listener, removed the 8093 ADB reverse mapping.
 - Phase 7 hardening: removed `INTERNET` from the release manifest (debug-only for Metro); added data-extraction rules that exclude all data from cloud backup and device transfer; release signing now reads untracked `NOTIFYIQ_UPLOAD_*` properties with a debug-key fallback for local smoke tests; enabled R8 and resource shrinking; native/JS logging reduced to error codes. Release smoke test on the emulator passed: launch, all tabs, live capture plus classification, OTP/password discard. Checklist and privacy/data-safety draft are in `docs/RELEASE_READINESS.md`.
 - Added an opt-in `RepositoryScaleTest` (1k/10k/50k synthetic rows) covering search, paging, category filter, overview, retention cleanup and clear, with FTS consistency assertions.
+- UI refresh (2026-11-22), still deterministic and local, no new dependencies:
+  - Home is now a dashboard: greeting, a "Today" hero with category share, a "may need a look" card for urgent/high items, an hourly rhythm chart, top apps, latest items, quick actions, a daily tip and a privacy promise. With access off it shows a 3-step onboarding hero.
+  - Inbox cards gain category avatars, readable app names, relative time, category/priority/group pills and chip-style actions.
+  - Insights gains a hero, category and app bars, and a 24-hour chart. The native overview now returns all hourly buckets instead of the top 5.
+  - New shared primitives in `src/components/ui.tsx` (View-drawn tab icons, reduced-motion-aware fade-in), a compact header, an icon tab bar, and an adaptive launcher icon.
+  - Verified on the emulator in light and dark themes with synthetic data, which was then deleted.
+- Play compatibility verified: target API 36, 16 KB-aligned native libraries, AAB built. The release APK installed and launched cleanly on the emulator. Local artifacts were copied to git-ignored `dist/`.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -140,3 +147,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - Release smoke cleanup: deleted history through the Privacy UI (0 rows), revoked notification access, uninstalled the fixture poster, reinstalled the debug build.
 
 - `./gradlew --no-daemon :app:connectedDebugAndroidTest` (after Phase 7 changes) — passed: 18 tests, 0 failures, 1 skipped (the opt-in scale test).
+- `npm run typecheck`, eslint (0 errors), `npm test` (4 suites / 8 tests) — passed after the UI refresh. `:app:assembleRelease :app:bundleRelease` — passed; release APK smoke on emulator passed.

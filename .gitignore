@@ -38,3 +38,6 @@ models/**/*.litertlm
 .venv/
 __pycache__/
 *.py[cod]
+
+# Local release artifacts
+dist/

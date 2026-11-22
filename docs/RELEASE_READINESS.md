@@ -31,6 +31,19 @@ Retention cleanup removed 12,500 expired rows in 236 ms, and clear removed 37,50
 
 Still open for this task: Android API/OEM matrix and API 29 run, physical-device lifecycle checks, 1k/10k/50k search/retention scale test, battery/thermal, and an accessibility pass (TalkBack, font scaling, contrast) in both themes.
 
+## Play compatibility (checked 2026-11-22)
+
+| Requirement | Status |
+|---|---|
+| Target API level: new apps and updates must target Android 16 (API 36) | `targetSdkVersion 36`, `compileSdk 37` |
+| Minimum supported Android | Android 10 (API 29), per D-008 |
+| 64-bit native code | `arm64-v8a` and `x86_64` included, plus 32-bit ABIs |
+| 16 KB memory page size (required for apps targeting Android 15+ with native code) | All 24 `.so` LOAD segments are 16 KB-aligned (`llvm-readelf`), and the APK passes `zipalign -c -P 16` |
+| Store artifact | `./gradlew :app:bundleRelease` produces an AAB (42.4 MB, per-ABI delivery) |
+| Launcher icon | Adaptive vector icon with a monochrome layer for themed icons. A 512×512 PNG is still needed for the store listing. |
+
+Sources: [Play target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878), [Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
 ## 2. Signing and build configuration
 
 - The release signing config reads `NOTIFYIQ_UPLOAD_STORE_FILE`, `NOTIFYIQ_UPLOAD_STORE_PASSWORD`, `NOTIFYIQ_UPLOAD_KEY_ALIAS` and `NOTIFYIQ_UPLOAD_KEY_PASSWORD` from untracked Gradle properties (`~/.gradle/gradle.properties`) or environment variables. `*.keystore`/`*.jks` are git-ignored.

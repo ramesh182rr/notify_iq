@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CategoryAvatar, CategoryStack, HourChart, StatBar } from '../../components/ui';
+import { appDisplayName, categoryVisual } from '../../theme/tokens';
+
 import { getDailyOverview } from '../../native/notifyIQ';
 import type { DailyOverview, ListenerStatus, NotificationItem } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
@@ -63,23 +66,25 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
         <Text style={{ color: theme.colors.textSecondary }}>Preparing today’s overview…</Text>
       ) : overview ? (
         <>
-          <View style={cardStyle}>
-            <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>{new Date(overview.dayStart).toLocaleDateString()}</Text>
-            <Text style={[styles.summary, { color: theme.colors.textPrimary }]}>
+          <View style={[styles.hero, { backgroundColor: theme.colors.hero }]}>
+            <View style={[styles.heroOrb, { backgroundColor: theme.colors.heroAccent }]} />
+            <Text style={[styles.heroEyebrow, { color: theme.colors.onHeroMuted }]}>{new Date(overview.dayStart).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}</Text>
+            <Text style={[styles.heroNumber, { color: theme.colors.onHero }]}>{overview.totalCount}</Text>
+            <CategoryStack theme={theme} categories={overview.categories} onHero />
+            <Text style={[styles.summary, { color: theme.colors.onHero }]}>
               {overview.totalCount === 0
                 ? 'No notification history was saved today. That can mean none arrived, or capture was unavailable.'
                 : `NotifyIQ saved ${overview.totalCount} ${overview.totalCount === 1 ? 'notification' : 'notifications'} from ${overview.appCount} ${overview.appCount === 1 ? 'app' : 'apps'} today.`}
             </Text>
-            <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Generated from local retained records. This summary does not represent a complete Android notification log.</Text>
+            <Text style={[styles.copy, { color: theme.colors.onHeroMuted }]}>Generated from local retained records. This summary does not represent a complete Android notification log.</Text>
           </View>
           {overview.categories.length ? (
             <View style={cardStyle}>
               <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Categories</Text>
               {overview.categories.map(row => (
-                <View key={row.label} style={styles.statRow}>
-                  <Text style={[styles.copy, { color: theme.colors.textPrimary }]}>{categoryNames[row.label] ?? 'Other'}</Text>
-                  <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>{row.count}</Text>
-                </View>
+                <StatBar key={row.label} theme={theme} label={categoryNames[row.label] ?? 'Other'} value={row.count}
+                  max={overview.categories[0]?.count ?? 1} color={categoryVisual(theme, row.label).fg}
+                  leading={<CategoryAvatar theme={theme} category={row.label} size={36} />} />
               ))}
             </View>
           ) : null}
@@ -87,10 +92,8 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
             <View style={cardStyle}>
               <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Most active apps</Text>
               {overview.apps.map(row => (
-                <View key={row.label} style={styles.statRow}>
-                  <Text style={[styles.copy, styles.flex, { color: theme.colors.textPrimary }]}>{row.label}</Text>
-                  <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>{row.count}</Text>
-                </View>
+                <StatBar key={row.label} theme={theme} label={appDisplayName(row.label)} value={row.count}
+                  max={overview.apps[0]?.count ?? 1} color={theme.colors.heroAccent} />
               ))}
             </View>
           ) : null}
@@ -98,7 +101,8 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
             <View style={cardStyle}>
               <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Busiest arrival hours</Text>
               <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>Counts are grouped by local clock hour.</Text>
-              {overview.hours.map(row => (
+              <HourChart theme={theme} hours={overview.hours} color={theme.colors.brand} />
+              {overview.hours.slice(0, 3).map(row => (
                 <View key={row.label} style={styles.statRow}>
                   <Text style={[styles.copy, { color: theme.colors.textPrimary }]}>{row.label}</Text>
                   <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>{row.count}</Text>
@@ -110,6 +114,7 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
             <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Recent sources</Text>
             {overview.sources.length ? overview.sources.map(source => (
               <Pressable key={source.id} accessibilityRole="button" accessibilityLabel={`Open source notification from ${source.packageName}`} onPress={() => setSelectedSource(source)} style={styles.sourceRow}>
+                <CategoryAvatar theme={theme} category={source.category} size={38} />
                 <View style={styles.flex}>
                   <Text style={[styles.sourceTitle, { color: theme.colors.textPrimary }]}>{source.title || source.packageName}</Text>
                   <Text numberOfLines={2} style={[styles.copy, { color: theme.colors.textSecondary }]}>{source.body || source.packageName}</Text>
@@ -145,7 +150,11 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, gap: 14, paddingBottom: 24 },
   title: { fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -0.8 },
   description: { fontSize: 16, lineHeight: 24 },
-  card: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 10 },
+  card: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 10 },
+  hero: { borderRadius: 26, padding: 22, gap: 10, overflow: 'hidden' },
+  heroOrb: { position: 'absolute', width: 200, height: 200, borderRadius: 100, right: -70, top: -90, opacity: 0.5 },
+  heroEyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  heroNumber: { fontSize: 56, lineHeight: 62, fontWeight: '900', letterSpacing: -2 },
   heading: { fontSize: 17, fontWeight: '700' },
   summary: { fontSize: 20, lineHeight: 28, fontWeight: '600' },
   copy: { fontSize: 14, lineHeight: 21 },

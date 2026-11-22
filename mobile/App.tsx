@@ -101,6 +101,7 @@ function App() {
               <RulesScreen theme={theme} />
             ) : <HomeScreen
               theme={theme}
+              refreshKey={inboxRefreshKey}
               listenerStatus={listenerStatus}
               statusError={statusError}
               statusLoading={statusLoading}

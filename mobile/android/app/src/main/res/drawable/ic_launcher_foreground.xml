@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+  <!-- Stylised "N" inside the 66dp safe zone, with a notification dot. -->
+  <path android:fillColor="#FFFFFF" android:pathData="M36,74V36h8.5L63.5,60.5V36H72v38h-8.5L44.5,49.5V74z" />
+  <path android:fillColor="#4B2FBF" android:pathData="M75,34m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
+  <path android:fillColor="#FFB547" android:pathData="M75,34m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+</vector>

@@ -9,6 +9,15 @@ import { BottomTabBar } from '../src/components/BottomTabBar';
 import { HomeScreen } from '../src/features/home/HomeScreen';
 import { darkTheme, lightTheme } from '../src/theme/tokens';
 
+jest.mock('../src/components/ui', () => ({
+  ...jest.requireActual('../src/components/ui'),
+  FadeIn: ({ children }: { children: React.ReactNode }) => children,
+}));
+jest.mock('../src/native/notifyIQ', () => ({
+  getDailyOverview: jest.fn().mockResolvedValue({ dayStart: 0, dayEnd: 0, totalCount: 0, appCount: 0, categories: [], apps: [], hours: [], sources: [] }),
+  getRecentNotifications: jest.fn().mockResolvedValue([]),
+}));
+
 test('renders the home states, six tabs, and appearance choices', async () => {
   let renderer!: ReturnType<typeof ReactTestRenderer.create>;
 
@@ -44,13 +53,14 @@ test('renders the home states, six tabs, and appearance choices', async () => {
 
   expect(renderedTree).toContain('NotifyIQ');
   expect(renderedTree).toContain('Your notifications, understood.');
-  expect(renderedTree).toContain("Today's overview");
+  expect(renderedTree).toContain('Jump back in');
+  expect(renderedTree).toContain('No internet access');
   expect(renderedTree).toContain('Notification access is off');
   expect(renderedTree).toContain('Open notification access settings');
   expect(renderedTree).toContain('System');
   expect(renderedTree).toContain('Light');
   expect(renderedTree).toContain('Dark');
-  expect(renderedTree).not.toContain('42');
+  expect(renderedTree).not.toContain('"children":["42"]');
   expect(renderedTree.match(/"accessibilityRole":"tab"/g) ?? []).toHaveLength(
     6,
   );
