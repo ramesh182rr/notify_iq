@@ -34,7 +34,7 @@ export function InsightsHub({ theme, refreshKey, section, onSectionChange, statu
           return (
             <Pressable key={option.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onSectionChange(option.key)}
               style={[styles.option, selected && { backgroundColor: colors.brand }]}>
-              <Text style={[styles.optionText, { color: selected ? '#FFFFFF' : colors.textSecondary }]}>{option.label}</Text>
+              <Text style={[styles.optionText, { color: selected ? colors.onBrand : colors.textSecondary }]}>{option.label}</Text>
             </Pressable>
           );
         })}
@@ -49,6 +49,6 @@ export function InsightsHub({ theme, refreshKey, section, onSectionChange, statu
 const styles = StyleSheet.create({
   content: { gap: 16 },
   segment: { flexDirection: 'row', borderRadius: 16, padding: 4, borderWidth: 1 },
-  option: { flex: 1, minHeight: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  option: { flex: 1, minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   optionText: { fontSize: 14, fontWeight: '800' },
 });

@@ -154,7 +154,7 @@ export function RulesScreen({ theme }: { theme: AppTheme }) {
           <Text style={{ color: colors.textPrimary }}>Reminder: {reminderMinutes === null ? 'off' : `${reminderMinutes} minutes after notification`}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={addRule} style={[styles.primary, { backgroundColor: colors.brand }]}>
-          <Text style={styles.primaryText}>{busy ? 'Saving…' : 'Add rule'}</Text>
+          <Text style={[styles.primaryText, { color: theme.colors.onBrand }]}>{busy ? 'Saving…' : 'Add rule'}</Text>
         </Pressable>
       </View>
       <View style={[styles.card, card]}>
@@ -197,11 +197,11 @@ const styles = StyleSheet.create({
   heading: { fontSize: 18, fontWeight: '700' },
   copy: { fontSize: 14, lineHeight: 21 },
   card: { borderWidth: 1, borderRadius: 18, padding: 18, gap: 12 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  action: { padding: 10, alignSelf: 'flex-start' },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, minHeight: 48 },
+  action: { paddingHorizontal: 10, minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start' },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  option: { paddingHorizontal: 10, paddingVertical: 9, borderWidth: 1, borderRadius: 10 },
-  primary: { borderRadius: 10, padding: 12, alignItems: 'center' },
+  option: { paddingHorizontal: 12, minHeight: 48, justifyContent: 'center', borderWidth: 1, borderRadius: 12 },
+  primary: { borderRadius: 12, paddingHorizontal: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFFFFF', fontWeight: '700' },
   rule: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   ruleText: { flexGrow: 1, flexBasis: '100%', gap: 4 },

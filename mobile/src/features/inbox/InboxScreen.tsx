@@ -17,6 +17,7 @@ import type { NotificationItem } from '../../native/NativeNotifyIQ';
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
 import { appDisplayName, categoryVisual, priorityColor, relativeTime } from '../../theme/tokens';
+import { readableTextOn } from '../../theme/contrast';
 import { CategoryAvatar, Pill } from '../../components/ui';
 
 type Props = { theme: AppTheme; refreshKey: number; searchMode?: boolean; listenerStatus?: ListenerStatus | null; statusLoading?: boolean; statusError?: string | null };
@@ -292,7 +293,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
       {!searchMode ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Manage retention and app exclusions in Privacy.</Text> : null}
       {actionError ? <Text style={{ color: theme.colors.danger }}>That change could not be saved. Try again.</Text> : null}
       {!loading && items.length > 0 ? (
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: clearing }} disabled={clearing} onPress={confirmClear}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: clearing }} disabled={clearing} onPress={confirmClear} style={{ minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start' }}>
           <Text style={{ color: theme.colors.danger }}>{clearing ? 'Deleting…' : 'Delete all history'}</Text>
         </Pressable>
       ) : null}
@@ -334,7 +335,7 @@ export function InboxScreen({ theme, refreshKey, searchMode = false, listenerSta
           {item.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.subtext}</Text> : null}
           <View style={styles.chips}>
             <Pill label={`${categoryLabel(item.category)}${item.categoryOverride ? ' · yours' : ''}`} color={visual.fg} background={visual.bg} />
-            {item.priority !== 'normal' ? <Pill label={`${item.priority} priority`} color="#FFFFFF" background={priorityColor(theme, item.priority)} /> : null}
+            {item.priority !== 'normal' ? <Pill label={`${item.priority} priority`} color={readableTextOn(priorityColor(theme, item.priority))} background={priorityColor(theme, item.priority)} /> : null}
             {item.important ? <Pill label="Important" color={theme.colors.brand} background={theme.colors.brandSoft} /> : null}
             {item.duplicateCount > 1 ? <Pill label={`×${item.duplicateCount} repeats`} color={theme.colors.textSecondary} background={theme.colors.surfaceMuted} /> : null}
             {item.ruleGroups.map(group => <Pill key={group} label={`# ${group}`} color={theme.colors.info} background={theme.colors.surfaceMuted} />)}
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
   savedStar: { fontSize: 20, color: '#F5A623' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  actionChip: { minHeight: 40, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  actionChip: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   actionText: { fontSize: 14, fontWeight: '700' },
   app: { fontSize: 15, fontWeight: '800' },
   flex: { flex: 1 },
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14 },
   row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
   chipRail: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8 },
+  chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, minHeight: 48, justifyContent: 'center' },
   retention: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 10 },
   undoNotice: { minHeight: 52, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   undoAction: { fontWeight: '700' },
@@ -480,8 +481,8 @@ const styles = StyleSheet.create({
   coverageTitle: { fontSize: 14, fontWeight: '700' },
   savedSearches: { borderWidth: 1, borderRadius: 14, padding: 12, gap: 10 },
   savedSearchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  savedSearchApply: { flex: 1, gap: 2, minHeight: 42, justifyContent: 'center' },
-  savedSearchDelete: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  savedSearchApply: { flex: 1, gap: 2, minHeight: 48, justifyContent: 'center' },
+  savedSearchDelete: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 6 },
   savedSearchName: { flex: 1, minWidth: 120 },
   savedSearchTitle: { fontWeight: '600' },
   savedSearchButton: { fontWeight: '700' },
@@ -491,6 +492,6 @@ const styles = StyleSheet.create({
   detailCard: { maxHeight: '85%', borderWidth: 1, borderRadius: 20, padding: 20, gap: 14 },
   detailTitle: { fontSize: 22, fontWeight: '700' },
   detailContent: { gap: 8 },
-  closeButton: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  closeButton: { minHeight: 48, justifyContent: 'center', alignItems: 'center' },
   closeText: { fontWeight: '700' },
 });

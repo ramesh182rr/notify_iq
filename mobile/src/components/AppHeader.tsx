@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { AppTheme, ThemePreference } from '../theme/tokens';
 
@@ -15,8 +15,10 @@ const preferences: { key: ThemePreference; label: string }[] = [
 ];
 
 export function AppHeader({ preference, theme, onPreferenceChange }: AppHeaderProps) {
+  const { fontScale } = useWindowDimensions();
+  const stacked = fontScale > 1.15;
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, stacked && styles.stacked, { backgroundColor: theme.colors.background }]}>
       <View style={styles.brandRow}>
         <View style={[styles.mark, { backgroundColor: theme.colors.hero }]}>
           <View style={[styles.markGlow, { backgroundColor: theme.colors.heroAccent }]} />
@@ -24,14 +26,14 @@ export function AppHeader({ preference, theme, onPreferenceChange }: AppHeaderPr
           <View style={[styles.markDot, { backgroundColor: '#FFB547', borderColor: theme.colors.background }]} />
         </View>
         <View>
-          <Text style={[styles.brand, { color: theme.colors.textPrimary }]}>NotifyIQ</Text>
-          <Text style={[styles.tagline, { color: theme.colors.textSecondary }]}>Private · on this device</Text>
+          <Text numberOfLines={1} maxFontSizeMultiplier={1.6} style={[styles.brand, { color: theme.colors.textPrimary }]}>NotifyIQ</Text>
+          {fontScale <= 1.3 ? <Text numberOfLines={1} style={[styles.tagline, { color: theme.colors.textSecondary }]}>Private · on this device</Text> : null}
         </View>
       </View>
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel="Appearance"
-        style={[styles.segment, { backgroundColor: theme.colors.surfaceMuted }]}>
+        style={[styles.segment, stacked && styles.segmentStacked, { backgroundColor: theme.colors.surfaceMuted }]}>
         {preferences.map(option => {
           const selected = preference === option.key;
           return (
@@ -42,7 +44,7 @@ export function AppHeader({ preference, theme, onPreferenceChange }: AppHeaderPr
               hitSlop={6}
               onPress={() => onPreferenceChange(option.key)}
               style={[styles.option, selected && { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.optionText, { color: selected ? theme.colors.brand : theme.colors.textSecondary }]}>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1.6} style={[styles.optionText, { color: selected ? theme.colors.brand : theme.colors.textSecondary }]}>
                 {option.label}
               </Text>
             </Pressable>
@@ -62,7 +64,9 @@ const styles = StyleSheet.create({
   markDot: { position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
   brand: { fontSize: 19, fontWeight: '800', letterSpacing: -0.4 },
   tagline: { fontSize: 11, fontWeight: '600' },
-  segment: { flexDirection: 'row', borderRadius: 999, padding: 3 },
-  option: { minHeight: 32, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  segment: { flexDirection: 'row', borderRadius: 999, padding: 2 },
+  stacked: { flexDirection: 'column', alignItems: 'stretch' },
+  segmentStacked: { alignSelf: 'stretch' },
+  option: { flexGrow: 1, minHeight: 48, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   optionText: { fontSize: 12, fontWeight: '700' },
 });

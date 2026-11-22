@@ -8,6 +8,8 @@ type ThemeColors = {
   textSecondary: string;
   brand: string;
   brandSoft: string;
+  /** Text/icon colour on a filled `brand` surface. */
+  onBrand: string;
   /** Deep brand surface for hero cards; text on it uses `onHero`. */
   hero: string;
   heroAccent: string;
@@ -36,6 +38,7 @@ export const lightTheme: AppTheme = {
     textSecondary: '#69677A',
     brand: '#6546D7',
     brandSoft: '#EEE9FF',
+    onBrand: '#FFFFFF',
     hero: '#4B2FBF',
     heroAccent: '#7C5CF0',
     onHero: '#FFFFFF',
@@ -59,6 +62,7 @@ export const darkTheme: AppTheme = {
     textSecondary: '#AAA5BE',
     brand: '#A58BFF',
     brandSoft: '#33285A',
+    onBrand: '#17152A',
     hero: '#2E1F73',
     heroAccent: '#4A33A8',
     onHero: '#FFFFFF',

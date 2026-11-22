@@ -29,7 +29,19 @@ Retention cleanup removed 12,500 expired rows in 236 ms, and clear removed 37,50
 
 **Insert cost note:** each insert rebuilds its exact-duplicate group. That hashes every row received in the same 30-minute window, across all apps, because the window query uses the `received_at` index. The test places ~1,900 rows in each window, far denser than real use (dozens per window for heavy users), so the per-row figure reflects test density, not total history size. If bursts become an issue: store each event's content fingerprint and add a `(package_name, received_at)` or `(content_fingerprint, window)` index in a numbered migration, so the rebuild becomes an indexed lookup.
 
-Still open for this task: Android API/OEM matrix and API 29 run, physical-device lifecycle checks, 1k/10k/50k search/retention scale test, battery/thermal, and an accessibility pass (TalkBack, font scaling, contrast) in both themes.
+### Accessibility pass (emulator, 2026-11-22)
+
+- **Contrast:** `__tests__/Contrast.test.ts` checks WCAG ratios for every text/background token pair in both themes (33 checks; ≥ 4.5:1 for body text). It found white text on the dark-theme brand colour at about 2.6:1. Fix: a new `onBrand` token used by filled buttons, selected segments and busy calendar days. Treemap tiles and priority pills now pick dark or light text automatically (`readableTextOn`).
+- **Touch targets:** uiautomator audit of every tab. The theme switch (32 dp), "See all" and "Delete all history" (19 dp), filter, action, range and segment chips (36–42 dp), and Rules/Privacy controls and inputs were raised to ≥ 48 dp. Remaining sub-48 readings were elements partly hidden under the header or tab bar (clipped bounds). The running bundle was confirmed to carry the 48 dp styles.
+- **Screen-reader labels:** no tappable element without text or an accessibility label was found.
+- **Large text:** checked at 1.3× and 2.0× font scale. Content reflows. At large scales the header stacks the theme switch under the brand and hides the tagline; tab labels cap at 1.2× (icons and TalkBack labels carry meaning). Font scale was restored to 1.0.
+- Not yet done: a manual TalkBack walkthrough and a Play pre-launch report run.
+
+### Build reproducibility
+
+Two clean `assembleRelease` builds produced APKs whose 404 zip entries are byte-identical. Only the outer container (signing block and zip metadata) differs. Play re-signs uploads with the app-signing key.
+
+Still open for this task: Android API/OEM matrix and an API 29 run (the API 29 system image is not installed), physical-device lifecycle checks, battery/thermal measurement, and a manual TalkBack walkthrough.
 
 ## Play compatibility (checked 2026-11-22)
 

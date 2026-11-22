@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney } from '../features/money/format';
+import { readableTextOn } from '../theme/contrast';
 import type { AppTheme } from '../theme/tokens';
 
 /** Mirrored daily bars: money in above the line, money out below. */
@@ -67,8 +68,8 @@ function TreeLevel({ tiles, horizontal, total, depth }: { tiles: ReadonlyArray<T
     <View style={[styles.flex, { flexDirection: horizontal ? 'row' : 'column', gap: 3 }]}>
       <View style={[styles.tile, { flex: Math.max(first.value, restValue * 0.12), backgroundColor: first.color }]}>
         <Text style={styles.tileEmoji}>{first.emoji}</Text>
-        {depth < 4 && share >= 8 ? <Text numberOfLines={1} style={styles.tileLabel}>{first.label}</Text> : null}
-        <Text numberOfLines={1} style={styles.tileValue}>{share}%{depth < 3 && first.caption ? ` · ${first.caption}` : ''}</Text>
+        {depth < 4 && share >= 8 ? <Text numberOfLines={1} style={[styles.tileLabel, { color: readableTextOn(first.color) }]}>{first.label}</Text> : null}
+        <Text numberOfLines={1} style={[styles.tileValue, { color: readableTextOn(first.color) }]}>{share}%{depth < 3 && first.caption ? ` · ${first.caption}` : ''}</Text>
       </View>
       {others.length ? (
         <View style={[styles.flex, { flex: restValue }]}>
@@ -107,7 +108,7 @@ export function CalendarHeatmap({ theme, days, currency }: {
                   opacity: cell.outMinor ? 0.25 + intensity * 0.75 : 1,
                   borderWidth: isToday ? 2 : 0, borderColor: theme.colors.textPrimary,
                 }]}>
-                <Text style={[styles.calDay, { color: cell.outMinor && intensity > 0.45 ? '#FFFFFF' : theme.colors.textSecondary }]}>{new Date(cell.dayStart).getDate()}</Text>
+                <Text style={[styles.calDay, { color: cell.outMinor && intensity > 0.45 ? theme.colors.onBrand : theme.colors.textSecondary }]}>{new Date(cell.dayStart).getDate()}</Text>
               </View>
             );
           })}
@@ -172,8 +173,8 @@ const styles = StyleSheet.create({
   treemap: { borderRadius: 18, overflow: 'hidden' },
   tile: { borderRadius: 10, padding: 8, justifyContent: 'flex-end', overflow: 'hidden', minWidth: 0, minHeight: 0 },
   tileEmoji: { fontSize: 18 },
-  tileLabel: { color: '#FFFFFF', fontSize: 12, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 2 },
-  tileValue: { color: 'rgba(255,255,255,0.92)', fontSize: 11, fontWeight: '700' },
+  tileLabel: { fontSize: 12, fontWeight: '800' },
+  tileValue: { fontSize: 11, fontWeight: '700' },
   calRow: { flexDirection: 'row', gap: 4, marginBottom: 4 },
   calHead: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700' },
   calCell: { flex: 1, aspectRatio: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },

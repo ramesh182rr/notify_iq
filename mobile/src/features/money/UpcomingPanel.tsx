@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   amount: { fontSize: 16, fontWeight: '800', alignSelf: 'flex-start' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 40, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  chip: { minHeight: 48, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 14, fontWeight: '700' },
   link: { fontSize: 13, fontWeight: '700' },
   emptyEmoji: { fontSize: 30 },

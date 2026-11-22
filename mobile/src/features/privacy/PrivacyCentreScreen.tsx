@@ -121,9 +121,9 @@ const styles = StyleSheet.create({
   heading: { fontSize: 17, fontWeight: '700' },
   copy: { fontSize: 14, lineHeight: 21 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9 },
-  action: { minHeight: 44, justifyContent: 'center' },
-  input: { minHeight: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12 },
-  excludedRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, minHeight: 48, justifyContent: 'center' },
+  action: { minHeight: 48, justifyContent: 'center' },
+  input: { minHeight: 48, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12 },
+  excludedRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   package: { flex: 1 },
 });

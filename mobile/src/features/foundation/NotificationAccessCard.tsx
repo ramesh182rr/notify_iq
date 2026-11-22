@@ -82,7 +82,7 @@ export function NotificationAccessCard({
           pressed && styles.pressed,
           isOpeningSettings && styles.disabled,
         ]}>
-        <Text style={styles.buttonText}>
+        <Text style={[styles.buttonText, { color: theme.colors.onBrand }]}>
           {isOpeningSettings ? 'Opening settings…' : 'Open notification access settings'}
         </Text>
       </Pressable>
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   retryButton: {
-    minHeight: 44,
+    minHeight: 48,
     alignSelf: 'flex-start',
     justifyContent: 'center',
     paddingHorizontal: 4,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { readableTextOn } from '../../theme/contrast';
 import { Card, CategoryAvatar, CategoryStack, FadeIn, HourChart, Icon, Pill, SectionHeader, StatBar } from '../../components/ui';
 import type { ScreenKey } from '../../navigation/screens';
 import type { DailyOverview, ListenerStatus, MoneySummary, NotificationItem, UpcomingAction } from '../../native/NativeNotifyIQ';
@@ -197,7 +198,7 @@ export function HomeScreen({
             </View>
             {attention.slice(0, 2).map(item => (
               <View key={item.id} style={styles.miniRow}>
-                <Pill label={item.priority === 'urgent' ? 'Urgent' : 'High'} color="#FFFFFF" background={priorityColor(theme, item.priority)} />
+                <Pill label={item.priority === 'urgent' ? 'Urgent' : 'High'} color={readableTextOn(priorityColor(theme, item.priority))} background={priorityColor(theme, item.priority)} />
                 <Text numberOfLines={1} style={[styles.cardBody, styles.flex, { color: colors.textPrimary }]}>{item.title || item.body || appDisplayName(item.packageName)}</Text>
               </View>
             ))}

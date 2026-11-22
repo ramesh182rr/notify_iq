@@ -76,7 +76,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
           return (
             <Pressable key={option.key} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setRange(option.key)}
               style={[styles.rangeChip, { backgroundColor: selected ? colors.brand : colors.surface, borderColor: selected ? colors.brand : colors.border }]}>
-              <Text style={[styles.rangeText, { color: selected ? '#FFFFFF' : colors.textSecondary }]}>{option.label}</Text>
+              <Text style={[styles.rangeText, { color: selected ? colors.onBrand : colors.textSecondary }]}>{option.label}</Text>
             </Pressable>
           );
         })}
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   bold: { fontWeight: '900' },
   gap: { marginTop: 10 },
   rangeRow: { gap: 8, paddingVertical: 2 },
-  rangeChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, minHeight: 38, justifyContent: 'center' },
+  rangeChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, minHeight: 48, justifyContent: 'center' },
   rangeText: { fontSize: 13, fontWeight: '800' },
   hero: { borderRadius: 26, padding: 20, gap: 12, overflow: 'hidden' },
   orb: { position: 'absolute', width: 220, height: 220, borderRadius: 110, right: -80, top: -100, opacity: 0.5 },
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '800' },
   emoji: { fontSize: 28 },
   modeToggle: { flexDirection: 'row', borderRadius: 16, padding: 4 },
-  modeOption: { flex: 1, minHeight: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  modeOption: { flex: 1, minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   modeText: { fontSize: 13, fontWeight: '800' },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   catRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },

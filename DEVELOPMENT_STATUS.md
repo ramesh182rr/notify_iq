@@ -5,7 +5,7 @@
 **Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; physical-device capture verification remains
 **Git:** `HEAD` is `3c175de` on `main`. Changes since then are uncommitted local work for owner review: CLAUDE.md, ONNX benchmark (Phase 4 close), dev Metro port, Home screen, Android 15 redaction handling and the fixture poster.
 
-**Roadmap count:** 48 numbered tasks. Thirty-seven are implemented; 11 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and release readiness (4, of which 1–3 are partial).
+**Roadmap count:** 48 numbered tasks. Thirty-eight are implemented; 10 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and Phase 7 tasks 1, 2 and 4 (1 and 2 partial).
 
 ## Completed
 
@@ -69,6 +69,13 @@
   - UI: View-based charts (treemap, flow, calendar heatmap, columns) and a category picker.
   - Category evaluation: 0.982 on first run, 1.000 after fixing completed reversals.
   - Emulator check: 15 live synthetic alerts all categorised correctly. Cleanup left 0 events, 0 insights, no category rules and no alarms.
+- Accessibility and release hardening (Phase 7):
+  - WCAG contrast test suite: found and fixed white-on-brand in the dark theme via a new `onBrand` token, plus automatic tile and pill text colour.
+  - Touch targets raised to ≥ 48 dp across all screens.
+  - No unlabelled controls found.
+  - Large-text support at 1.3× and 2.0× (adaptive header, capped tab labels).
+  - Reproducible release contents verified (404/404 entries identical). Phase 7 task 3 complete; the owner creates the upload key.
+  - Emulator restored afterwards: 0 events/insights, access off, poster removed, font scale 1.0, no alarms.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -163,3 +170,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `npm run typecheck`, eslint (0 errors), `npm test` (4 suites / 8 tests) — passed after the UI refresh. `:app:assembleRelease :app:bundleRelease` — passed; release APK smoke on emulator passed.
 - After Phase 5b: `npm run typecheck`, eslint (0 errors), `npm test` (5 suites / 10 tests); `./gradlew :app:testDebugUnitTest` (11 tests including 3 extraction evaluations); `:app:connectedDebugAndroidTest` on Pixel_8 API 35 — 22 tests, 0 failures, 1 skipped (opt-in scale).
 - After R-015: `npm run typecheck`, eslint (0 errors), `npm test` (6 suites / 11 tests); `:app:testDebugUnitTest` (12 tests including extraction and category evaluations); `:app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped (opt-in scale).
+- After the accessibility pass: `npm run typecheck`, eslint (0 errors), `npm test` (7 suites / 44 tests including 33 contrast checks); two clean `assembleRelease` builds compared (404/404 entries identical).

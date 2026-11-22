@@ -29,7 +29,7 @@ export function BottomTabBar({ activeScreen, onSelect, theme }: BottomTabBarProp
             <View style={[styles.iconPill, selected && { backgroundColor: theme.colors.brandSoft }]}>
               <Icon name={screen.key} color={color} size={20} />
             </View>
-            <Text numberOfLines={1} style={[styles.label, { color, fontWeight: selected ? '800' : '600' }]}>{screen.label}</Text>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.2} style={[styles.label, { color, fontWeight: selected ? '800' : '600' }]}>{screen.label}</Text>
           </Pressable>
         );
       })}

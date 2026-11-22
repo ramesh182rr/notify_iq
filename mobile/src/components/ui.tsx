@@ -39,7 +39,7 @@ export function SectionHeader({ theme, title, action, onAction }: { theme: AppTh
     <View style={styles.sectionHeader}>
       <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{title}</Text>
       {action && onAction ? (
-        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12}>
+        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12} style={styles.sectionActionTarget}>
           <Text style={[styles.sectionAction, { color: theme.colors.brand }]}>{action}</Text>
         </Pressable>
       ) : null}
@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   sectionAction: { fontSize: 14, fontWeight: '700' },
+  sectionActionTarget: { minHeight: 48, minWidth: 48, alignItems: 'flex-end', justifyContent: 'center' },
   pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
   pillText: { fontSize: 12, fontWeight: '700' },
   avatar: { alignItems: 'center', justifyContent: 'center' },
