@@ -1,6 +1,6 @@
 # Local model benchmark candidates
 
-**Status:** Inputs pinned. The tested LiteRT configuration is rejected for classification quality; the ONNX candidate is deferred because only graph loading has been measured. Neither runtime is approved for production.
+**Status:** Inputs pinned. Both tested configurations (LiteRT-LM and ONNX Runtime) completed the 108-case emulator trial and are rejected for classification quality (R-011). Neither runtime is approved for production.
 **Pinned:** 2026-11-21
 
 This record freezes the current candidate artifacts and runtime baselines. Benchmark results must record exact device SKU, Android build, runtime/backend, prompt and decode lengths, thermal state, and repeated-run method. Do not add model weights to Git.
@@ -44,7 +44,7 @@ Use Microsoft's [Qwen Android sample](https://github.com/microsoft/onnxruntime-i
 
 The ONNX Community model card is Transformers.js-oriented. The pinned artifact is used here as a static ONNX model candidate for the sample's standard ONNX Runtime inference path; compatibility, tokenizer parity, output behavior and runtime performance must be verified in the benchmark before adoption. This is not an ONNX Runtime GenAI model bundle.
 
-**Current decision:** The isolated ONNX probe proves graph loading only. ONNX text generation is deferred until a compatible tokenizer and autoregressive cache loop are implemented and evaluated. The official ONNX Runtime GenAI Java documentation says package publication is pending, so it is not currently a drop-in Android dependency. See `MODEL_BENCHMARK_ONNX_EMULATOR.md`.
+**Current decision:** Rejected for classification. The ONNX path now has a validated Kotlin tokenizer (108/108 parity with Hugging Face) and a greedy KV-cache loop. On the 108-case corpus it produced strict valid JSON in 15/108 cases with macro-F1 0.097, against the deterministic 0.955. The tokenizer file `tokenizer.json` at the same revision has SHA-256 `e7a95fce95bf5b0946d0ddb3f9d7caa030b7e850bbe92b0edb26bcf563e9f3d5`. The official ONNX Runtime GenAI Java package was not used. See `MODEL_BENCHMARK_ONNX_EMULATOR.md`.
 
 ## Shared model provenance
 

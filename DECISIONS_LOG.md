@@ -138,6 +138,13 @@ This log distinguishes decisions already present in the supplied development kit
 **Decision:** Benchmark ONNX Runtime Android and LiteRT-LM with synthetic held-out fixtures on lower-memory, mid-range and flagship devices when available. Consider adoption only if structured output validity is at least 99%, macro-F1 improves at least 5 percentage points over deterministic classification, p95 inference after model load is under 2 seconds, peak process memory attributable to inference stays under 600 MiB on a 4 GB device, and no safety/priority regression occurs. Model output cannot independently assign urgent priority. Any failed gate means deterministic-only fallback. Measure battery, thermal and download size and document them; do not infer acceptable values without results.  
 **Reason:** Requires measurable benefit while keeping safety and low-memory constraints ahead of model novelty.
 
+### R-011 — Close Phase 4: reject both Qwen3-0.6B runtime candidates for classification
+
+**Status:** Applied under the approved D-012 gate, 2026-11-22
+**Decision:** Do not adopt the tested LiteRT-LM 0.19.0 or ONNX Runtime 1.29.0 (Q4F16) Qwen3-0.6B configurations for notification classification. Production stays deterministic-only with no model runtime or weights. The benchmark harness, Kotlin tokenizer and reference fixtures stay in the isolated `mobile/model-benchmark/` project for future candidates.
+**Evidence:** Same 108-case synthetic corpus and prompt, greedy decoding, strict JSON scoring, 6 GiB Pixel_8 API 35 AVD. LiteRT: macro-F1 0.071, valid JSON 106/108. ONNX: macro-F1 0.097, valid JSON 15/108, mostly Markdown-fenced; 0.216 macro-F1 even with fences stripped as a diagnostic. Deterministic baseline: macro-F1 0.955, priority accuracy 1.000, zero urgent errors. Both candidates fail every D-012 threshold; latency and memory figures are emulator-only.
+**Reopen when:** a different model, prompt or fine-tune shows on the same corpus that it can plausibly clear the gate (+5 pp macro-F1 over deterministic, ≥ 99% valid JSON) before device benchmarking is repeated. Prompt changes alone should first be tried on the host reference harness, which is cheap.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

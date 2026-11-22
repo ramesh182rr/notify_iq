@@ -1,11 +1,11 @@
 # NotifyIQ Development Status
 
-**Last updated:** 2026-11-21  
-**Current phase:** Phase 4 — local-model benchmark spike; LiteRT trial and ONNX graph-load probe complete, ONNX text inference open
-**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; ONNX text-inference benchmarking and physical-device capture verification remain
-**Git:** `HEAD` is `be075d2` on `main`, tracking `origin/main`. That planning commit appeared since the initial audit; I did not create it. Current implementation changes are uncommitted local work.
+**Last updated:** 2026-11-22  
+**Current phase:** Phase 4 closed (both Qwen runtime candidates rejected on the emulator); next is emulator-verifiable Phase 1 lifecycle checks, then Phase 7 preparation
+**Application implementation:** Listener, privacy gate, bundled SQLite/FTS, retention, inbox actions, Privacy Centre, deterministic analysis, duplicate/rule-group browsing, daily overview, user rules and saved searches are implemented; physical-device capture verification remains
+**Git:** `HEAD` is `3c175de` on `main`. Changes since then (CLAUDE.md, ONNX tokenizer/generation benchmark and docs) are uncommitted local work for owner review.
 
-**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty-one are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 3; Phase 5: 4); 13 remain, including ONNX text-inference benchmarking, optional cloud foundations and release readiness.
+**Roadmap count:** 44 numbered tasks across Phases 0–7. Thirty-three are implemented (Phase 0: 4; Phase 1: 8; Phase 2: 6; Phase 3: 6; Phase 4: 5; Phase 5: 4); 11 remain: Phase 1 device lifecycle verification, optional cloud foundations (6) and release readiness (4).
 
 ## Completed
 
@@ -39,6 +39,9 @@
 - Added an isolated Kotlin 2.4.0 LiteRT-LM benchmark app and completed the pinned model's 108-case CPU trial on a temporary 6 GiB API 35 AVD. Results: 0.139 category accuracy, 0.071 macro-F1, 0.713 priority accuracy, two strict-JSON failures, 1.85 GiB process high-water RSS and 2.27 s median latency. It underperformed the deterministic baseline; see `docs/MODEL_BENCHMARK_LITERT_EMULATOR.md`.
 - Added an isolated ONNX Runtime 1.29.0 graph-load probe. The pinned Q4F16 file opened on the 6 GiB AVD in 1.44 s at 1.28 GiB high-water RSS. Its decoder inputs expose a tokenizer and past/present KV-cache loop requirement; text generation and ONNX corpus scoring remain open. See `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
 - Recorded the Phase 4 runtime decision: do not adopt this LiteRT candidate for classification because its measured quality was far below deterministic rules; defer ONNX until text generation and corpus quality can be measured. Production remains deterministic and carries no model runtime or weights.
+- Added a dependency-free Kotlin byte-level BPE tokenizer for the pinned Qwen3 `tokenizer.json` and a greedy float16 KV-cache generation loop for ORT 1.29.0, both only in the isolated benchmark app. A host reference script (HF `tokenizers` + ORT Python 1.29.0) produced checked-in prompt-id and output fixtures. On the emulator, tokenization matched 108/108 prompts and decoding matched 108/108 outputs; 84/108 generations were token-identical to the host, with the rest consistent with float16 kernel differences.
+- Completed the ONNX 108-case emulator trial: strict valid JSON 15/108, category accuracy 0.065, macro-F1 0.097, priority accuracy 0.111, urgent FP/FN 0/1, p50/p95 latency 3.7/4.1 s, prefill p50 2.9 s, decode 22.5 tokens/s, process high-water RSS ~1.44 GiB. Most outputs were Markdown-fenced. With the fence stripped as a diagnostic only, scores rise to accuracy 0.315 and macro-F1 0.216, still far below the deterministic 0.955. Recorded decision R-011: reject both runtime candidates for classification and close Phase 4. See `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
+- Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
 - Added a constrained Kotlin rule codec/evaluator with ordered matching, schema v2 reminder actions, preview, and explicit re-evaluation of stored history. Reminders use inexact alarms, generic lock-screen text, Android 13+ notification permission, and reboot rescheduling. Existing rule effects are replaced only by the explicit user action; manual saved/category overrides remain authoritative, past reminder times are skipped, and alarms are canceled when their record is deleted.
@@ -60,7 +63,7 @@ The development kit and planning baseline are tracked in `be075d2`; implementati
 - [x] Phase 3 — deterministic classification, separate analysis persistence, focused fixtures, repeat grouping, daily overview and aggregate insights are implemented.
 - [x] Phase 4 task 1 — 108-case synthetic evaluation set and deterministic baseline established. No production model dependency is selected.
 - [x] Phase 4 task 2 — pin model revisions, artifact checksums, licenses and runtime versions for LiteRT-LM and ONNX Runtime Android candidates.
-- [ ] Phase 4 — Qwen runtime benchmark spike; no production adoption before evidence.
+- [x] Phase 4 — Qwen runtime benchmark spike complete on the emulator; both LiteRT and ONNX candidates rejected for classification (R-011). No production model dependency.
 - [x] Phase 5 task 1 — versioned constrained user-rule schema and deterministic evaluation semantics documented.
 - [x] Phase 5 — rule evaluation, package/text custom conditions, saved searches, exact rule-group browsing and saved group filters are implemented and covered by emulator fixtures.
 - [ ] Phase 6 — optional cloud foundations scoped to explicit features.
@@ -83,7 +86,7 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - API 35 Settings-flow check: started from access-off, granted permission through NotifyIQ's Privacy control and Android's confirmation sheet, then verified the app reported access on. A normal synthetic `com.android.shell` notification was captured while the app was backgrounded. Excluding that package through the Privacy UI suppressed a later synthetic post; removing the exclusion returned the setting to its initial state.
 - The `cmd notification post` utility did not preserve the intended multiword sensitive fixture and surfaced generic shell content, so the live sensitive-capture attempt is inconclusive. Synthetic privacy-gate fixtures remain the evidence for OTP/password/card screening. No live sensitive event is claimed.
 - Restored notification access to off, removed the temporary package exclusion, individually deleted the three timestamped synthetic shell rows, removed the temporary ADB reverse mapping, and stopped the Metro server started for this check. Inbox is empty; the already installed debug app remains on the emulator.
-- Production has no model inference runtime or bundled weights. LiteRT and ONNX are only in `mobile/model-benchmark/`; LiteRT failed the quality comparison, and ONNX has only passed graph loading. Physical-device verification remains. See the model benchmark preflight and runtime reports in `docs/`.
+- Production has no model inference runtime or bundled weights. LiteRT and ONNX are only in `mobile/model-benchmark/`; both failed the quality comparison on the full synthetic corpus. Physical-device verification remains. See the model benchmark preflight and runtime reports in `docs/`.
 
 ## Checks performed
 
@@ -116,3 +119,8 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - `fnm exec --using=22.23.4 -- ./gradlew --no-daemon :app:assembleDebug` — passed; debug APK installed on Pixel_8 API 36 emulator and `com.notifyiq/.MainActivity` launched. Gradle/AGP and safe-area generated code reported deprecation warnings.
 - Metro ran on port 8093 because ports 8081 and 8082 were already occupied. It served the app bundle and logcat confirmed the JS app started without a JavaScript exception.
 - Notification access remains off during implementation checks. The physical listener callback path has not yet been exercised with live notifications; no physical device is attached.
+- `fnm exec --using=22.23.4 -- ./gradlew --no-daemon -p ../model-benchmark :app:installDebug :app:installDebugAndroidTest` (from `mobile/android/`) — passed; benchmark app and test APK installed on the Pixel_8 API 35 AVD (6 GiB).
+- `adb shell am instrument -w -e class com.notifyiq.modelbenchmark.QwenTokenizerParityTest …` — passed (1 test): 108/108 prompt-token and decode parity with Hugging Face `tokenizers`.
+- `adb shell am instrument -w -e class com.notifyiq.modelbenchmark.OnnxCorpusBenchmarkTest …` — passed (1 test, 415 s): all 108 cases produced a result; metrics are in `docs/MODEL_BENCHMARK_ONNX_EMULATOR.md`.
+- Host reference: `uv run --no-project --with onnxruntime==1.29.0 --with tokenizers --with jinja2 --with numpy python -I mobile/model-benchmark/tools/qwen_onnx_host_reference.py …` — completed on macOS arm64; strict valid JSON 6/108.
+- Production app code was not changed in this session, so production typecheck, build and instrumentation were not re-run.
