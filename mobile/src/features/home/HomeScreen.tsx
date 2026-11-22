@@ -10,6 +10,7 @@ import { getDailyOverview, getMoneySummary, getRecentNotifications, getUpcomingA
 import type { InsightsSection } from '../insights/InsightsHub';
 import type { SettingsPage } from '../settings/SettingsScreen';
 import { LegalScreen } from '../legal/LegalScreen';
+import { PauseNotice } from '../health/ListenerGaps';
 import { actionKinds, dueLabel, formatMoney } from '../money/format';
 import { categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
@@ -201,6 +202,8 @@ export function HomeScreen({
           </Card>
         </FadeIn>
       ) : null}
+
+      <PauseNotice theme={theme} refreshKey={refreshKey} connected={listenerStatus?.connected === true} />
 
       {loadError ? (
         <Card theme={theme} onPress={() => { load().catch(() => undefined); }} accessibilityLabel="Retry loading today">

@@ -259,6 +259,22 @@ This log distinguishes decisions already present in the supplied development kit
 - If it still fails, the help card asks the user to switch NotifyIQ off and on in Notification access (works on every phone) instead of battery settings.
 **Limit:** the emulators cannot reproduce a phone that blocks the re-bind. The ladder is verified safe on API 29 and 35, and the Android 14+ cycle is verified to re-bind an unbound listener. Confirmation on the owner's phone is pending.
 
+### R-022 — Recover from the tray after a pause; record and show pauses
+
+**Status:** Approved by user, 2026-11-22 (items 1 and 2 of the OEM-robustness proposal)
+**Decision:**
+- On every listener connection, NotifyIQ saves notifications still in the tray that it has not stored (same exclusions, sensitive-content gate and redaction checks as live capture). An item is skipped if the same key with the same post time is already stored, so stock-Android reconnects are idempotent. This also means the tray contents at the moment access is first granted are kept, which the policy (v1.4) discloses.
+- Pauses are stored in a new `listener_gaps` table (schema v10): start, end, recovered count, whether the start is exact, and whether it was seen. There is no notification content, rows are pruned after 30 days, and they are cleared with history.
+- Start of a pause:
+  - The first process exit after the last-alive time (ApplicationExitInfo, API 30+, exact).
+  - Otherwise the last-alive time. The marker is refreshed at connect, on capture (at most once a minute), on UI status checks and from the 15-minute job. A pause with an approximate start is only recorded if tray items from that time were recovered.
+  - Time before boot is excluded, and pauses under 2 minutes are ignored.
+  - The marker is cleared when access is turned off, so the person's own off/on is not reported.
+- UI:
+  - Home shows "NotifyIQ was paused" (time range, duration, recovered count) until the person taps "Got it".
+  - Settings → Notification access & apps lists pauses from the last 7 days.
+  - After 3 or more pauses in 7 days, both suggest NotifyIQ's App settings page with brand-neutral wording.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

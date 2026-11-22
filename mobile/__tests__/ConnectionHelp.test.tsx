@@ -13,7 +13,7 @@ jest.mock('../src/native/notifyIQ', () => ({
   getRecentNotifications: jest.fn().mockResolvedValue([]),
   getUpcomingActions: jest.fn().mockResolvedValue([]),
   getMoneySummary: jest.fn().mockResolvedValue({ from: 0, to: 0, currency: 'INR', spentMinor: 0, receivedMinor: 0, debitCount: 0, creditCount: 0, merchants: [], categories: [], recent: [], otherCurrencies: [] }),
-  openBatterySettings: jest.fn().mockResolvedValue(undefined),
+  getListenerGaps: jest.fn().mockResolvedValue([]),
 }));
 
 const base = {

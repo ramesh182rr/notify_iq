@@ -91,6 +91,8 @@ export type MoneyAnalytics = {
   otherCurrencies: ReadonlyArray<string>;
 };
 export type BackupResult = { status: string; count: number };
+/** A time Android did not let NotifyIQ read notifications. `exact` is false when only the approximate start is known. */
+export type ListenerGap = { id: number; startedAt: number; endedAt: number; recovered: number; exact: boolean; seen: boolean };
 export type AppDirectoryEntry = { packageName: string; label: string; iconUri: string | null };
 export type InstallInfo = { source: string; sdk: number; versionName: string };
 export type SecuritySettings = { appLock: boolean; deviceSecure: boolean };
@@ -171,6 +173,8 @@ export interface Spec extends TurboModule {
   exportBackup(password: string): Promise<BackupResult>;
   importBackup(password: string): Promise<BackupResult>;
   getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>>;
+  getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap>>;
+  markListenerGapsSeen(): Promise<void>;
   getInstalledApps(): Promise<ReadonlyArray<AppDirectoryEntry>>;
   getUiPreference(key: string): Promise<string | null>;
   setUiPreference(key: string, value: string): Promise<void>;

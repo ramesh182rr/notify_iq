@@ -130,6 +130,9 @@ class ListenerRebindTrigger : BroadcastReceiver() {
 /** Periodic self-check (JobScheduler, no extra permission or library). */
 class ListenerHealthJob : JobService() {
   override fun onStartJob(params: JobParameters): Boolean {
+    if (NotificationListenerRuntimeState.probeConnected()) {
+      runCatching { NotifyIQNotificationListener.markAlive(NotificationRepository(this)) }
+    }
     ListenerHealth.repairIfNeeded(this) { jobFinished(params, false) }
     return true
   }

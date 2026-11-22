@@ -6,6 +6,7 @@ import type { AppDirectoryEntry, ListenerStatus } from '../../native/NativeNotif
 import type { AppTheme } from '../../theme/tokens';
 import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 import { AppPicker } from '../../components/AppPicker';
+import { PauseHistory } from '../health/ListenerGaps';
 
 const RETENTION_OPTIONS = [7, 30, 90, -1];
 type Props = { theme: AppTheme; status: ListenerStatus | null; onOpenSettings: () => void };
@@ -70,6 +71,12 @@ export function PrivacyCentreScreen({ theme, status, onOpenSettings }: Props) {
           <Text style={{ color: theme.colors.brand }}>Open Android notification access settings</Text>
         </Pressable>
       </View>
+
+      {status?.accessGranted ? (
+        <View style={[styles.card, card]}>
+          <PauseHistory theme={theme} refreshKey={status.connected ? 1 : 0} />
+        </View>
+      ) : null}
 
       <View style={[styles.card, card]}>
         <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Automatic deletion</Text>

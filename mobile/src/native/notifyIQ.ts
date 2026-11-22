@@ -1,4 +1,4 @@
-import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type AppDirectoryEntry, type BackupResult, type InstallInfo, type UpcomingAction} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type AppDirectoryEntry, type ListenerGap, type BackupResult, type InstallInfo, type UpcomingAction} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   const NativeNotifyIQ = getNativeNotifyIQ();
@@ -173,6 +173,14 @@ export function setUiPreference(key: 'theme' | 'onboarding_done', value: string)
 
 export function getInstallInfo(): Promise<InstallInfo> {
   return requireNativeModule().getInstallInfo();
+}
+
+export function getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap>> {
+  return requireNativeModule().getListenerGaps(days);
+}
+
+export function markListenerGapsSeen(): Promise<void> {
+  return requireNativeModule().markListenerGapsSeen();
 }
 
 export function openAppDetailsSettings(): Promise<void> {

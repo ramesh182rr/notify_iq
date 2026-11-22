@@ -13,6 +13,8 @@ import org.json.JSONObject
 
 private fun JSONObject.optNullableString(name: String): String? = if (!has(name) || isNull(name)) null else getString(name)
 
+internal data class ListenerGap(val id: Long, val startedAt: Long, val endedAt: Long, val recovered: Int, val exact: Boolean, val seen: Boolean)
+
 internal data class NotificationFilters(
   val query: String = "",
   val packageName: String = "",
@@ -135,6 +137,14 @@ internal class NotificationRepository private constructor(private val connection
         connection.execSQL("PRAGMA user_version = 9")
       }
       version = 9
+    }
+    if (version == 9) {
+      transaction {
+        // Times Android did not let NotifyIQ read notifications (no notification content).
+        connection.execSQL("CREATE TABLE listener_gaps (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, ended_at INTEGER NOT NULL, recovered INTEGER NOT NULL DEFAULT 0, exact INTEGER NOT NULL DEFAULT 1, seen INTEGER NOT NULL DEFAULT 0)")
+        connection.execSQL("PRAGMA user_version = 10")
+      }
+      version = 10
     }
     // Recompute insights when the deterministic extractor changes; user overrides and dismissals are kept.
     if ((scalarLong("SELECT COUNT(*) FROM notification_insights WHERE version < ?", InsightExtractor.VERSION.toLong()) ?: 0L) > 0L) {
@@ -699,7 +709,7 @@ internal class NotificationRepository private constructor(private val connection
   }
 
   fun clear() = synchronized(connection) {
-    transaction { cancelReminders("SELECT id FROM notification_events"); connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups(); connection.execSQL("DELETE FROM app_directory") }
+    transaction { cancelReminders("SELECT id FROM notification_events"); connection.execSQL("DELETE FROM notification_events"); cleanupDuplicateGroups(); connection.execSQL("DELETE FROM app_directory"); connection.execSQL("DELETE FROM listener_gaps") }
     context?.let { AppIconCache.clear(it) }
   }
 
@@ -825,6 +835,39 @@ internal class NotificationRepository private constructor(private val connection
       packageName, label, iconFile, System.currentTimeMillis(),
     )
   }
+
+  /** Last time the listener was known to be connected (null after access was turned off). */
+  fun listenerAliveAt(): Long? = synchronized(connection) {
+    scalarText("SELECT value FROM app_preferences WHERE key = 'listener_alive_at'")?.toLongOrNull()
+  }
+
+  fun setListenerAliveAt(at: Long?) = synchronized(connection) {
+    if (at == null) execute("DELETE FROM app_preferences WHERE key = 'listener_alive_at'")
+    else execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('listener_alive_at', ?)", at.toString())
+  }
+
+  /** posted_at of the stored, still-active copy of a notification, or null if none is stored. */
+  fun storedPostedAt(packageName: String, key: String): Long? = synchronized(connection) {
+    scalarLong("SELECT posted_at FROM notification_events WHERE package_name = ? AND notification_key = ? AND removed_at IS NULL", packageName, key)
+  }
+
+  fun recordListenerGap(startedAt: Long, endedAt: Long, recovered: Int, exact: Boolean) = synchronized(connection) {
+    transaction {
+      execute("INSERT INTO listener_gaps(started_at, ended_at, recovered, exact) VALUES (?, ?, ?, ?)", startedAt, endedAt, recovered.toLong(), if (exact) 1L else 0L)
+      execute("DELETE FROM listener_gaps WHERE ended_at < ?", System.currentTimeMillis() - GAP_HISTORY_MS)
+    }
+  }
+
+  fun listenerGaps(sinceMs: Long): List<ListenerGap> = synchronized(connection) {
+    val gaps = mutableListOf<ListenerGap>()
+    connection.prepare("SELECT id, started_at, ended_at, recovered, exact, seen FROM listener_gaps WHERE ended_at >= ? ORDER BY ended_at DESC LIMIT 50").use { s ->
+      s.bindLong(1, sinceMs)
+      while (s.step()) gaps += ListenerGap(s.getLong(0), s.getLong(1), s.getLong(2), s.getLong(3).toInt(), s.getLong(4) == 1L, s.getLong(5) == 1L)
+    }
+    gaps
+  }
+
+  fun markListenerGapsSeen() = synchronized(connection) { execute("UPDATE listener_gaps SET seen = 1 WHERE seen = 0") }
 
   fun appDirectory(): List<AppDirectoryEntry> = synchronized(connection) {
     val entries = mutableListOf<AppDirectoryEntry>()
@@ -969,7 +1012,8 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 9
+    private const val SCHEMA_VERSION = 10
+    private const val GAP_HISTORY_MS = 30L * 24 * 60 * 60 * 1000
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L
     private const val SQLITE_NULL = 5

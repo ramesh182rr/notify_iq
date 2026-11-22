@@ -19,6 +19,8 @@ jest.mock('../src/components/ui', () => ({
 jest.mock('../src/native/notifyIQ', () => ({
   getDailyOverview: jest.fn().mockResolvedValue({ dayStart: 0, dayEnd: 0, totalCount: 0, appCount: 0, categories: [], apps: [], hours: [], sources: [] }),
   getRecentNotifications: jest.fn().mockResolvedValue([]),
+  getListenerGaps: jest.fn().mockResolvedValue([]),
+  markListenerGapsSeen: jest.fn().mockResolvedValue(undefined),
   getUpcomingActions: jest.fn().mockResolvedValue([]),
   getMoneySummary: jest.fn().mockResolvedValue({ from: 0, to: 0, currency: 'INR', spentMinor: 0, receivedMinor: 0, debitCount: 0, creditCount: 0, merchants: [], categories: [], recent: [], otherCurrencies: [] }),
 }));

@@ -45,6 +45,8 @@ class NotifyIQModule(
       val connected = granted && NotificationListenerRuntimeState.probeConnected()
       // Cheap, rate-limited nudge; the full repair ladder runs from reconnectListener and app start.
       if (granted && !connected) ListenerHealth.requestRebind(appContext)
+      if (connected) NotifyIQNotificationListener.markAlive(NotificationRepository(appContext))
+      if (!granted) NotifyIQNotificationListener.markAccessOff(NotificationRepository(appContext))
       ListenerHealth.schedulePeriodicCheck(appContext)
       val status = Arguments.createMap().apply {
         putBoolean("accessGranted", granted)
@@ -348,6 +350,25 @@ class NotifyIQModule(
         }) }
       })
     } catch (_: Exception) { promise.reject("APPS_UNAVAILABLE", "App names are unavailable.") }
+  }
+
+  @ReactMethod
+  override fun getListenerGaps(days: Double, promise: Promise) {
+    try {
+      val since = System.currentTimeMillis() - (days.coerceIn(1.0, 30.0) * 24 * 60 * 60 * 1000).toLong()
+      promise.resolve(Arguments.createArray().apply {
+        NotificationRepository(appContext).listenerGaps(since).forEach { gap -> pushMap(Arguments.createMap().apply {
+          putDouble("id", gap.id.toDouble()); putDouble("startedAt", gap.startedAt.toDouble()); putDouble("endedAt", gap.endedAt.toDouble())
+          putDouble("recovered", gap.recovered.toDouble()); putBoolean("exact", gap.exact); putBoolean("seen", gap.seen)
+        }) }
+      })
+    } catch (_: Exception) { promise.reject("GAPS_UNAVAILABLE", "Connection history is unavailable.") }
+  }
+
+  @ReactMethod
+  override fun markListenerGapsSeen(promise: Promise) {
+    runCatching { NotificationRepository(appContext).markListenerGapsSeen() }
+    promise.resolve(null)
   }
 
   @ReactMethod

@@ -107,6 +107,15 @@
   - If still not connected, a help card offers Reconnect, Battery settings (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, no special permission) and OEM autostart guidance.
   - The emulator re-binds promptly, so the stalled path is covered by a Jest test. The real-device fix still needs the owner's confirmation.
 - R-019 (1.9): probe-based connection status, safe brand-agnostic self-repair (requestRebind at start, boot, update, status checks and a 15-minute job). The component-toggle approach was measured harmful on Android 15 and rejected. UI moves to 4 tabs: Inbox merges search and saved searches behind a Filters panel; the Settings tab groups Rules, access & apps, backup, App lock, appearance and legal; the header is slimmed. Tests: ListenerHealthTest (probe ignores a stale flag, repair is harmless while bound, job scheduled and persisted), Settings and connection-help Jest tests, e2e updated (21/21).
+- R-022 (1.12): tray recovery after any reconnect, and pause tracking.
+  - Schema v10 `listener_gaps`. The "NotifyIQ was paused" Home card and the 7-day pause list both show brand-neutral App settings advice after 3 pauses.
+  - Policy v1.4.
+  - Tests:
+    - Jest: 55/55 (new ListenerGaps tests).
+    - Instrumentation on API 35: 36 tests, 34 passed and 2 opt-in skipped. New ListenerGapTest covers storage, pruning and clearing; short interruptions and phone-off time not counted; and a missed fixture recovered from the tray with a 10-minute pause recorded.
+    - Instrumentation on API 29: 32 passed, 4 skipped (2 opt-in, 2 need API 34+).
+    - e2e: 24/24.
+  - Emulator cleanup: access revoked and app data cleared on both AVDs.
 - R-021 (1.11): real fix for "Connecting…" after the app is cleared from Recents.
   - Root cause, from AOSP source: `requestRebind` is a no-op unless the listener is snoozed. Android retries a dead binding only once.
   - New token-checked probe and a three-step repair ladder (`requestRebind` → API 34+ unbind/rebind cycle → package-changed signal via the private `ListenerRebindTrigger`).
