@@ -41,10 +41,10 @@ export function AppHeader({ preference, theme, onPreferenceChange }: AppHeaderPr
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
               key={option.key}
-              hitSlop={6}
               onPress={() => onPreferenceChange(option.key)}
-              style={[styles.option, selected && { backgroundColor: theme.colors.surface }]}>
-              <Text numberOfLines={1} maxFontSizeMultiplier={1.6} style={[styles.optionText, { color: selected ? theme.colors.brand : theme.colors.textSecondary }]}>
+              hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
+              style={[styles.option, stacked && styles.optionStacked, selected && { backgroundColor: theme.colors.brand }]}>
+              <Text numberOfLines={1} maxFontSizeMultiplier={1.6} style={[styles.optionText, { color: selected ? theme.colors.onBrand : theme.colors.textSecondary }]}>
                 {option.label}
               </Text>
             </Pressable>
@@ -57,16 +57,17 @@ export function AppHeader({ preference, theme, onPreferenceChange }: AppHeaderPr
 
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6, gap: 12 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1, minWidth: 120 },
   mark: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   markGlow: { position: 'absolute', width: 22, height: 22, borderRadius: 11, top: -2, right: -2, opacity: 0.7 },
   markText: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
   markDot: { position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
   brand: { fontSize: 19, fontWeight: '800', letterSpacing: -0.4 },
   tagline: { fontSize: 11, fontWeight: '600' },
-  segment: { flexDirection: 'row', borderRadius: 999, padding: 2 },
+  segment: { flexDirection: 'row', borderRadius: 999, padding: 2, flexShrink: 0 },
   stacked: { flexDirection: 'column', alignItems: 'stretch' },
   segmentStacked: { alignSelf: 'stretch' },
-  option: { flexGrow: 1, minHeight: 48, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  optionStacked: { flexGrow: 1 },
+  option: { minHeight: 44, minWidth: 48, paddingHorizontal: 10, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   optionText: { fontSize: 12, fontWeight: '700' },
 });

@@ -32,16 +32,29 @@ Retention cleanup removed 12,500 expired rows in 236 ms, and clear removed 37,50
 ### Accessibility pass (emulator, 2026-11-22)
 
 - **Contrast:** `__tests__/Contrast.test.ts` checks WCAG ratios for every text/background token pair in both themes (33 checks; ≥ 4.5:1 for body text). It found white text on the dark-theme brand colour at about 2.6:1. Fix: a new `onBrand` token used by filled buttons, selected segments and busy calendar days. Treemap tiles and priority pills now pick dark or light text automatically (`readableTextOn`).
-- **Touch targets:** uiautomator audit of every tab. The theme switch (32 dp), "See all" and "Delete all history" (19 dp), filter, action, range and segment chips (36–42 dp), and Rules/Privacy controls and inputs were raised to ≥ 48 dp. Remaining sub-48 readings were elements partly hidden under the header or tab bar (clipped bounds). The running bundle was confirmed to carry the 48 dp styles.
+- **Touch targets:** uiautomator audit of every tab. The theme switch (32 dp), "See all" and "Delete all history" (19 dp), filter, action, range and segment chips (36–42 dp), and Rules/Privacy controls and inputs were raised to ≥ 48 dp. Remaining sub-48 readings were elements partly hidden under the header or tab bar (clipped bounds). Exception: the header theme options are 44 dp tall with a 6 dp vertical hit slop (56 dp touch area) to keep the header compact. An earlier stretch of this control covered the brand and was fixed. The selected theme is now a solid brand pill with `onBrand` text. The running bundle was confirmed to carry the 48 dp styles.
 - **Screen-reader labels:** no tappable element without text or an accessibility label was found.
 - **Large text:** checked at 1.3× and 2.0× font scale. Content reflows. At large scales the header stacks the theme switch under the brand and hides the tagline; tab labels cap at 1.2× (icons and TalkBack labels carry meaning). Font scale was restored to 1.0.
 - Not yet done: a manual TalkBack walkthrough and a Play pre-launch report run.
+
+### Android 10 (API 29) minimum-version run, 2026-11-22
+
+AVD `NotifyIQ_API29`: Google APIs arm64, 4 GB RAM (the D-008 low-memory target), Pixel 4 profile.
+
+- **Instrumentation:** all 23 tests pass (0 failures, 1 opt-in scale test skipped). Covers migrations v1→v8, FTS, retention, rules, saved searches, insights and analytics.
+- **Sensitive gate:** NotifyIQ's own gate discards the OTP, password and card-number fixtures. Android 10 has no platform redaction, so this gate is the only control here, and it works.
+- **Money:** bank alerts containing "A/c XX1234" are delivered and extracted correctly (₹499 Netflix debit as subscriptions, ₹1,500 credit from a person, a bill due date). Money coverage is therefore better on Android 10–14 than on 15+ (R-014).
+- **Lifecycle:** dismissal sets `removed_at`. A real `kill -9` (adb root) is followed by an immediate system restart, and capture resumes. Capture also continues after force-stop. Nothing is captured while access is revoked; capture resumes after re-grant. After a device reboot, the insight reminder alarm is rescheduled and capture resumes without opening the app.
+- **UI:** Home, Money and Coming up render correctly, including emoji and the 3-button navigation bar. Reminder scheduling works without the Android 13 notification permission.
+- **Cleanup:** history deleted through the UI (0 events/insights), no alarms left, access revoked, poster removed.
+
+Tooling note: Android SDK command-line tools 23.0 (`cmdline-tools;latest`, sha1 verified) and `system-images;android-29;google_apis;arm64-v8a` were installed for this run.
 
 ### Build reproducibility
 
 Two clean `assembleRelease` builds produced APKs whose 404 zip entries are byte-identical. Only the outer container (signing block and zip metadata) differs. Play re-signs uploads with the app-signing key.
 
-Still open for this task: Android API/OEM matrix and an API 29 run (the API 29 system image is not installed), physical-device lifecycle checks, battery/thermal measurement, and a manual TalkBack walkthrough.
+Still open for this task: physical-device and OEM (Samsung and others) checks, battery/thermal measurement, and a manual TalkBack walkthrough. API 29 and API 35 emulator runs are done.
 
 ## Play compatibility (checked 2026-11-22)
 

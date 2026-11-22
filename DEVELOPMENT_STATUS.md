@@ -76,6 +76,14 @@
   - Large-text support at 1.3× and 2.0× (adaptive header, capped tab labels).
   - Reproducible release contents verified (404/404 entries identical). Phase 7 task 3 complete; the owner creates the upload key.
   - Emulator restored afterwards: 0 events/insights, access off, poster removed, font scale 1.0, no alarms.
+- Header fix: the theme switch had stretched over the brand after the touch-target change; it now keeps its natural width, and the selected theme is a solid brand pill.
+- Android 10 (API 29, 4 GB AVD):
+  - 23/23 instrumentation tests pass.
+  - NotifyIQ's gate discards OTP, password and card fixtures.
+  - Bank alerts with "XX1234" are captured and extracted (no platform redaction on Android 10).
+  - Dismissal, real process kill, force-stop, revoke/re-grant and reboot (alarm rescheduled, capture resumes) all verified.
+  - UI renders correctly.
+  - Cleaned up afterwards. Details in `docs/RELEASE_READINESS.md`.
 - Added root `CLAUDE.md` (imports `AGENTS.md`) with Claude Code working notes: toolchain commands, environment facts and the no-commit rule.
 - Added a repeatable benchmark run sheet for corpus quality, device metadata, latency, memory, download/package size, battery and thermal observations.
 - Added a benchmark-only prompt contract with strict JSON schema, untrusted-notification handling, greedy generation settings and parser failure semantics.
@@ -171,3 +179,4 @@ See `IMPLEMENTATION_PLAN.md` for tasks, acceptance criteria, test strategy and r
 - After Phase 5b: `npm run typecheck`, eslint (0 errors), `npm test` (5 suites / 10 tests); `./gradlew :app:testDebugUnitTest` (11 tests including 3 extraction evaluations); `:app:connectedDebugAndroidTest` on Pixel_8 API 35 — 22 tests, 0 failures, 1 skipped (opt-in scale).
 - After R-015: `npm run typecheck`, eslint (0 errors), `npm test` (6 suites / 11 tests); `:app:testDebugUnitTest` (12 tests including extraction and category evaluations); `:app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped (opt-in scale).
 - After the accessibility pass: `npm run typecheck`, eslint (0 errors), `npm test` (7 suites / 44 tests including 33 contrast checks); two clean `assembleRelease` builds compared (404/404 entries identical).
+- Android 10: `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest` — 23 tests, 0 failures, 1 skipped; live lifecycle checks as above.
