@@ -115,11 +115,11 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
           <View style={cardStyle}>
             <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Recent sources</Text>
             {overview.sources.length ? overview.sources.map(source => (
-              <Pressable key={source.id} accessibilityRole="button" accessibilityLabel={`Open source notification from ${source.packageName}`} onPress={() => setSelectedSource(source)} style={styles.sourceRow}>
+              <Pressable key={source.id} accessibilityRole="button" accessibilityLabel={`Open source notification from ${appName(source.packageName)}`} onPress={() => setSelectedSource(source)} style={styles.sourceRow}>
                 <CategoryAvatar theme={theme} category={source.category} size={38} />
                 <View style={styles.flex}>
-                  <Text style={[styles.sourceTitle, { color: theme.colors.textPrimary }]}>{source.title || source.packageName}</Text>
-                  <Text numberOfLines={2} style={[styles.copy, { color: theme.colors.textSecondary }]}>{source.body || source.packageName}</Text>
+                  <Text style={[styles.sourceTitle, { color: theme.colors.textPrimary }]}>{source.title || appName(source.packageName)}</Text>
+                  <Text numberOfLines={2} style={[styles.copy, { color: theme.colors.textSecondary }]}>{source.body || appName(source.packageName)}</Text>
                 </View>
                 <Text style={{ color: theme.colors.brand }}>View</Text>
               </Pressable>
@@ -133,7 +133,7 @@ export function InsightsScreen({ theme, refreshKey, status, statusLoading, statu
           <View style={[styles.detailCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
             <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Source notification</Text>
             {selectedSource ? <>
-              <Text style={[styles.copy, { color: theme.colors.brand }]}>{selectedSource.packageName}</Text>
+              <Text style={[styles.copy, { color: theme.colors.brand }]}>{appName(selectedSource.packageName)}</Text>
               {selectedSource.title ? <Text style={[styles.sourceTitle, { color: theme.colors.textPrimary }]}>{selectedSource.title}</Text> : null}
               {selectedSource.body ? <Text style={[styles.copy, { color: theme.colors.textPrimary }]}>{selectedSource.body}</Text> : null}
               <Text style={[styles.copy, { color: theme.colors.textSecondary }]}>{new Date(selectedSource.receivedAt).toLocaleString()}</Text>

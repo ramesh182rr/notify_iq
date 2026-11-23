@@ -207,6 +207,28 @@ class Runner:
         d.tap("Filter by app: NotifyIQ Fixture Poster", scroll=2)
         d.tap("All apps", anywhere=True)
 
+        # Search finds text inside words; Open goes to the app's own screen for that notification
+        d.launch(6); d.tab("Inbox")
+        d.type_into("Search notification text", "wiggy"); time.sleep(1.5)
+        d.tap("Inbox", anywhere=True)   # tapping outside the field closes the keyboard (BACK would leave the Inbox)
+        time.sleep(1)
+        self.check("search matches inside a word", d.has("180 paid to Swiggy") and not d.has("Electricity bill"))
+        opened = d.tap("Open NotifyIQ Fixture Poster", scroll=3)
+        time.sleep(2.5)
+        focus = d.sh("dumpsys", "window", "windows")
+        self.check("Open runs the notification's own tap action", opened and "OpenedActivity" in focus)
+        d.sh("input", "keyevent", "KEYCODE_BACK"); time.sleep(1.5)
+
+        # Simple view hides filters; full view brings them back
+        d.launch(6)
+        d.tab("Settings"); d.scroll_top()
+        d.tap("Simple view", scroll=6); time.sleep(1)
+        d.tab("Inbox")
+        simple_ok = not d.has("Filters") and d.has("Search notification text")
+        d.tab("Settings"); d.scroll_top(); d.tap("Simple view", scroll=6); time.sleep(1)
+        d.tab("Inbox")
+        self.check("simple view toggles the advanced controls", simple_ok and d.has("Filters"))
+
         # Money → view source
         d.tab("Insights"); d.tap("Money")
         d.wait_for("MONEY OUT")
@@ -301,7 +323,7 @@ class Runner:
         rows = d.sql("select count(*) from notification_events")
         self.check("encrypted backup restored", all(steps.values()) and rows == before,
                    ", ".join(k for k, v in steps.items() if not v) + f" failed; rows={rows} expected={before}")
-        self.check("restored search index works", d.sql("select count(*) from notification_events_fts where notification_events_fts match 'Swiggy'") == "1")
+        self.check("restored search index works", d.sql("select count(*) from notification_search where notification_search match 'wiggy'") == "1")
 
     def cleanup(self):
         d = self.d

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Bundle;
 
 /**
@@ -30,6 +32,9 @@ public final class PostActivity extends Activity {
           .setSmallIcon(android.R.drawable.ic_dialog_info)
           .setContentTitle(getIntent().getStringExtra("title"))
           .setContentText(getIntent().getStringExtra("text"))
+          // Tapping opens OpenedActivity with the fixture id, so "Open in app" can be verified end to end.
+          .setContentIntent(PendingIntent.getActivity(this, id,
+              new Intent(this, OpenedActivity.class).putExtra("id", id), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
           .build();
       manager.notify(id, notification);
     }

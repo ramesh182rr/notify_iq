@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { openInApp } from '../../components/openSource';
+import { useUiMode } from '../../app/UiMode';
 import { AppIcon, useAppDirectory } from '../../app/AppDirectory';
 import { AppPicker } from '../../components/AppPicker';
 
@@ -42,6 +44,7 @@ const decodeSavedSearches = (value: string): SavedSearch[] => {
 };
 
 export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading = false, statusError = null }: Props) {
+  const { simple } = useUiMode();
   const { name: appName } = useAppDirectory();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NotificationItem | null>(null);
@@ -175,19 +178,24 @@ export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading =
     }
   };
 
+  // Simple view has no filter controls, so filters must not stay active out of sight.
+  useEffect(() => {
+    if (!simple) return;
+    setPackageName(''); setCategory(''); setGroupName(''); setRange('all'); setIncludeArchived(false); setShowFilters(false);
+  }, [simple]);
   const activeFilters = (packageName ? 1 : 0) + (range !== 'all' ? 1 : 0) + (includeArchived ? 1 : 0) + (category ? 1 : 0) + (groupName ? 1 : 0);
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.titleRow}>
         <Text accessibilityRole="header" style={[styles.title, styles.flex, { color: theme.colors.textPrimary }]}>Inbox</Text>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showFilters }} accessibilityLabel={`Filters${activeFilters ? `, ${activeFilters} active` : ''}`}
+        {!simple ? <Pressable accessibilityRole="button" accessibilityState={{ expanded: showFilters }} accessibilityLabel={`Filters${activeFilters ? `, ${activeFilters} active` : ''}`}
           onPress={() => setShowFilters(value => !value)}
           style={[styles.filterToggle, { backgroundColor: activeFilters || showFilters ? theme.colors.brandSoft : theme.colors.surface, borderColor: theme.colors.border }]}>
           <Text style={[styles.filterToggleText, { color: activeFilters || showFilters ? theme.colors.brand : theme.colors.textPrimary }]}>
             {showFilters ? 'Hide filters' : activeFilters ? `Filters · ${activeFilters}` : 'Filters'}
           </Text>
-        </Pressable>
+        </Pressable> : null}
       </View>
       {listenerStatus !== undefined && (statusError || listenerStatus === null || !listenerStatus.accessGranted || !listenerStatus.connected || listenerStatus.lastErrorCode) ? (
         <View accessibilityLiveRegion="polite" style={[styles.coverage, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -205,7 +213,7 @@ export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading =
         onChangeText={setQuery}
         style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
       />
-      {savedSearches.length || query || activeFilters ? (
+      {!simple && (savedSearches.length || query || activeFilters) ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRail} accessibilityLabel="Saved searches">
           {savedSearches.map(saved => (
             <View key={saved.id} style={[styles.savedChip, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
@@ -239,7 +247,7 @@ export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading =
           </Pressable>
         </View>
       ) : null}
-      {showFilters ? (
+      {showFilters && !simple ? (
         <View style={[styles.filterPanel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Filter by app: ${packageName ? appName(packageName) : 'all apps'}`} onPress={() => setPickingApp(true)}
         style={[styles.input, styles.appField, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
@@ -322,35 +330,40 @@ export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading =
             </View>
             {item.saved ? <Text accessibilityLabel="Saved" style={styles.savedStar}>★</Text> : null}
           </View>
-          {item.title ? <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.title}</Text> : null}
-          {item.body ? <Text numberOfLines={4} style={[styles.body, { color: theme.colors.textSecondary }]}>{item.body}</Text> : null}
-          {item.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.subtext}</Text> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel={`${item.title ?? ''} ${item.body ?? ''}. Opens ${appName(item.packageName)}`} accessibilityHint={`Opens ${appName(item.packageName)}`} onPress={() => openInApp(item.id, appName(item.packageName))}>
+            {item.title ? <Text style={[styles.itemTitle, { color: theme.colors.textPrimary }]}>{item.title}</Text> : null}
+            {item.body ? <Text numberOfLines={4} style={[styles.body, { color: theme.colors.textSecondary }]}>{item.body}</Text> : null}
+            {item.subtext ? <Text style={[styles.body, { color: theme.colors.textSecondary }]}>{item.subtext}</Text> : null}
+          </Pressable>
           <View style={styles.chips}>
             <Pill label={`${categoryLabel(item.category)}${item.categoryOverride ? ' · yours' : ''}`} color={visual.fg} background={visual.bg} />
-            {item.priority !== 'normal' ? <Pill label={`${item.priority} priority`} color={readableTextOn(priorityColor(theme, item.priority))} background={priorityColor(theme, item.priority)} /> : null}
+            {!simple && item.priority !== 'normal' ? <Pill label={`${item.priority} priority`} color={readableTextOn(priorityColor(theme, item.priority))} background={priorityColor(theme, item.priority)} /> : null}
             {item.important ? <Pill label="Important" color={theme.colors.brand} background={theme.colors.brandSoft} /> : null}
             {item.duplicateCount > 1 ? <Pill label={`×${item.duplicateCount} repeats`} color={theme.colors.textSecondary} background={theme.colors.surfaceMuted} /> : null}
             {item.ruleGroups.map(group => <Pill key={group} label={`# ${group}`} color={theme.colors.info} background={theme.colors.surfaceMuted} />)}
           </View>
-          <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text>
+          {!simple ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.removedAt ? 'Dismissed in Android' : 'Active in Android'} · Captured from notification text · {item.priority} priority{item.confidence > 0 ? ' · matched rule' : ''}</Text> : null}
           {item.includeInDigest !== null ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>{item.includeInDigest ? 'Included in digest by a rule' : 'Excluded from digest by a rule'}</Text> : null}
-          {item.duplicateCount > 1 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Repeated {item.duplicateCount} times in this app within 30 minutes. All source notifications are kept.</Text> : null}
+          {!simple && item.duplicateCount > 1 ? <Text style={[styles.hint, { color: theme.colors.textSecondary }]}>Repeated {item.duplicateCount} times in this app within 30 minutes. All source notifications are kept.</Text> : null}
           <View style={styles.actions}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${appName(item.packageName)}`} style={[styles.actionChip, { backgroundColor: theme.colors.brandSoft }]} onPress={() => openInApp(item.id, appName(item.packageName))}>
+              <Text style={[styles.actionText, { color: theme.colors.brand }]}>Open ↗</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={item.saved ? 'Unsave notification' : 'Save notification'} style={chip} onPress={() => ignorePromise(reloadAfterAction(
               () => setNotificationSaved(item.id, !item.saved),
               { label: item.saved ? 'Notification unsaved.' : 'Notification saved.', action: () => setNotificationSaved(item.id, item.saved) },
             ))}>
               <Text style={[styles.actionText, { color: theme.colors.brand }]}>{item.saved ? '★ Saved' : '☆ Save'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={item.archivedAt == null ? 'Archive notification' : 'Restore notification'} style={chip} onPress={() => ignorePromise(reloadAfterAction(
+            {!simple ? <Pressable accessibilityRole="button" accessibilityLabel={item.archivedAt == null ? 'Archive notification' : 'Restore notification'} style={chip} onPress={() => ignorePromise(reloadAfterAction(
               () => setNotificationArchived(item.id, item.archivedAt == null),
               { label: item.archivedAt == null ? 'Notification archived.' : 'Notification restored.', action: () => setNotificationArchived(item.id, item.archivedAt != null) },
             ))}>
               <Text style={[styles.actionText, { color: theme.colors.textPrimary }]}>{item.archivedAt == null ? 'Archive' : 'Restore'}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="View notification details" style={chip} onPress={() => setSelectedItem(item)}>
+            </Pressable> : null}
+            {!simple ? <Pressable accessibilityRole="button" accessibilityLabel="View notification details" style={chip} onPress={() => setSelectedItem(item)}>
               <Text style={[styles.actionText, { color: theme.colors.textPrimary }]}>Details</Text>
-            </Pressable>
+            </Pressable> : null}
             <Pressable accessibilityRole="button" accessibilityLabel="Delete notification" style={chip} onPress={() => confirmDelete(item)}>
               <Text style={[styles.actionText, { color: theme.colors.danger }]}>Delete</Text>
             </Pressable>
@@ -371,7 +384,7 @@ export function InboxScreen({ theme, refreshKey, listenerStatus, statusLoading =
               {selectedItem ? (
                 <>
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Source app</Text>
-                  <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{selectedItem.packageName}</Text>
+                  <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{appName(selectedItem.packageName)}</Text>
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Received</Text>
                   <Text style={[styles.body, { color: theme.colors.textPrimary }]}>{new Date(selectedItem.receivedAt).toLocaleString()}</Text>
                   <Text style={[styles.sectionLabel, { color: theme.colors.brand }]}>Posted by Android</Text>

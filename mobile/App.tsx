@@ -10,6 +10,7 @@ import { InboxScreen } from './src/features/inbox/InboxScreen';
 import { InsightsHub, type InsightsSection } from './src/features/insights/InsightsHub';
 import {authenticate, getListenerStatus, reconnectListener, getSecuritySettings, getInstallInfo, getUiPreference, openNotificationAccessSettings, setUiPreference} from './src/native/notifyIQ';
 import { AppDirectoryProvider } from './src/app/AppDirectory';
+import { UiModeProvider } from './src/app/UiMode';
 import { Onboarding } from './src/features/onboarding/Onboarding';
 import { SettingsScreen, type SettingsPage } from './src/features/settings/SettingsScreen';
 import { LockScreen } from './src/features/legal/LockScreen';
@@ -32,6 +33,15 @@ function App() {
       .then(saved => { if (saved === 'light' || saved === 'dark' || saved === 'system') setThemePreferenceState(saved); })
       .catch(() => undefined);
   }, []);
+  const [simple, setSimpleState] = useState(false);
+  useEffect(() => {
+    getUiPreference('ui_mode').then(saved => setSimpleState(saved === 'simple')).catch(() => undefined);
+  }, []);
+  const setSimple = useCallback((next: boolean) => {
+    setSimpleState(next);
+    setUiPreference('ui_mode', next ? 'simple' : 'full').catch(() => undefined);
+  }, []);
+  const uiMode = useMemo(() => ({ simple, setSimple }), [simple, setSimple]);
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     getUiPreference('onboarding_done').then(done => setShowOnboarding(done !== '1')).catch(() => undefined);
@@ -156,6 +166,7 @@ function App() {
   return (
     <SafeAreaProvider>
       <AppDirectoryProvider refreshKey={inboxRefreshKey}>
+      <UiModeProvider value={uiMode}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
@@ -204,6 +215,7 @@ function App() {
       </SafeAreaView>
         <Onboarding theme={theme} visible={showOnboarding && locked === false} listenerStatus={listenerStatus}
           onOpenAccessSettings={() => { handleOpenSettings().catch(() => undefined); }} onDone={finishOnboarding} />
+      </UiModeProvider>
       </AppDirectoryProvider>
     </SafeAreaProvider>
   );

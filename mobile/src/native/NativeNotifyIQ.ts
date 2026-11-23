@@ -48,6 +48,10 @@ export type MoneyTransaction = {
   packageName: string;
   subscription: boolean;
   categoryEdited?: boolean;
+  /** Other apps that reported the same payment (counted once). */
+  alsoFrom?: ReadonlyArray<string>;
+  /** How many other alerts reported this same payment. */
+  mergedCount?: number;
 };
 export type MoneySummary = {
   from: number;
@@ -175,6 +179,7 @@ export interface Spec extends TurboModule {
   getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>>;
   getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap>>;
   markListenerGapsSeen(): Promise<void>;
+  openSourceApp(eventId: number): Promise<string>;
   getInstalledApps(): Promise<ReadonlyArray<AppDirectoryEntry>>;
   getUiPreference(key: string): Promise<string | null>;
   setUiPreference(key: string, value: string): Promise<void>;

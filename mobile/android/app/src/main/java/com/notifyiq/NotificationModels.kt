@@ -59,6 +59,13 @@ internal data class MoneyRow(
   val eventId: Long, val amountMinor: Long, val currency: String, val direction: String, val merchant: String?,
   val category: String, val receivedAt: Long, val packageName: String, val subscription: Boolean,
   val categoryEdited: Boolean = false,
+  /** Other apps that reported this same payment; counted once. */
+  val alsoFrom: List<String> = emptyList(),
+  val fingerprint: String? = null,
+  /** Who sent it inside the app (SMS sender or chat name); separates a bank SMS from a UPI SMS in one SMS app. */
+  val sender: String? = null,
+  /** How many other alerts reported this same payment. */
+  val mergedCount: Int = 0,
 )
 
 internal data class MoneyBucket(val label: String, val amountMinor: Long, val count: Int)

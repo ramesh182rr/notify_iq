@@ -47,7 +47,7 @@ internal data class NotificationInsight(
  * [VERSION] so stored results can be recomputed.
  */
 internal object InsightExtractor {
-  const val VERSION = 2
+  const val VERSION = 3
 
   private val I = setOf(RegexOption.IGNORE_CASE)
 

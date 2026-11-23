@@ -107,6 +107,23 @@
   - If still not connected, a help card offers Reconnect, Battery settings (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, no special permission) and OEM autostart guidance.
   - The emulator re-binds promptly, so the stalled path is covered by a Jest test. The real-device fix still needs the owner's confirmation.
 - R-019 (1.9): probe-based connection status, safe brand-agnostic self-repair (requestRebind at start, boot, update, status checks and a 15-minute job). The component-toggle approach was measured harmful on Android 15 and rejected. UI moves to 4 tabs: Inbox merges search and saved searches behind a Filters panel; the Settings tab groups Rules, access & apps, backup, App lock, appearance and legal; the header is slimmed. Tests: ListenerHealthTest (probe ignores a stale flag, repair is harmless while bound, job scheduled and persisted), Settings and connection-help Jest tests, e2e updated (21/21).
+- R-023 (1.13): user-feedback batch (see the decisions log).
+  - Changes:
+    - Simple view.
+    - Same-payment merging (cross-app and SMS sender).
+    - Plain-language Rules with an app picker.
+    - Open in app.
+    - Trigram substring search (schema v11).
+    - Local-merchant category layer (insight version 3).
+    - Onboarding restricted-settings order.
+    - The fixture poster's notifications now have a tap action (`OpenedActivity`) for e2e.
+  - Tests:
+    - Jest: 58/58.
+    - Unit tests: categories original 56/56, local-merchant set 60/60, untouched second set 29/30.
+    - Instrumentation on API 35: 43 tests, 41 passed and 2 opt-in skipped, including the new SamePaymentTest (4) and SearchTest (3).
+    - Instrumentation on API 29: 42 tests, 38 passed and 4 skipped.
+    - e2e: 27/27 (new: mid-word search, Open runs the notification's own action, simple-view toggle).
+    - Upgrade check: 1.12 with data upgraded to 1.13; mid-word search finds old notifications and categories are recomputed.
 - R-022 (1.12): tray recovery after any reconnect, and pause tracking.
   - Schema v10 `listener_gaps`. The "NotifyIQ was paused" Home card and the 7-day pause list both show brand-neutral App settings advice after 3 pauses.
   - Policy v1.4.

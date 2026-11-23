@@ -163,11 +163,11 @@ export function getAppDirectory(): Promise<ReadonlyArray<AppDirectoryEntry>> {
   return requireNativeModule().getAppDirectory();
 }
 
-export function getUiPreference(key: 'theme' | 'onboarding_done'): Promise<string | null> {
+export function getUiPreference(key: 'theme' | 'onboarding_done' | 'ui_mode'): Promise<string | null> {
   return requireNativeModule().getUiPreference(key);
 }
 
-export function setUiPreference(key: 'theme' | 'onboarding_done', value: string): Promise<void> {
+export function setUiPreference(key: 'theme' | 'onboarding_done' | 'ui_mode', value: string): Promise<void> {
   return requireNativeModule().setUiPreference(key, value);
 }
 
@@ -181,6 +181,11 @@ export function getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap
 
 export function markListenerGapsSeen(): Promise<void> {
   return requireNativeModule().markListenerGapsSeen();
+}
+
+/** Opens the app that posted the notification (its exact screen while the notification is still active). */
+export function openSourceApp(eventId: number): Promise<'notification' | 'app' | 'unavailable'> {
+  return requireNativeModule().openSourceApp(eventId) as Promise<'notification' | 'app' | 'unavailable'>;
 }
 
 export function openAppDetailsSettings(): Promise<void> {

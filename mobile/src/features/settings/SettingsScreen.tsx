@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+
+import { useUiMode } from '../../app/UiMode';
 
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme, ThemePreference } from '../../theme/tokens';
@@ -32,6 +34,7 @@ const pageTitles: Record<SettingsPage, string> = {
 };
 
 export function SettingsScreen({ theme, page, onPageChange, themePreference, onThemeChange, listenerStatus, onOpenAccessSettings, onDataChanged, appVersion }: Props) {
+  const uiMode = useUiMode();
   const [legal, setLegal] = useState<LegalDocument['key'] | null>(null);
   const colors = theme.colors;
 
@@ -106,6 +109,16 @@ export function SettingsScreen({ theme, page, onPageChange, themePreference, onT
       </View>
 
       <Text style={[styles.group, { color: colors.textSecondary }]}>APPEARANCE</Text>
+      <Pressable accessibilityRole="switch" accessibilityLabel="Simple view" accessibilityState={{ checked: uiMode.simple }} onPress={() => uiMode.setSimple(!uiMode.simple)}
+        style={[styles.card, styles.simpleRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.simpleText}>
+          <Text style={[styles.simpleTitle, { color: colors.textPrimary }]}>Simple view</Text>
+          <Text style={[styles.simpleBody, { color: colors.textSecondary }]}>
+            {uiMode.simple ? 'Showing the essentials with larger text. Turn off to see every chart, filter and option.' : 'Show only the essentials, with larger text. Nothing is removed; you can switch back any time.'}
+          </Text>
+        </View>
+        <Switch importantForAccessibility="no-hide-descendants" value={uiMode.simple} onValueChange={uiMode.setSimple} />
+      </Pressable>
       <View accessibilityRole="radiogroup" accessibilityLabel="Appearance" style={[styles.segment, { backgroundColor: colors.surfaceMuted }]}>
         {(['system', 'light', 'dark'] as ThemePreference[]).map(option => {
           const selected = themePreference === option;
@@ -133,6 +146,10 @@ export function SettingsScreen({ theme, page, onPageChange, themePreference, onT
 }
 
 const styles = StyleSheet.create({
+  simpleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, marginBottom: 10 },
+  simpleText: { flex: 1, gap: 4 },
+  simpleTitle: { fontSize: 16, fontWeight: '800' },
+  simpleBody: { fontSize: 13, lineHeight: 19 },
   content: { gap: 10 },
   flex: { flex: 1 },
   title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6, marginBottom: 4 },

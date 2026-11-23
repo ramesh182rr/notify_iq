@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { ListenerStatus } from '../../native/NativeNotifyIQ';
 import type { AppTheme } from '../../theme/tokens';
+import { useUiMode } from '../../app/UiMode';
 import { MoneyPanel } from '../money/MoneyPanel';
 import { UpcomingPanel } from '../money/UpcomingPanel';
 import { InsightsScreen } from './InsightsScreen';
@@ -24,12 +25,16 @@ const sections: { key: InsightsSection; label: string }[] = [
   { key: 'upcoming', label: 'Coming up' },
 ];
 
-export function InsightsHub({ theme, refreshKey, section, onSectionChange, status, statusLoading, statusError }: Props) {
+export function InsightsHub({ theme, refreshKey, section: requested, onSectionChange, status, statusLoading, statusError }: Props) {
   const colors = theme.colors;
+  const { simple } = useUiMode();
+  // Simple view keeps Money and Coming up; the Today charts are part of the full view.
+  const visible = simple ? sections.filter(option => option.key !== 'today') : sections;
+  const section = simple && requested === 'today' ? 'money' : requested;
   return (
     <View style={styles.content}>
       <View accessibilityRole="tablist" style={[styles.segment, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        {sections.map(option => {
+        {visible.map(option => {
           const selected = option.key === section;
           return (
             <Pressable key={option.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => onSectionChange(option.key)}

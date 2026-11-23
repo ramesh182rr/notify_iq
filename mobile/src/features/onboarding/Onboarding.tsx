@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { InstallInfo, ListenerStatus } from '../../native/NativeNotifyIQ';
 import { getInstallInfo, openAppDetailsSettings } from '../../native/notifyIQ';
 import type { AppTheme } from '../../theme/tokens';
+import { useUiMode } from '../../app/UiMode';
 
 type Step = { key: string; emoji: string; title: string; body: string; bullets?: string[] };
 
@@ -14,6 +15,7 @@ export function Onboarding({ theme, visible, listenerStatus, onOpenAccessSetting
   const [index, setIndex] = useState(0);
   const [install, setInstall] = useState<InstallInfo | null>(null);
   const colors = theme.colors;
+  const uiMode = useUiMode();
   useEffect(() => { getInstallInfo().then(setInstall).catch(() => undefined); }, []);
   const needsRestrictedSettings = install?.source === 'sideload' && install.sdk >= 33;
   const granted = listenerStatus?.accessGranted === true;
@@ -23,10 +25,15 @@ export function Onboarding({ theme, visible, listenerStatus, onOpenAccessSetting
       bullets: ['Keep and search notifications, even after you swipe them away', 'See where your money goes from payment alerts', 'Never miss bills, renewals and appointments'] },
     { key: 'privacy', emoji: '🔒', title: 'Everything stays on this phone', body: 'NotifyIQ has no internet access, so it cannot send your data anywhere.',
       bullets: ['No account, ads, analytics or AI services', 'One-time codes, passwords and card numbers are thrown away', 'Exclude apps or delete history any time'] },
-    ...(needsRestrictedSettings ? [{ key: 'restricted', emoji: '🛡️', title: 'One extra step for this install',
-      body: 'Android protects notification access for apps installed outside the Play Store. Allow it once:',
-      bullets: ['Tap “Open app info” below', 'Tap the ⋮ menu at the top right', 'Choose “Allow restricted settings” and confirm', 'Come back here'] }] : []),
-    { key: 'access', emoji: '🔔', title: 'Turn on notification access', body: 'Android asks you to allow NotifyIQ to read notifications. You can turn it off any time in Settings.' },
+    { key: 'view', emoji: '👀', title: 'How should NotifyIQ look?', body: 'You can change this any time in Settings → Appearance.' },
+    needsRestrictedSettings
+      ? { key: 'restricted', emoji: '🔔', title: 'Turn on notification access', body: 'Android adds an extra check for apps installed outside the Play Store. Follow these steps in order:',
+        bullets: [
+          'Tap “Open notification access” and try to switch NotifyIQ on. If Android says “Restricted setting”, tap OK.',
+          'Come back here and tap “Open app info”. Tap ⋮ at the top right, choose “Allow restricted settings” and confirm.',
+          'Tap “Open notification access” again and switch NotifyIQ on.',
+        ] }
+      : { key: 'access', emoji: '🔔', title: 'Turn on notification access', body: 'Android asks you to allow NotifyIQ to read notifications. You can turn it off any time in Settings.' },
     { key: 'done', emoji: '✨', title: 'You’re all set', body: 'A few tips to get the most out of NotifyIQ:',
       bullets: ['Turn on App lock in Settings for extra protection', 'Exclude apps you never want kept, such as authenticator apps', 'Check Insights → Money and Coming up after a few days'] },
   ], [needsRestrictedSettings]);
@@ -55,26 +62,40 @@ export function Onboarding({ theme, visible, listenerStatus, onOpenAccessSetting
               <Text style={[styles.bullet, { color: colors.onHero }]}>{b}</Text>
             </View>
           ))}
-          {step.key === 'access' ? (
+          {step.key === 'view' ? (
+            <View style={styles.choices}>
+              {([[true, 'Simple', 'The essentials with larger text: today, money, coming up and your latest notifications.'], [false, 'Full', 'Everything: charts, filters, saved searches and detailed insights.']] as const).map(([value, name, help]) => {
+                const selected = uiMode.simple === value;
+                return (
+                  <Pressable key={name} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => uiMode.setSimple(value)}
+                    style={[styles.choice, { backgroundColor: selected ? '#FFFFFF' : 'rgba(255,255,255,0.14)' }]}>
+                    <Text style={[styles.choiceTitle, { color: selected ? colors.hero : colors.onHero }]}>{selected ? '● ' : '○ '}{name}</Text>
+                    <Text style={[styles.choiceBody, { color: selected ? colors.hero : colors.onHeroMuted }]}>{help}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          {step.key === 'access' || step.key === 'restricted' ? (
             <View style={[styles.status, { backgroundColor: 'rgba(255,255,255,0.14)' }]}>
               <Text style={[styles.bullet, { color: colors.onHero }]}>{granted ? '✅ Notification access is on' : 'Notification access is off'}</Text>
             </View>
           ) : null}
         </ScrollView>
         <View style={styles.footer}>
-          {step.key === 'restricted' ? (
+          {(step.key === 'access' || step.key === 'restricted') && !granted ? (
+            <Pressable accessibilityRole="button" onPress={onOpenAccessSettings} style={[styles.secondary, { borderColor: 'rgba(255,255,255,0.6)' }]}>
+              <Text style={[styles.secondaryText, { color: colors.onHero }]}>Open notification access</Text>
+            </Pressable>
+          ) : null}
+          {step.key === 'restricted' && !granted ? (
             <Pressable accessibilityRole="button" onPress={() => { openAppDetailsSettings().catch(() => undefined); }} style={[styles.secondary, { borderColor: 'rgba(255,255,255,0.6)' }]}>
               <Text style={[styles.secondaryText, { color: colors.onHero }]}>Open app info</Text>
             </Pressable>
           ) : null}
-          {step.key === 'access' && !granted ? (
-            <Pressable accessibilityRole="button" onPress={onOpenAccessSettings} style={[styles.secondary, { borderColor: 'rgba(255,255,255,0.6)' }]}>
-              <Text style={[styles.secondaryText, { color: colors.onHero }]}>Open notification access settings</Text>
-            </Pressable>
-          ) : null}
           <Pressable accessibilityRole="button" onPress={next} style={styles.primary}>
             <Text style={[styles.primaryText, { color: colors.hero }]}>
-              {last ? 'Start using NotifyIQ' : step.key === 'access' && !granted ? 'I’ll do this later' : 'Continue'}
+              {last ? 'Start using NotifyIQ' : (step.key === 'access' || step.key === 'restricted') && !granted ? 'I’ll do this later' : 'Continue'}
             </Text>
           </Pressable>
         </View>
@@ -101,6 +122,10 @@ const styles = StyleSheet.create({
   bullet: { flex: 1, fontSize: 15, lineHeight: 22, fontWeight: '600' },
   status: { borderRadius: 14, padding: 14, marginTop: 6 },
   footer: { padding: 24, gap: 10 },
+  choices: { gap: 12, marginTop: 8 },
+  choice: { borderRadius: 16, padding: 16, gap: 6 },
+  choiceTitle: { fontSize: 18, fontWeight: '800' },
+  choiceBody: { fontSize: 14, lineHeight: 20 },
   primary: { minHeight: 54, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontSize: 17, fontWeight: '800' },
   secondary: { minHeight: 50, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

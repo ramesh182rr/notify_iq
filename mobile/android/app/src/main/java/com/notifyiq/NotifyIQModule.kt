@@ -2,6 +2,7 @@ package com.notifyiq
 
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import android.app.NotificationManager
 import android.util.Log
@@ -121,6 +122,8 @@ class NotifyIQModule(
     if (row.merchant == null) putNull("merchant") else putString("merchant", row.merchant)
     putString("category", row.category); putDouble("receivedAt", row.receivedAt.toDouble())
     putString("packageName", row.packageName); putBoolean("subscription", row.subscription); putBoolean("categoryEdited", row.categoryEdited)
+    putArray("alsoFrom", Arguments.createArray().apply { row.alsoFrom.forEach { pushString(it) } })
+    putInt("mergedCount", row.mergedCount)
   }
 
   private fun bucketArray(items: List<MoneyBucket>) = Arguments.createArray().apply {
@@ -174,7 +177,7 @@ class NotifyIQModule(
   }
 
   private val uiPrefs get() = appContext.getSharedPreferences("notifyiq_ui", android.content.Context.MODE_PRIVATE)
-  private val allowedUiKeys = setOf("theme", "onboarding_done")
+  private val allowedUiKeys = setOf("theme", "onboarding_done", "ui_mode")
 
   @ReactMethod
   override fun getUiPreference(key: String, promise: Promise) {
@@ -350,6 +353,36 @@ class NotifyIQModule(
         }) }
       })
     } catch (_: Exception) { promise.reject("APPS_UNAVAILABLE", "App names are unavailable.") }
+  }
+
+  /**
+   * Opens the app that posted a stored notification. If the notification is still in Android's shade, its
+   * own tap action is used (it opens the exact chat, order or transaction); otherwise the app's launcher
+   * screen opens. Resolves "notification", "app" or "unavailable".
+   */
+  @ReactMethod
+  override fun openSourceApp(eventId: Double, promise: Promise) {
+    val source = runCatching { NotificationRepository(appContext).eventSource(eventId.toLong()) }.getOrNull()
+    if (source == null) { promise.resolve("unavailable"); return }
+    val (pkg, key) = source
+    val activity = reactApplicationContext.currentActivity
+    val active = NotificationListenerRuntimeState.instance?.let { listener ->
+      runCatching { listener.getActiveNotifications(arrayOf(key))?.firstOrNull() }.getOrNull()
+    }
+    val contentIntent = active?.notification?.contentIntent
+    if (contentIntent != null) {
+      val options = android.app.ActivityOptions.makeBasic().apply {
+        if (Build.VERSION.SDK_INT >= 36) setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE)
+        else if (Build.VERSION.SDK_INT >= 34) @Suppress("DEPRECATION") setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+      }.toBundle()
+      val sent = runCatching { contentIntent.send(activity ?: appContext, 0, null, null, null, null, options) }.isSuccess
+      if (sent) { promise.resolve("notification"); return }
+    }
+    val launch = appContext.packageManager.getLaunchIntentForPackage(pkg)
+    if (launch == null) { promise.resolve("unavailable"); return }
+    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val opened = runCatching { (activity ?: appContext).startActivity(launch) }.isSuccess
+    promise.resolve(if (opened) "app" else "unavailable")
   }
 
   @ReactMethod

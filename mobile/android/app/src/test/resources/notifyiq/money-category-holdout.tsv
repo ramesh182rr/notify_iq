@@ -1,0 +1,61 @@
+id	body	category
+H01	Rs 2,000.00 debited from A/c XX4521 to SRI BALAJI FILLING STATION via UPI	fuel
+H02	₹1,500 paid to Lakshmi Oil Company	fuel
+H03	Rs 800 spent at INDIAN OIL COCO OUTLET using your card	fuel
+H04	₹2,200 paid to Ganesh Petroleum	fuel
+H05	Rs 1,000 debited at HP PETROL PUMP KORAMANGALA	fuel
+H06	₹650 paid to Shell Select Fuel Station	fuel
+H07	Rs 900 spent at JIO-BP MOBILITY STATION	fuel
+H08	₹450 paid to Green CNG Station	fuel
+H09	₹1,180 paid to Sri Sai Departmental Store	groceries
+H10	Rs 740 debited to NEW KAVERI PROVISION STORES via UPI	groceries
+H11	₹2,340 spent at Ratnadeep Supermarket	groceries
+H12	Rs 1,650 spent at SMART BAZAAR	groceries
+H13	₹320 paid to Annapurna Kirana Store	groceries
+H14	Rs 560 paid to FRESH VEGETABLES AND FRUITS	groceries
+H15	₹980 paid to Royal Mart	groceries
+H16	₹410 paid to Nandini Milk Parlour	groceries
+H17	Rs 2,890 spent at Star Bazaar	groceries
+H18	₹230 paid to Sri Ram General Stores	groceries
+H19	₹640 paid to Apollo Pharmacy	health
+H20	Rs 380 debited to SHREE MEDICALS via UPI	health
+H21	₹1,200 paid to City Chemist and Druggist	health
+H22	Rs 900 spent at SUNRISE MEDICAL STORE	health
+H23	₹350 paid to Hotel Saravana Bhavan	food
+H24	Rs 280 paid to UDUPI GRAND CANTEEN	food
+H25	₹520 paid to Annapoorna Mess	food
+H26	₹740 paid to Spice Kitchen	food
+H27	Rs 160 paid to SRI KRISHNA SWEETS	snacks
+H28	₹90 paid to Daily Tea Stall	snacks
+H29	₹1,450 paid to Trends Fashion	shopping
+H30	Rs 3,200 spent at MAX FASHION	shopping
+H31	₹2,600 paid to Sri Lakshmi Textiles	shopping
+H32	Rs 18,500 spent at TANISHQ JEWELLERS	shopping
+H33	₹1,999 paid to Bata Footwear	shopping
+H34	Rs 12,499 spent at POORVIKA MOBILES	shopping
+H35	₹850 paid to Vasavi Electricals	shopping
+H36	₹120 paid to KSRTC	tickets
+H37	Rs 540 paid to APSRTC online booking	tickets
+H38	₹60 paid to Auto Stand Driver	transport
+H39	Rs 200 paid to BMTC bus pass	transport
+H40	₹1,100 paid to Raju Car Wash and Service	transport
+H41	₹300 paid to Classic Barber Shop	personal_care
+H42	Rs 1,500 spent at GREEN TRENDS SALON	personal_care
+H43	₹4,000 paid to Sunshine Public School	education
+H44	Rs 2,500 paid to BRIGHT TUITION CENTRE	education
+H45	₹999 paid to Gold Gym	health
+H46	Rs 6,000 paid to Sri Venkateshwara PG	rent
+H47	₹749 recharge successful for Jio prepaid	bills
+H48	Rs 1,860 paid for BESCOM electricity bill	bills
+H49	₹420 paid to LPG cylinder delivery Indane	bills
+H50	₹199 paid to Netflix	subscriptions
+H51	Rs 2,000 sent to Ramesh Kumar via UPI	transfers
+H52	₹500 paid to Priya S	transfers
+H53	Rs 10,000 withdrawn at ATM	cash
+H54	₹3,150 paid to Lucky Hardware and Paints	shopping
+H55	₹250 paid to Sri Durga Bakery	snacks
+H56	Rs 780 spent at MORE SUPERMARKET	groceries
+H57	₹1,320 paid to Kumar Fuels	fuel
+H58	Rs 640 debited to AMMA FRESH CHICKEN CENTRE	groceries
+H59	₹2,750 paid to Ortho Care Clinic	health
+H60	Rs 1,200 paid to VIJAYA DIAGNOSTICS	health

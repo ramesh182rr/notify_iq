@@ -275,6 +275,27 @@ This log distinguishes decisions already present in the supplied development kit
   - Settings → Notification access & apps lists pauses from the last 7 days.
   - After 3 or more pauses in 7 days, both suggest NotifyIQ's App settings page with brand-neutral wording.
 
+
+### R-023 — User feedback batch: simple view, same-payment merging, plain rules, open in app, substring search, local-merchant categories
+
+**Status:** Requested by owner from user feedback, 2026-11-23 (version 1.13)
+**Decision:**
+- **Simple view** (Settings → Appearance; also asked once in onboarding), stored as `ui_mode`. It hides the Today charts, the Home rhythm card, quick tiles and tips, the money flow, calendar and pattern charts, and the Inbox filters, saved searches, Archive/Details and technical hints, and uses larger text in Latest. Nothing is removed from the full view. Switching to simple view clears hidden Inbox filters.
+- **Same payment from several alerts** counts once in money totals, recurring detection and Coming up. Every source notification stays in the Inbox.
+  - Rule: same amount, currency and direction within 15 minutes, from different sources. A source is the app plus the SMS sender or chat title, so a bank SMS and a UPI SMS in one SMS app count as different sources.
+  - Merchants must not conflict.
+  - From the same source, only an identical re-post merges.
+  - The kept row is the most informative one, and it shows "N alerts, counted once".
+- **Rules** are rewritten as plain sentences ("When a notification from Bank mentions 'salary', put it in Finance and save it"). Apps are chosen by name and icon, there is an optional phrase, the actions are switches and chips, a live summary is shown, and there is a "Try your rules" check. No package names appear anywhere. The app directory also knows installed apps (launcher `<queries>`) for apps that have not posted yet.
+- **Open in app:** tapping a notification (or its Open button) runs the original notification's own tap action while it is still in the shade (opens the exact chat or transaction), otherwise it opens the app. Android 14+ needs explicit background-activity-start opt-in, which is granted only while NotifyIQ is visible.
+- **Search** (schema v11): a trigram FTS5 index replaces the word index, so any part of a word matches, all terms must match in any order, and terms under 3 characters use LIKE. The app's name also matches.
+- **Categories:** a merchant-type layer (filling station, petroleum, oil, departmental, provision, supermarket, medicals, chemist, mess, canteen, textiles, jewellers, mobiles, RTC buses, PG and so on) is checked after brand names. Brand clashes are fixed ("Max Fashion" no longer matches Max hospital; "Milk Parlour" no longer matches beauty parlour). Insight version 3 re-computes history; user overrides are kept.
+  - Measured accuracy:
+    - Original set: 56/56.
+    - Local-merchant set: 46.7% before, 100% after. The rules were tuned on this set, so it is not a held-out measure.
+    - Untouched second set: 93.3% on first run, then 96.7% after adding "supermart". The remaining miss is generic "…Stores", left as other/transfer on purpose.
+- **Onboarding (sideloaded installs, Android 13+):** the order is now try access → Allow restricted settings in App info → turn access on, because the ⋮ menu item only appears after a blocked attempt.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

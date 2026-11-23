@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { AppDirectoryEntry } from '../native/NativeNotifyIQ';
-import { getAppDirectory } from '../native/notifyIQ';
+import { getAppDirectory, getInstalledApps } from '../native/notifyIQ';
 import { appDisplayName, categoryVisual, type AppTheme } from '../theme/tokens';
 
 type Directory = {
@@ -18,17 +18,23 @@ const DirectoryContext = createContext<Directory>(fallback);
 
 export function AppDirectoryProvider({ children, refreshKey }: PropsWithChildren<{ refreshKey: number }>) {
   const [entries, setEntries] = useState<ReadonlyArray<AppDirectoryEntry>>([]);
+  const [installed, setInstalled] = useState<ReadonlyArray<AppDirectoryEntry>>([]);
   const load = useCallback(() => { getAppDirectory().then(setEntries).catch(() => undefined); }, []);
   useEffect(() => { load(); }, [load, refreshKey]);
+  // Installed apps (names and icons) cover apps that have not sent a notification yet, e.g. in rules.
+  useEffect(() => {
+    const timer = setTimeout(() => { Promise.resolve().then(() => getInstalledApps()).then(setInstalled).catch(() => undefined); }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
   const value = useMemo<Directory>(() => {
-    const byPackage = new Map(entries.map(entry => [entry.packageName, entry]));
+    const byPackage = new Map([...installed, ...entries].map(entry => [entry.packageName, entry]));
     return {
       entries,
       name: pkg => byPackage.get(pkg)?.label ?? appDisplayName(pkg),
       iconUri: pkg => byPackage.get(pkg)?.iconUri ?? null,
       reload: load,
     };
-  }, [entries, load]);
+  }, [entries, installed, load]);
   return <DirectoryContext.Provider value={value}>{children}</DirectoryContext.Provider>;
 }
 

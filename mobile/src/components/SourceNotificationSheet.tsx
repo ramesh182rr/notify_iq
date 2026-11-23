@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { openInApp } from './openSource';
 import { AppIcon, useAppDirectory } from '../app/AppDirectory';
 import { categoryMeta } from '../features/money/format';
 import type { NotificationItem } from '../native/NativeNotifyIQ';
@@ -48,6 +49,11 @@ export function SourceNotificationSheet({ theme, eventId, note, onClose }: { the
                 {categoryMeta(item.category).label} · {item.removedAt ? 'Dismissed in Android' : 'Still in Android’s notification shade'} · Text exactly as the app sent it
               </Text>
             </ScrollView>
+          ) : null}
+          {item ? (
+            <Pressable accessibilityRole="button" onPress={() => openInApp(item.id, name(item.packageName))} style={[styles.close, { backgroundColor: colors.brand }]}>
+              <Text style={[styles.closeText, { color: colors.onBrand }]}>Open in {name(item.packageName)} ↗</Text>
+            </Pressable>
           ) : null}
           <Pressable accessibilityRole="button" onPress={onClose} style={[styles.close, { backgroundColor: colors.brandSoft }]}>
             <Text style={[styles.closeText, { color: colors.brand }]}>Close</Text>

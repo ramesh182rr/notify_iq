@@ -5,6 +5,7 @@ import { useAppDirectory } from '../../app/AppDirectory';
 import { CalendarHeatmap, ChangeBadge, ColumnChart, FlowChart, Treemap } from '../../components/charts';
 import { SourceNotificationSheet } from '../../components/SourceNotificationSheet';
 import { Card, FadeIn, SectionHeader } from '../../components/ui';
+import { useUiMode } from '../../app/UiMode';
 import type { MoneyAnalytics, MoneyTransaction, RecurringPayment } from '../../native/NativeNotifyIQ';
 import { dismissInsight, getMoneyAnalytics, getRecurringPayments, setMoneyCategory } from '../../native/notifyIQ';
 import { relativeTime, type AppTheme } from '../../theme/tokens';
@@ -34,6 +35,7 @@ function rangeBounds(range: Range, now = new Date()) {
 
 export function MoneyPanel({ theme, refreshKey }: Props) {
   const { name: appName } = useAppDirectory();
+  const { simple } = useUiMode();
   const [range, setRange] = useState<Range>('month');
   const [mode, setMode] = useState<Mode>('spending');
   const [data, setData] = useState<MoneyAnalytics | null>(null);
@@ -189,7 +191,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
         <Card theme={theme}><Text style={[styles.note, { color: colors.textSecondary }]}>{mode === 'income' ? 'No money in during this period.' : 'No spending in this period.'}</Text></Card>
       ) : null}
 
-      {!empty ? (
+      {!empty && !simple ? (
         <FadeIn delay={120}>
           <Card theme={theme}>
             <View style={styles.rowBetween}>
@@ -204,7 +206,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
         </FadeIn>
       ) : null}
 
-      {!empty && monthLike ? (
+      {!empty && monthLike && !simple ? (
         <FadeIn delay={150}>
           <Card theme={theme}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Spending calendar</Text>
@@ -213,7 +215,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
         </FadeIn>
       ) : null}
 
-      {!empty && data.debitCount > 0 ? (
+      {!empty && data.debitCount > 0 && !simple ? (
         <FadeIn delay={180}>
           <SectionHeader theme={theme} title="Did you know?" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.factRow}>
@@ -226,7 +228,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
         </FadeIn>
       ) : null}
 
-      {!empty && data.debitCount > 1 ? (
+      {!empty && data.debitCount > 1 && !simple ? (
         <FadeIn delay={210}>
           <Card theme={theme}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>When you spend</Text>
@@ -291,7 +293,7 @@ export function MoneyPanel({ theme, refreshKey }: Props) {
                     <Pressable accessibilityRole="button" accessibilityLabel={`Category ${meta.label}. Change category`} hitSlop={6} onPress={() => { setEditing(row); setApplyToPlace(row.merchant != null); }}>
                       <Text style={[styles.note, { color: colors.brand }]}>{meta.label}{row.categoryEdited ? ' · yours' : ''} ✎</Text>
                     </Pressable>
-                    <Text style={[styles.note, { color: colors.textSecondary }]}>{relativeTime(row.receivedAt)} · {appName(row.packageName)}</Text>
+                    <Text style={[styles.note, { color: colors.textSecondary }]}>{relativeTime(row.receivedAt)} · {appName(row.packageName)}{row.mergedCount ? ` · ${row.mergedCount + 1} alerts, counted once${row.alsoFrom?.length ? ` (also ${row.alsoFrom.map(appName).join(', ')})` : ''}` : ''}</Text>
                   </View>
                   <View style={styles.amountCol}>
                     <Text style={[styles.catAmount, { color: debit ? colors.textPrimary : colors.success }]}>{debit ? '−' : '+'}{formatMoney(row.amountMinor, row.currency)}</Text>

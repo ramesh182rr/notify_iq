@@ -11,6 +11,8 @@ import type { InsightsSection } from '../insights/InsightsHub';
 import type { SettingsPage } from '../settings/SettingsScreen';
 import { LegalScreen } from '../legal/LegalScreen';
 import { PauseNotice } from '../health/ListenerGaps';
+import { useUiMode } from '../../app/UiMode';
+import { openInApp } from '../../components/openSource';
 import { actionKinds, dueLabel, formatMoney } from '../money/format';
 import { categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
@@ -61,6 +63,7 @@ export function HomeScreen({
   onOpenSettings, onRetryStatus, onNavigate, onOpenInsights, onOpenSettingsPage, connectionStalled = false, onRetryConnection,
 }: HomeScreenProps) {
   const { name: appName } = useAppDirectory();
+  const { simple } = useUiMode();
   const [overview, setOverview] = useState<DailyOverview | null>(null);
   const [recent, setRecent] = useState<ReadonlyArray<NotificationItem>>([]);
   const [loadError, setLoadError] = useState(false);
@@ -166,9 +169,9 @@ export function HomeScreen({
                 {total === 1 ? 'notification' : 'notifications'}{'\n'}from {overview?.appCount ?? 0} {overview?.appCount === 1 ? 'app' : 'apps'}
               </Text>
             </View>
-            <CategoryStack theme={theme} categories={overview?.categories ?? []} onHero />
+            {!simple ? <CategoryStack theme={theme} categories={overview?.categories ?? []} onHero /> : null}
             <View style={styles.legend}>
-              {(overview?.categories ?? []).slice(0, 4).map(row => {
+              {(simple ? [] : overview?.categories ?? []).slice(0, 4).map(row => {
                 const visual = categoryVisual(theme, row.label);
                 return (
                   <View key={row.label} style={styles.legendItem}>
@@ -282,7 +285,7 @@ export function HomeScreen({
         </FadeIn>
       ) : null}
 
-      {accessOn && total > 0 ? (
+      {accessOn && total > 0 && !simple ? (
         <FadeIn delay={180}>
           <Card theme={theme} onPress={() => onNavigate('insights')} accessibilityLabel="Open insights">
             <View style={styles.rowBetween}>
@@ -303,9 +306,9 @@ export function HomeScreen({
         <FadeIn delay={220}>
           <SectionHeader theme={theme} title="Latest" action="See all" onAction={() => onNavigate('inbox')} />
           <Card theme={theme} style={styles.listCard}>
-            {today.slice(0, 4).map((item, index) => (
-              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${appName(item.packageName)}: ${item.title ?? ''}. Open Inbox.`}
-                onPress={() => onNavigate('inbox')}
+            {today.slice(0, simple ? 6 : 4).map((item, index) => (
+              <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${appName(item.packageName)}: ${item.title ?? ''}. Opens ${appName(item.packageName)}.`}
+                onPress={() => openInApp(item.id, appName(item.packageName))}
                 style={({ pressed }) => [styles.latestRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border }, pressed && styles.pressed]}>
                 <AppIcon theme={theme} packageName={item.packageName} category={item.category} size={40} />
                 <View style={styles.flex}>
@@ -313,8 +316,8 @@ export function HomeScreen({
                     <Text numberOfLines={1} style={[styles.appName, { color: colors.textSecondary }]}>{appName(item.packageName)}</Text>
                     <Text style={[styles.time, { color: colors.textSecondary }]}>{relativeTime(item.receivedAt)}</Text>
                   </View>
-                  <Text numberOfLines={1} style={[styles.latestTitle, { color: colors.textPrimary }]}>{item.title || appName(item.packageName)}</Text>
-                  {item.body ? <Text numberOfLines={1} style={[styles.cardBody, { color: colors.textSecondary }]}>{item.body}</Text> : null}
+                  <Text numberOfLines={simple ? 2 : 1} style={[styles.latestTitle, simple && styles.bigTitle, { color: colors.textPrimary }]}>{item.title || appName(item.packageName)}</Text>
+                  {item.body ? <Text numberOfLines={simple ? 2 : 1} style={[styles.cardBody, simple && styles.bigBody, { color: colors.textSecondary }]}>{item.body}</Text> : null}
                 </View>
               </Pressable>
             ))}
@@ -322,6 +325,7 @@ export function HomeScreen({
         </FadeIn>
       ) : null}
 
+      {!simple ? (<>
       <FadeIn delay={260}>
         <SectionHeader theme={theme} title="Jump back in" />
         <View style={styles.grid}>
@@ -337,15 +341,16 @@ export function HomeScreen({
           ))}
         </View>
       </FadeIn>
+      </>) : null}
 
       <FadeIn delay={300}>
-        <View style={[styles.tip, { backgroundColor: colors.brandSoft }]}>
+        {!simple ? <View style={[styles.tip, { backgroundColor: colors.brandSoft }]}>
           <Text style={styles.tipEmoji}>💡</Text>
           <View style={styles.flex}>
             <Text style={[styles.tipTitle, { color: colors.brand }]}>Tip of the day</Text>
             <Text style={[styles.cardBody, { color: colors.textPrimary }]}>{tip}</Text>
           </View>
-        </View>
+        </View> : null}
         <View style={styles.promise}>
           {['🔒 Stays on this phone', '🚫 No account', '📴 No internet access'].map(item => (
             <Text key={item} style={[styles.promiseText, { color: colors.textSecondary }]}>{item}</Text>
@@ -405,6 +410,8 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { width: '47%', flexGrow: 1, gap: 6, padding: 16 },
   tileIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  bigTitle: { fontSize: 17, lineHeight: 23 },
+  bigBody: { fontSize: 15, lineHeight: 21 },
   tip: { flexDirection: 'row', gap: 12, borderRadius: 20, padding: 16, alignItems: 'flex-start' },
   tipEmoji: { fontSize: 24 },
   tipTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },

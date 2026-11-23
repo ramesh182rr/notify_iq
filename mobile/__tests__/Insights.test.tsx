@@ -53,7 +53,7 @@ test('shows local overview and opens a linked source notification', async () => 
   expect(JSON.stringify(renderer.toJSON())).toContain('Finance');
   expect(JSON.stringify(renderer.toJSON())).toContain('Busiest arrival hours');
   await ReactTestRenderer.act(() => {
-    renderer.root.findByProps({accessibilityLabel: 'Open source notification from example.bank'}).props.onPress();
+    renderer.root.findByProps({accessibilityLabel: 'Open source notification from Bank'}).props.onPress();
   });
   expect(JSON.stringify(renderer.toJSON())).toContain('Source notification');
   expect(JSON.stringify(renderer.toJSON())).toContain('Your balance changed.');

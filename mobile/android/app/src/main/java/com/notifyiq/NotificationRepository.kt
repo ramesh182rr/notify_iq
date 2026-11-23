@@ -146,6 +146,22 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 10
     }
+    if (version == 10) {
+      transaction {
+        // Search inside words, not only whole words: a trigram index replaces the word index.
+        connection.execSQL("DROP TRIGGER IF EXISTS notification_events_fts_insert")
+        connection.execSQL("DROP TRIGGER IF EXISTS notification_events_fts_delete")
+        connection.execSQL("DROP TRIGGER IF EXISTS notification_events_fts_update")
+        connection.execSQL("DROP TABLE IF EXISTS notification_events_fts")
+        connection.execSQL("CREATE VIRTUAL TABLE notification_search USING fts5(title, body, subtext, content='notification_events', content_rowid='id', tokenize='trigram')")
+        connection.execSQL("INSERT INTO notification_search(notification_search) VALUES('rebuild')")
+        connection.execSQL("CREATE TRIGGER notification_search_insert AFTER INSERT ON notification_events BEGIN INSERT INTO notification_search(rowid, title, body, subtext) VALUES (new.id, new.title, new.body, new.subtext); END")
+        connection.execSQL("CREATE TRIGGER notification_search_delete AFTER DELETE ON notification_events BEGIN INSERT INTO notification_search(notification_search, rowid, title, body, subtext) VALUES ('delete', old.id, old.title, old.body, old.subtext); END")
+        connection.execSQL("CREATE TRIGGER notification_search_update AFTER UPDATE OF title, body, subtext ON notification_events BEGIN INSERT INTO notification_search(notification_search, rowid, title, body, subtext) VALUES ('delete', old.id, old.title, old.body, old.subtext); INSERT INTO notification_search(rowid, title, body, subtext) VALUES (new.id, new.title, new.body, new.subtext); END")
+        connection.execSQL("PRAGMA user_version = 11")
+      }
+      version = 11
+    }
     // Recompute insights when the deterministic extractor changes; user overrides and dismissals are kept.
     if ((scalarLong("SELECT COUNT(*) FROM notification_insights WHERE version < ?", InsightExtractor.VERSION.toLong()) ?: 0L) > 0L) {
       transaction { backfillInsights() }
@@ -353,7 +369,8 @@ internal class NotificationRepository private constructor(private val connection
     val rules = merchantCategoryRules()
     val rows = mutableListOf<MoneyRow>()
     connection.prepare(
-      "SELECT i.event_id, i.amount_minor, i.currency, i.direction, i.merchant, i.spend_category, e.received_at, e.package_name, i.subscription, i.category_override, i.merchant_key " +
+      "SELECT i.event_id, i.amount_minor, i.currency, i.direction, i.merchant, i.spend_category, e.received_at, e.package_name, i.subscription, i.category_override, i.merchant_key, " +
+        (if (hasFingerprintColumn()) "e.content_fingerprint, " else "NULL, ") + "e.title " +
         "FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
         "WHERE i.amount_minor IS NOT NULL AND i.dismissed = 0 AND e.received_at >= ? AND e.received_at < ? ORDER BY e.received_at DESC",
     ).use { statement ->
@@ -364,11 +381,54 @@ internal class NotificationRepository private constructor(private val connection
         rows += MoneyRow(
           statement.getLong(0), statement.getLong(1), statement.getText(2), statement.getText(3), statement.nullableText(4),
           override ?: rule ?: statement.nullableText(5) ?: "other", statement.getLong(6), statement.getText(7), statement.getLong(8) == 1L,
-          categoryEdited = override != null || rule != null,
+          categoryEdited = override != null || rule != null, fingerprint = statement.nullableText(11), sender = statement.nullableText(12)?.trim()?.lowercase(),
         )
       }
     }
-    return rows
+    return mergeSamePayments(rows)
+  }
+
+  /**
+   * One payment is often reported several times: an SMS from the bank, the payment app, a WhatsApp message
+   * from the bank. Alerts with the same amount, currency and direction within [SAME_PAYMENT_WINDOW_MS] are
+   * counted once when they come from different sources (another app, or another SMS sender/chat in the same
+   * app), or are an identical re-post from the same source, and
+   * do not name different merchants. Every source notification stays in history; only totals merge.
+   * The kept row is the most informative one (has a merchant; an edited category wins).
+   */
+  private fun mergeSamePayments(rows: List<MoneyRow>): List<MoneyRow> {
+    val merged = mutableListOf<MoneyRow>()
+    val used = BooleanArray(rows.size)
+    for (i in rows.indices) {
+      if (used[i]) continue
+      val group = mutableListOf(rows[i]); used[i] = true
+      for (j in i + 1 until rows.size) {
+        if (used[j]) continue
+        val candidate = rows[j]
+        if (rows[i].receivedAt - candidate.receivedAt > SAME_PAYMENT_WINDOW_MS) break   // rows are newest first
+        if (group.any { samePayment(it, candidate) } && group.none { sameSource(it, candidate) && it.fingerprint != candidate.fingerprint }) {
+          group += candidate; used[j] = true
+        }
+      }
+      val keep = group.maxWith(compareBy<MoneyRow>({ it.categoryEdited }, { it.merchant != null }, { it.category != "other" }, { -it.receivedAt }))
+      merged += keep.copy(
+        alsoFrom = group.filter { it !== keep }.map { it.packageName }.distinct().filter { it != keep.packageName },
+        mergedCount = group.size - 1,
+      )
+    }
+    return merged
+  }
+
+  private fun sameSource(a: MoneyRow, b: MoneyRow) = a.packageName == b.packageName && a.sender == b.sender
+
+  private fun samePayment(a: MoneyRow, b: MoneyRow): Boolean {
+    if (a.amountMinor != b.amountMinor || a.currency != b.currency || a.direction != b.direction) return false
+    if (kotlin.math.abs(a.receivedAt - b.receivedAt) > SAME_PAYMENT_WINDOW_MS) return false
+    // One sender (one app, or one SMS sender / chat inside an app) sends one alert per payment: from the same
+    // source only an identical re-post is the same payment.
+    if (sameSource(a, b)) return a.fingerprint != null && a.fingerprint == b.fingerprint
+    val ma = InsightExtractor.merchantKey(a.merchant); val mb = InsightExtractor.merchantKey(b.merchant)
+    return ma == null || mb == null || ma == mb || ma.contains(mb) || mb.contains(ma)
   }
 
   private fun primaryCurrency(rows: List<MoneyRow>) = rows.groupBy { it.currency }.maxByOrNull { (_, list) -> list.sumOf { it.amountMinor } }?.key ?: "INR"
@@ -490,7 +550,10 @@ internal class NotificationRepository private constructor(private val connection
       )
     }
     // Repeated notifications about the same item (same app, kind, day and title) collapse to the newest.
-    result.distinctBy { listOf(it.packageName, it.kind, it.dueAt / MILLIS_PER_DAY, (it.title ?: it.body ?: "").lowercase().take(60)) }.take(50)
+    // The same bill or renewal reported by different apps (same kind, due day and amount) also shows once.
+    result.distinctBy { listOf(it.packageName, it.kind, it.dueAt / MILLIS_PER_DAY, (it.title ?: it.body ?: "").lowercase().take(60)) }
+      .distinctBy { if (it.amountMinor != null) listOf(it.kind, it.dueAt / MILLIS_PER_DAY, it.amountMinor) else listOf(it.eventId) }
+      .take(50)
   }
 
   /** Merchants paid repeatedly at a steady amount and interval, plus explicitly flagged subscriptions. */
@@ -507,7 +570,10 @@ internal class NotificationRepository private constructor(private val connection
         val key = statement.getText(0)
         names[key] = statement.getText(1)
         currencies[key] = statement.getText(3)
-        rows += Triple(key, statement.getLong(2), statement.getLong(4) to (statement.getLong(5) == 1L))
+        val at = statement.getLong(4); val amount = statement.getLong(2)
+        // The same charge reported by several apps within minutes counts once.
+        if (rows.any { it.first == key && it.second == amount && kotlin.math.abs(it.third.first - at) <= SAME_PAYMENT_WINDOW_MS }) continue
+        rows += Triple(key, amount, at to (statement.getLong(5) == 1L))
       }
     }
     rows.groupBy { it.first }.mapNotNull { (key, list) ->
@@ -620,10 +686,17 @@ internal class NotificationRepository private constructor(private val connection
     cleanupIfDue(System.currentTimeMillis())
     val where = mutableListOf<String>()
     val args = mutableListOf<Any?>()
-    val queryExpression = toFtsExpression(filters.query)
-    if (queryExpression.isNotEmpty()) {
-      where += "e.id IN (SELECT rowid FROM notification_events_fts WHERE notification_events_fts MATCH ?)"
-      args += queryExpression
+    // Every term must match somewhere: inside the title/text (any part of a word), or the app's name.
+    searchTerms(filters.query).forEach { term ->
+      val like = "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+      val inApp = "e.package_name IN (SELECT package_name FROM app_directory WHERE label LIKE ? ESCAPE '\\')"
+      if (term.length >= 3) {
+        where += "(e.id IN (SELECT rowid FROM notification_search WHERE notification_search MATCH ?) OR $inApp)"
+        args += "\"" + term.replace("\"", "\"\"") + "\""; args += like
+      } else {
+        where += "(e.title LIKE ? ESCAPE '\\' OR e.body LIKE ? ESCAPE '\\' OR e.subtext LIKE ? ESCAPE '\\' OR $inApp)"
+        repeat(4) { args += like }
+      }
     }
     if (filters.id > 0) { where += "e.id = ?"; args += filters.id }
     if (filters.packageName.isNotBlank()) { where += "e.package_name = ?"; args += filters.packageName.trim() }
@@ -818,7 +891,7 @@ internal class NotificationRepository private constructor(private val connection
     } finally {
       connection.execSQL("DETACH DATABASE src")
     }
-    connection.execSQL("INSERT INTO notification_events_fts(notification_events_fts) VALUES ('rebuild')")
+    connection.execSQL("INSERT INTO notification_search(notification_search) VALUES ('rebuild')")
     context?.let { ctx ->
       pendingReminders().forEach { (id, at) -> if (!UserReminderScheduler.schedule(ctx, id, at)) markReminderUnavailable(id) }
       pendingInsightReminders().forEach { (id, at) -> if (!UserReminderScheduler.schedule(ctx, id, at, insight = true)) markReminderUnavailable(id, insight = true) }
@@ -834,6 +907,14 @@ internal class NotificationRepository private constructor(private val connection
         "ON CONFLICT(package_name) DO UPDATE SET label = excluded.label, icon_file = COALESCE(excluded.icon_file, app_directory.icon_file), updated_at = excluded.updated_at",
       packageName, label, iconFile, System.currentTimeMillis(),
     )
+  }
+
+  /** Package and Android notification key of a stored event. */
+  fun eventSource(id: Long): Pair<String, String>? = synchronized(connection) {
+    connection.prepare("SELECT package_name, notification_key FROM notification_events WHERE id = ?").use { s ->
+      s.bindLong(1, id)
+      if (s.step()) s.getText(0) to s.getText(1) else null
+    }
   }
 
   /** Last time the listener was known to be connected (null after access was turned off). */
@@ -940,8 +1021,9 @@ internal class NotificationRepository private constructor(private val connection
     existing.forEach { (id, analysis) -> saveAnalysis(id, analysis) }
   }
 
-  private fun toFtsExpression(query: String): String = Regex("[\\p{L}\\p{N}]+").findAll(query)
-    .take(MAX_SEARCH_TERMS).map { "\"${it.value}\"" }.joinToString(" AND ")
+  /** Words of the query (letters, digits and symbols such as ₹ or @ kept inside a term). */
+  private fun searchTerms(query: String): List<String> =
+    query.trim().split(Regex("\\s+")).map { it.trim('"', '\'', ',', '.') }.filter(String::isNotEmpty).take(MAX_SEARCH_TERMS)
 
   private fun transaction(block: () -> Unit) {
     connection.execSQL("BEGIN IMMEDIATE")
@@ -1012,7 +1094,8 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 10
+    private const val SCHEMA_VERSION = 11
+    private const val SAME_PAYMENT_WINDOW_MS = 15 * 60 * 1000L
     private const val GAP_HISTORY_MS = 30L * 24 * 60 * 60 * 1000
     private const val DEFAULT_RETENTION_DAYS = 30
     private const val MILLIS_PER_DAY = 86_400_000L

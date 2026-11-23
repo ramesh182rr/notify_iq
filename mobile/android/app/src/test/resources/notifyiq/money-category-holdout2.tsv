@@ -1,0 +1,31 @@
+id	body	category
+J01	Rs 1,750 debited from A/c XX9910 to MAHALAKSHMI FUEL POINT via UPI	fuel
+J02	₹3,000 paid to Highway Petrol Bunk	fuel
+J03	Rs 500 spent at BHARAT PETROLEUM OUTLET	fuel
+J04	₹860 paid to Venkat Supermart	groceries
+J05	Rs 1,420 debited to SRI VINAYAKA STORES via UPI	groceries
+J06	₹275 paid to Fresh Fish Market	groceries
+J07	Rs 2,050 spent at NILGIRIS 1905	groceries
+J08	₹130 paid to Ganga Dairy Farm	groceries
+J09	Rs 460 paid to WELLNESS PHARMA	health
+J10	₹1,500 paid to Smile Dental Care	health
+J11	Rs 700 spent at VISION OPTICALS	health
+J12	₹240 paid to Andhra Meals Hotel	food
+J13	Rs 390 paid to PUNJABI DHABA	food
+J14	₹180 paid to Amul Ice Cream Parlour	snacks
+J15	Rs 95 paid to SRI LAKSHMI JUICE CENTRE	snacks
+J16	₹2,100 paid to Kids Toy World	shopping
+J17	Rs 4,500 spent at CROMA ELECTRONICS	shopping
+J18	₹1,250 paid to Sai Furniture Works	shopping
+J19	Rs 680 paid to NAVYA STATIONERY AND BOOKS	shopping
+J20	₹1,800 paid to Orange Travels	tickets
+J21	Rs 350 paid to TSRTC	tickets
+J22	₹450 paid to Speedy Tyre Service	transport
+J23	Rs 70 paid to CITY PARKING	transport
+J24	₹550 paid to Style Unisex Salon	personal_care
+J25	Rs 3,000 paid to EXCEL COACHING CLASSES	education
+J26	₹8,500 paid to Comfort Ladies Hostel	rent
+J27	Rs 1,000 paid to K Suresh	transfers
+J28	₹1,299 paid to Spotify Premium	subscriptions
+J29	Rs 2,345 paid for TANGEDCO electricity bill	bills
+J30	₹620 paid to Royal Enfield Service Garage	transport
