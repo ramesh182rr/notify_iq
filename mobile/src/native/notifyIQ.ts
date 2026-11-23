@@ -1,4 +1,4 @@
-import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type AppDirectoryEntry, type ListenerGap, type BackupResult, type InstallInfo, type UpcomingAction} from './NativeNotifyIQ';
+import {getNativeNotifyIQ, type DailyOverview, type ListenerStatus, type MoneyAnalytics, type MoneySummary, type NotificationItem, type RecurringPayment, type SecuritySettings, type AppDirectoryEntry, type ListenerGap, type ReminderSettings, type BackupResult, type InstallInfo, type UpcomingAction} from './NativeNotifyIQ';
 
 function requireNativeModule() {
   const NativeNotifyIQ = getNativeNotifyIQ();
@@ -181,6 +181,18 @@ export function getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap
 
 export function markListenerGapsSeen(): Promise<void> {
   return requireNativeModule().markListenerGapsSeen();
+}
+
+export function getReminderSettings(): Promise<ReminderSettings> {
+  return requireNativeModule().getReminderSettings();
+}
+
+export function setReminderSettings(auto: boolean, alarm: boolean): Promise<void> {
+  return requireNativeModule().setReminderSettings(auto, alarm);
+}
+
+export function testReminder(alarm: boolean): Promise<boolean> {
+  return requireNativeModule().testReminder(alarm);
 }
 
 /** Opens the app that posted the notification (its exact screen while the notification is still active). */

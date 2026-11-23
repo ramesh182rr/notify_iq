@@ -13,7 +13,7 @@ import { LegalScreen } from '../legal/LegalScreen';
 import { PauseNotice } from '../health/ListenerGaps';
 import { useUiMode } from '../../app/UiMode';
 import { openInApp } from '../../components/openSource';
-import { actionKinds, dueLabel, formatMoney } from '../money/format';
+import { formatMoney, upcomingLabel } from '../money/format';
 import { categoryVisual, priorityColor, relativeTime, type AppTheme } from '../../theme/tokens';
 
 type HomeScreenProps = {
@@ -246,8 +246,8 @@ export function HomeScreen({
           <SectionHeader theme={theme} title="Coming up" action="See all" onAction={() => openInsights('upcoming')} />
           <Card theme={theme} style={styles.listCard}>
             {upcoming.slice(0, 3).map((item, index) => {
-              const kind = actionKinds[item.kind] ?? actionKinds.task;
-              const due = dueLabel(item.dueAt, item.hasTime);
+              const kind = upcomingLabel(item);
+              const due = kind;
               return (
                 <Pressable key={item.eventId} accessibilityRole="button" accessibilityLabel={`${kind.label} ${due.text}: ${item.title ?? ''}`}
                   onPress={() => openInsights('upcoming')}

@@ -27,6 +27,10 @@ internal data class ActionItem(
   val hasTime: Boolean,
   val amountMinor: Long?,
   val currency: String?,
+  /** "weekly", "monthly", "quarterly" or "yearly" for AutoPay/mandates; the next date rolls forward. */
+  val recurrence: String? = null,
+  /** True when the date is inferred ("this month", "next AutoPay in about a month"), not stated. */
+  val approximate: Boolean = false,
 )
 
 internal data class NotificationInsight(
@@ -47,7 +51,7 @@ internal data class NotificationInsight(
  * [VERSION] so stored results can be recomputed.
  */
 internal object InsightExtractor {
-  const val VERSION = 3
+  const val VERSION = 4
 
   private val I = setOf(RegexOption.IGNORE_CASE)
 
@@ -117,7 +121,7 @@ internal object InsightExtractor {
   private val SUB_STRONG = Regex("""\b(?:subscription|membership|auto-?pay|autopay|auto-?renew\w*|auto-?debit\w*|e-?mandate|mandate|standing instruction)\b.{0,60}\b(?:renew\w*|will be (?:charged|debited)|charged|debit\w*|next|billing)\b|\b(?:renews|will renew|renewal (?:date|on)|next billing|next renewal|billing date|free trial ends|trial ends)\b|\bwill be (?:charged|debited)\b.{0,60}\b(?:subscription|membership|mandate)\b""", I)
   private val SUB_KW = Regex("""\b(?:subscription|membership|renew(?:al|s|ed)?|auto-?pay|autopay|auto-?debit|e-?mandate|mandate|standing instruction|next billing|billing cycle)\b""", I)
   private val SUB_DONE = Regex("""\b(?:renewed|has been charged|was charged|charged successfully|payment (?:of .{0,25})?(?:successful|received)|subscription (?:is )?active)\b""", I)
-  private val BILL_KW = Regex("""\b(?:bill|due date|payment due|amount due|total due|pay by|emi|premium|outstanding|statement (?:is )?(?:generated|ready)|property tax|fees? (?:of|due)|to be paid by)\b|\bpay\b.{0,40}\b(?:by|before)\b|\bwill be debited\b|देय|बिल""", I)
+  private val BILL_KW = Regex("""\b(?:bill|due date|payment due|amount due|total due|pay by|emi|premium|outstanding|statement (?:is )?(?:generated|ready)|property tax|fees? (?:of|due)|to be paid|maintenance charges)\b|\bpay\b.{0,40}\b(?:by|before)\b|\bwill be debited\b|देय|बिल""", I)
   private val DUE_GENERIC = Regex("""\b(?:is due|due (?:on|by|today|tomorrow|in|hai)|last date)\b""", I)
   private val EXPIRY_KW = Regex("""\b(?:expir(?:e|es|ed|ing|y)|valid (?:till|until|upto|up to)|validity (?:ends|ending|expires|will end)|will lapse|lapses|matur(?:es|ity)|active (?:till|until))\b|समाप्त""", I)
   private val APPOINTMENT_KW = Regex("""\b(?:appointment|consultation|check-?up|lab test|blood test|scan|vaccination|vaccine|doctor|dr\.|hospital|clinic|dentist|physiotherapy|session with|meeting with|meeting on|meeting at|mri|x-?ray)\b|डॉक्टर|अपॉइंटमेंट""", I)
@@ -140,7 +144,21 @@ internal object InsightExtractor {
   private val TIME = Regex("""\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)(?![a-z])|\b([01]?\d|2[0-3]):([0-5]\d)\b(?!\s*(?:am|pm))""", I)
 
   private data class Amount(val start: Int, val end: Int, val minor: Long, val currency: String)
-  private data class DateHit(val start: Int, val end: Int, val date: LocalDate)
+  private data class DateHit(val start: Int, val end: Int, val date: LocalDate, val approximate: Boolean = false)
+
+  // "on 30th", "by the 25th", "due on 1st", "5th of every month": a day of the month without a month.
+  private val DATE_DAY_ONLY = Regex("""\b(?:(?:on|by|before|till|until|due|from|dated|starting)\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?|(?:the\s+)?(\d{1,2})(st|nd|rd|th))\b(?!\s*(?:%|days?|months?|years?|hrs?|hours?|mins?|minutes?|items?|floor|cross|main|street|road|[/.\-:]\d|$MON))""", I)
+  private val DATE_MONTH_PHRASE = Regex("""\b(?:by |before |at |till |until )?(?:the )?(this month|end of (?:the |this )?month|month[- ]end|next month)\b""", I)
+  private val NEXT_MONTH = Regex("""\bnext month\b""", I)
+  // "bill of 2000", "rent 15000", "EMI: 4,500": an amount without a currency symbol, used only for dues.
+  private val BARE_DUE_AMOUNT = Regex("""\b(?:bill|rent|fees?|emi|premium|amount|dues?|pay|payable|of)\s*(?:of\s+|is\s+|:\s*|-\s*)?(\d{1,3}(?:,\d{2,3})+|\d{3,7})(?:\.(\d{1,2}))?\b(?!\s*(?:%|days?|months?|years?|items?|units?|gb|mb|th|st|nd|rd|am|pm|[/:]))""", I)
+  private val PAID_DONE = Regex("""\b(?:is paid|has been paid|was paid|paid successfully|payment (?:is |has been )?(?:received|successful|done)|thanks? (?:you )?for (?:your )?payment|bill paid)\b""", I)
+  private val MANDATE_KW = Regex("""\b(?:auto-?pay|e-?mandate|mandate|standing instruction|auto-?debit)\b""", I)
+  private val MANDATE_SETUP = Regex("""\b(?:auto-?pay|e-?mandate|mandate|standing instruction|auto-?debit)\b.{0,80}\b(?:created|registered|set ?up|activated|successful(?:ly)?|approved|enabled|confirmed)\b|\b(?:set ?up|created|registered|activated|enabled)\b.{0,30}\b(?:auto-?pay|e-?mandate|mandate|standing instruction)\b""", I)
+  private val FREQ_WEEKLY = Regex("""\b(?:weekly|every week|per week|/week)\b""", I)
+  private val FREQ_QUARTERLY = Regex("""\b(?:quarterly|every quarter|every 3 months|per quarter)\b""", I)
+  private val FREQ_YEARLY = Regex("""\b(?:yearly|annual(?:ly)?|every year|per year|/year|p\.a\.)""", I)
+  private val FREQ_MONTHLY = Regex("""\b(?:monthly|every month|per month|each month|/month|/mo|p\.m\.)""", I)
 
   fun extract(title: String?, body: String?, postedAt: Long, zone: ZoneId = ZoneId.systemDefault()): NotificationInsight {
     val text = combine(title, body)
@@ -157,7 +175,8 @@ internal object InsightExtractor {
     val notYet = NOT_YET.containsMatchIn(text)
 
     val money = if (!failed && !notYet) extractMoney(text, amounts, promo, evidence) else null
-    val action = extractAction(text, amounts, dates, promo, money, zone, evidence)
+    val action = autoPayAction(text, amounts, dates, anchor, promo, failed, money, zone, evidence)
+      ?: extractAction(text, amounts, dates, promo, money, zone, evidence)
     val subscription = SUB_KW.containsMatchIn(text) && !promo && (money?.direction == MoneyDirection.DEBIT || action?.kind == ActionKind.SUBSCRIPTION_RENEWAL) ||
       (money?.direction == MoneyDirection.DEBIT && (money.spendCategory == "subscriptions" || MoneyCategorizer.isSubscriptionMerchant(money.merchant)))
     return NotificationInsight(money, action, subscription, evidence.joinToString("; "))
@@ -281,13 +300,43 @@ internal object InsightExtractor {
   }
 
 
+  /**
+   * AutoPay / e-mandate / standing instruction: a set-up confirmation or an executed AutoPay debit means the
+   * next payment is coming. Its date is the stated one, or one period later (approximate). Pre-debit notices
+   * ("will be debited tomorrow") are ordinary renewals handled by [extractAction].
+   */
+  private fun autoPayAction(
+    text: String, amounts: List<Amount>, dates: List<DateHit>, anchor: LocalDate, promo: Boolean, failed: Boolean, money: MoneyEvent?,
+    zone: ZoneId, evidence: MutableList<String>,
+  ): ActionItem? {
+    if (promo || failed || !MANDATE_KW.containsMatchIn(text)) return null
+    val setup = MANDATE_SETUP.containsMatchIn(text) && !Regex("""\b(?:revoked|cancell?ed|paused|deactivated|expired)\b""", RegexOption.IGNORE_CASE).containsMatchIn(text)
+    // An executed debit predicts the next one only when the period is known: stated, or UPI AutoPay (monthly
+    // by default). "Auto-debited for Prime" alone could be yearly, so no date is guessed.
+    val executed = money?.direction == MoneyDirection.DEBIT &&
+      (recurrence(text) != null || Regex("""\bupi auto-?pay\b""", RegexOption.IGNORE_CASE).containsMatchIn(text))
+    if (!setup && !executed) return null
+    val repeat = recurrence(text) ?: "monthly"
+    val stated = dates.firstOrNull { it.date.isAfter(anchor) && !it.approximate }
+    val next = stated?.date ?: nextOccurrence(anchor, repeat)
+    val amount = money?.let { Amount(0, 0, it.amountMinor, it.currency) } ?: pickDueAmount(text, amounts) ?: bareDueAmount(text)
+    evidence += "action:autopay:$repeat"
+    return ActionItem(
+      ActionKind.SUBSCRIPTION_RENEWAL, next.atStartOfDay(zone).toInstant().toEpochMilli(), false, amount?.minor, amount?.currency,
+      recurrence = repeat, approximate = stated == null,
+    )
+  }
+
   private fun extractAction(
     text: String, amounts: List<Amount>, dates: List<DateHit>, promo: Boolean, money: MoneyEvent?, zone: ZoneId,
     evidence: MutableList<String>,
   ): ActionItem? {
     if (dates.isEmpty()) return null
     val sub = SUB_STRONG.find(text)
-    val hasAmount = amounts.any { spendable(text, it) }
+    val bare = if (amounts.isEmpty()) bareDueAmount(text) else null
+    val hasAmount = amounts.any { spendable(text, it) } || bare != null
+    // "Your bill for this month is paid": nothing is due.
+    if (PAID_DONE.containsMatchIn(text) && !NEXT_KW.containsMatchIn(text)) return null
     val kind: ActionKind
     val keyword: MatchResult
     when {
@@ -311,12 +360,12 @@ internal object InsightExtractor {
     val localTime = time?.let { parseTime(it) }
     val dueAt = (if (localTime != null) due.date.atTime(localTime) else due.date.atStartOfDay()).atZone(zone).toInstant().toEpochMilli()
     val actionAmount = when (kind) {
-      ActionKind.BILL_DUE, ActionKind.SUBSCRIPTION_RENEWAL -> pickDueAmount(text, amounts)
+      ActionKind.BILL_DUE, ActionKind.SUBSCRIPTION_RENEWAL -> pickDueAmount(text, amounts) ?: bare
       else -> null
     }
     evidence += "action:${kind.wire}"
     evidence += "date:${text.substring(due.start, due.end)}"
-    return ActionItem(kind, dueAt, localTime != null, actionAmount?.minor, actionAmount?.currency)
+    return ActionItem(kind, dueAt, localTime != null, actionAmount?.minor, actionAmount?.currency, approximate = due.approximate)
   }
 
   private fun pickDueAmount(text: String, amounts: List<Amount>): Amount? {
@@ -383,7 +432,50 @@ internal object InsightExtractor {
       }
       add(m.range, date)
     }
+    val nextMonth = NEXT_MONTH.containsMatchIn(text)
+    DATE_DAY_ONLY.findAll(text).forEach { m ->
+      val day = (m.groups[1] ?: m.groups[2])?.value?.toIntOrNull() ?: return@forEach
+      if (day !in 1..31) return@forEach
+      add(m.range, nextDayOfMonth(anchor, day, nextMonth))
+    }
+    DATE_MONTH_PHRASE.findAll(text).forEach { m ->
+      val month = if (m.groupValues[1].lowercase() == "next month") anchor.plusMonths(1) else anchor
+      val range = m.range
+      if (hits.any { range.first <= it.end && range.last >= it.start }) return@forEach
+      // A month without a day: the last day of that month, marked approximate.
+      hits += DateHit(range.first, range.last + 1, month.withDayOfMonth(month.lengthOfMonth()), approximate = true)
+    }
     return hits.sortedBy { it.start }
+  }
+
+  /** The next time this day of the month comes round (today counts); "30th" in a short month is its last day. */
+  private fun nextDayOfMonth(anchor: LocalDate, day: Int, nextMonth: Boolean): LocalDate {
+    fun inMonth(month: LocalDate) = month.withDayOfMonth(minOf(day, month.lengthOfMonth()))
+    if (nextMonth) return inMonth(anchor.plusMonths(1))
+    val thisMonth = inMonth(anchor)
+    return if (thisMonth.isBefore(anchor)) inMonth(anchor.plusMonths(1)) else thisMonth
+  }
+
+  private fun bareDueAmount(text: String): Amount? = BARE_DUE_AMOUNT.find(text)?.let { m ->
+    val whole = m.groupValues[1].replace(",", "").toLongOrNull() ?: return null
+    val fraction = m.groupValues[2].padEnd(2, '0').takeIf { m.groupValues[2].isNotEmpty() }?.toLong() ?: 0L
+    val group = m.groups[1]!!
+    Amount(group.range.first, group.range.last + 1, whole * 100 + fraction, "INR")
+  }
+
+  private fun recurrence(text: String): String? = when {
+    FREQ_WEEKLY.containsMatchIn(text) -> "weekly"
+    FREQ_QUARTERLY.containsMatchIn(text) -> "quarterly"
+    FREQ_YEARLY.containsMatchIn(text) -> "yearly"
+    FREQ_MONTHLY.containsMatchIn(text) -> "monthly"
+    else -> null
+  }
+
+  fun nextOccurrence(date: LocalDate, recurrence: String): LocalDate = when (recurrence) {
+    "weekly" -> date.plusWeeks(1)
+    "quarterly" -> date.plusMonths(3)
+    "yearly" -> date.plusYears(1)
+    else -> date.plusMonths(1)
   }
 
   private fun safeDate(year: Int, month: Int, day: Int): LocalDate? = runCatching { LocalDate.of(year, month, day) }.getOrNull()

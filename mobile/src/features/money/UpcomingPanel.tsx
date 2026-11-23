@@ -7,7 +7,7 @@ import { Card, FadeIn, Pill, SectionHeader } from '../../components/ui';
 import type { UpcomingAction } from '../../native/NativeNotifyIQ';
 import { clearInsightReminder, dismissInsight, getUpcomingActions, setInsightReminder } from '../../native/notifyIQ';
 import { type AppTheme } from '../../theme/tokens';
-import { actionKinds, dueLabel, formatMoney } from './format';
+import { dueLabel, formatMoney, upcomingLabel } from './format';
 
 type Props = { theme: AppTheme; refreshKey: number };
 
@@ -70,16 +70,15 @@ export function UpcomingPanel({ theme, refreshKey }: Props) {
           <SectionHeader theme={theme} title={group.title} />
           <View style={styles.list}>
             {group.items.map(item => {
-              const kind = actionKinds[item.kind] ?? actionKinds.task;
-              const due = dueLabel(item.dueAt, item.hasTime, now);
-              const toneColor = due.tone === 'overdue' ? colors.danger : due.tone === 'soon' ? colors.warning : colors.brand;
+              const label = upcomingLabel(item, now);
+              const toneColor = label.tone === 'overdue' ? colors.danger : label.tone === 'soon' ? colors.warning : colors.brand;
               const options = reminderOptions(item, now);
               return (
                 <Card key={item.eventId} theme={theme} style={styles.item}>
                   <View style={styles.row}>
-                    <View style={[styles.icon, { backgroundColor: colors.brandSoft }]}><Text style={styles.iconText}>{kind.emoji}</Text></View>
+                    <View style={[styles.icon, { backgroundColor: colors.brandSoft }]}><Text style={styles.iconText}>{label.emoji}</Text></View>
                     <View style={styles.flex}>
-                      <Text style={[styles.kind, { color: toneColor }]}>{kind.label} · {due.text}</Text>
+                      <Text style={[styles.kind, { color: toneColor }]}>{label.label} · {label.text}</Text>
                       <Text numberOfLines={2} style={[styles.title, { color: colors.textPrimary }]}>{item.title || item.body || appName(item.packageName)}</Text>
                       {item.title && item.body ? <Text numberOfLines={2} style={[styles.body, { color: colors.textSecondary }]}>{item.body}</Text> : null}
                       <Text style={[styles.source, { color: colors.textSecondary }]}>From {appName(item.packageName)}</Text>

@@ -72,6 +72,18 @@ export const actionKinds: Record<string, { label: string; emoji: string }> = {
   task: { label: 'To do', emoji: '✅' },
 };
 
+const REPEAT: Record<string, string> = { weekly: 'every week', monthly: 'every month', quarterly: 'every 3 months', yearly: 'every year' };
+
+/** "AutoPay · every month" or the kind label; "this month" for dates inferred from a month without a day. */
+export function upcomingLabel(item: { kind: string; dueAt: number; hasTime: boolean; recurrence?: string | null; approximate?: boolean }, now = Date.now()) {
+  const kind = actionKinds[item.kind] ?? actionKinds.task;
+  const label = item.recurrence ? `AutoPay · ${REPEAT[item.recurrence] ?? item.recurrence}` : kind.label;
+  const due = dueLabel(item.dueAt, item.hasTime, now);
+  const text = item.approximate && !item.recurrence ? `This month · by ${new Date(item.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+    : item.approximate ? `About ${/^(Today|Tomorrow|Yesterday)/.test(due.text) ? due.text.toLowerCase() : due.text}` : due.text;
+  return { label, emoji: item.recurrence ? '🔁' : kind.emoji, text, tone: due.tone };
+}
+
 export function dueLabel(dueAt: number, hasTime: boolean, now = Date.now()) {
   const start = new Date(now); start.setHours(0, 0, 0, 0);
   const dueDay = new Date(dueAt); dueDay.setHours(0, 0, 0, 0);

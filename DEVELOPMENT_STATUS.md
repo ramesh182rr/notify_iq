@@ -107,6 +107,17 @@
   - If still not connected, a help card offers Reconnect, Battery settings (`ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS`, no special permission) and OEM autostart guidance.
   - The emulator re-binds promptly, so the stalled path is covered by a Jest test. The real-device fix still needs the owner's confirmation.
 - R-019 (1.9): probe-based connection status, safe brand-agnostic self-repair (requestRebind at start, boot, update, status checks and a 15-minute job). The component-toggle approach was measured harmful on Android 15 and rejected. UI moves to 4 tabs: Inbox merges search and saved searches behind a Filters panel; the Settings tab groups Rules, access & apps, backup, App lock, appearance and legal; the header is slimmed. Tests: ListenerHealthTest (probe ignores a stale flag, repair is harmless while bound, job scheduled and persisted), Settings and connection-help Jest tests, e2e updated (21/21).
+- R-024 (1.14): smarter Coming up (day-only and month dates, bare amounts, AutoPay/mandates with repeating dates) and automatic alarm-style reminders (day before at 9 AM, due-day follow-up, Done/snooze, next AutoPay cycle; Settings → Reminders with a test button).
+  - Schema v12. Fixed a migration bug that the existing migration test caught: older databases recompute insights before the v12 columns exist.
+  - ListenerGapTest made robust to the real process exit caused by installing the test build.
+  - Tests:
+    - Unit: ComingUpExtractionTest 20/20 plus 12/12 unseen (11/12 on first run); ReminderTimingTest 7/7.
+    - Instrumentation on API 35: 46 tests, 44 passed and 2 opt-in skipped, including the new AutoReminderTest (3).
+    - Instrumentation on API 29: 46 tests, 42 passed and 4 skipped. The money text in reminders is now formatted by hand (Indian grouping), because Android 10's ICU formatted ₹ differently; ReminderMoneyFormatTest covers it.
+    - Jest: 60/60.
+    - e2e: 27/27 (run before the final two wording/format fixes).
+    - Upgrade check: 1.13 with a "this month" bill and an AutoPay mandate upgraded to 1.14. Coming up showed "This month · by 30 Nov" and "AutoPay · every month", both with day-before 9 AM reminders. The test reminder showed with Paid / Done and Remind me in 1 hour.
+  - Emulator cleanup: access revoked, app data cleared, fixtures cancelled.
 - R-023 (1.13): user-feedback batch (see the decisions log).
   - Changes:
     - Simple view.

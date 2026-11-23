@@ -85,7 +85,13 @@ class ListenerGapTest {
 
     // Simulate a pause: the notification arrives while NotifyIQ cannot read it (capture gate closed).
     NotificationListenerRuntimeState.exclusionsReady = false
-    repository.setListenerAliveAt(System.currentTimeMillis() - 10 * 60_000)   // last seen alive 10 min ago
+    // Pretend the listener was last seen alive a while ago. Not before this process started: installing the
+    // test build ends the previous app process, and that real exit would (correctly) start the pause later.
+    val processStartWall = System.currentTimeMillis() - (android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime())
+    val fakeAlive = maxOf(System.currentTimeMillis() - 10 * 60_000L, processStartWall + 1_000L)
+    val age = System.currentTimeMillis() - fakeAlive
+    if (age < 150_000L) Thread.sleep(150_000L - age)   // pauses under 2 minutes are not reported
+    repository.setListenerAliveAt(fakeAlive)
     shell("am start -n $poster/.PostActivity --ei id $fixtureId --es title GapFixture --es text PostedWhilePaused")
     Thread.sleep(2_500)
     assertNull("missed while paused", repository.fixture())
@@ -97,7 +103,7 @@ class ListenerGapTest {
     assertTrue("pause recorded", waitUntil(5_000) { repository.listenerGaps(0).isNotEmpty() })
     val gap = repository.listenerGaps(0).first()
     assertEquals(1, gap.recovered)
-    assertTrue("pause lasted about 10 minutes", gap.endedAt - gap.startedAt in 9 * 60_000L..11 * 60_000L)
+    assertEquals("pause starts when the listener was last seen alive", fakeAlive, gap.startedAt)
     assertNotNull("alive marker refreshed", repository.listenerAliveAt())
     assertTrue(repository.listenerAliveAt()!! >= gap.endedAt)
   }

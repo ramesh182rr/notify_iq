@@ -37,6 +37,7 @@
         </intent-filter>
       </service>
       <receiver android:name=".NotificationReminderReceiver" android:exported="false" />
+      <receiver android:name=".ReminderActionReceiver" android:exported="false" />
       <!-- Private no-op component; flipping its enabled state makes Android re-bind the notification listener (ListenerHealth). -->
       <receiver android:name=".ListenerRebindTrigger" android:enabled="false" android:exported="false" />
       <receiver android:name=".ReminderBootReceiver" android:enabled="true" android:exported="false">

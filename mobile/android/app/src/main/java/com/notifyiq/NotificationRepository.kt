@@ -162,6 +162,16 @@ internal class NotificationRepository private constructor(private val connection
       }
       version = 11
     }
+    if (version == 11) {
+      transaction {
+        // AutoPay / mandates repeat; "this month" dates are approximate; reminders have a day-before and due-day stage.
+        connection.execSQL("ALTER TABLE notification_insights ADD COLUMN recurrence TEXT")
+        connection.execSQL("ALTER TABLE notification_insights ADD COLUMN approximate INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE notification_insights ADD COLUMN reminder_stage INTEGER")
+        connection.execSQL("PRAGMA user_version = 12")
+      }
+      version = 12
+    }
     // Recompute insights when the deterministic extractor changes; user overrides and dismissals are kept.
     if ((scalarLong("SELECT COUNT(*) FROM notification_insights WHERE version < ?", InsightExtractor.VERSION.toLong()) ?: 0L) > 0L) {
       transaction { backfillInsights() }
@@ -341,14 +351,113 @@ internal class NotificationRepository private constructor(private val connection
     }
     val money = insight.money
     val action = insight.action
+    val v12 = hasRecurrenceColumn()
     execute(
-      "INSERT INTO notification_insights(event_id, amount_minor, currency, direction, merchant, merchant_key, spend_category, channel, action_kind, due_at, due_has_time, action_amount_minor, action_currency, subscription, evidence, version) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(event_id) DO UPDATE SET amount_minor=excluded.amount_minor, currency=excluded.currency, direction=excluded.direction, " +
+      "INSERT INTO notification_insights(event_id, amount_minor, currency, direction, merchant, merchant_key, spend_category, channel, action_kind, due_at, due_has_time, action_amount_minor, action_currency, subscription, evidence, version" +
+        (if (v12) ", recurrence, approximate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " else ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ") +
+        "ON CONFLICT(event_id) DO UPDATE SET amount_minor=excluded.amount_minor, currency=excluded.currency, direction=excluded.direction, " +
+        (if (v12) "recurrence=excluded.recurrence, approximate=excluded.approximate, " else "") +
         "merchant=excluded.merchant, merchant_key=excluded.merchant_key, spend_category=excluded.spend_category, channel=excluded.channel, action_kind=excluded.action_kind, due_at=excluded.due_at, " +
         "due_has_time=excluded.due_has_time, action_amount_minor=excluded.action_amount_minor, action_currency=excluded.action_currency, subscription=excluded.subscription, evidence=excluded.evidence, version=excluded.version",
-      id, money?.amountMinor, money?.currency, money?.direction?.wire, money?.merchant, InsightExtractor.merchantKey(money?.merchant), money?.spendCategory, money?.channel,
-      action?.kind?.wire, action?.dueAt, if (action?.hasTime == true) 1L else 0L, action?.amountMinor, action?.currency, if (insight.subscription) 1L else 0L, insight.evidence, InsightExtractor.VERSION.toLong(),
+      *(listOf<Any?>(
+        id, money?.amountMinor, money?.currency, money?.direction?.wire, money?.merchant, InsightExtractor.merchantKey(money?.merchant), money?.spendCategory, money?.channel,
+        action?.kind?.wire, action?.dueAt, if (action?.hasTime == true) 1L else 0L, action?.amountMinor, action?.currency, if (insight.subscription) 1L else 0L, insight.evidence, InsightExtractor.VERSION.toLong(),
+      ) + if (v12) listOf(action?.recurrence, if (action?.approximate == true) 1L else 0L) else emptyList()).toTypedArray(),
     )
+    if (v12) autoRemind(id, action)
+  }
+
+  // ---- automatic reminders for bills, renewals, AutoPay, expiries and appointments -----------------
+
+  private fun autoRemindersOn() = scalarText("SELECT value FROM app_preferences WHERE key = 'auto_reminders'") != "0"
+
+  fun reminderSettings(): Pair<Boolean, Boolean> = synchronized(connection) {
+    autoRemindersOn() to (scalarText("SELECT value FROM app_preferences WHERE key = 'alarm_reminders'") != "0")
+  }
+
+  fun setReminderSettings(auto: Boolean, alarm: Boolean) = synchronized(connection) {
+    execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('auto_reminders', ?)", if (auto) "1" else "0")
+    execute("INSERT OR REPLACE INTO app_preferences(key, value) VALUES ('alarm_reminders', ?)", if (alarm) "1" else "0")
+    if (auto) {
+      // Turning it on covers what is already coming up.
+      val rows = mutableListOf<Long>()
+      connection.prepare("SELECT event_id FROM notification_insights WHERE action_kind IS NOT NULL AND dismissed = 0 AND reminder_status IS NULL").use { s ->
+        while (s.step()) rows += s.getLong(0)
+      }
+      rows.forEach { autoRemindStored(it) }
+    }
+  }
+
+  private fun autoRemind(id: Long, action: ActionItem?) {
+    if (context == null || action == null || action.kind.wire !in ReminderTiming.HIGH_PRIORITY || !autoRemindersOn()) return
+    // A reminder the person set, cancelled ("off") or already received is never replaced.
+    if (scalarText("SELECT reminder_status FROM notification_insights WHERE event_id = ?", id) != null) return
+    val receivedAt = scalarLong("SELECT received_at FROM notification_events WHERE id = ?", id) ?: return
+    val due = ReminderTiming.currentDue(action.dueAt, action.recurrence)
+    val plan = ReminderTiming.first(due, receivedAt, System.currentTimeMillis()) ?: return
+    scheduleStage(id, plan.first, plan.second)
+  }
+
+  private fun autoRemindStored(id: Long) {
+    val row = connection.prepare("SELECT action_kind, due_at, recurrence FROM notification_insights WHERE event_id = ?").use { s ->
+      s.bindLong(1, id); if (s.step()) Triple(s.getText(0), s.getLong(1), s.nullableText(2)) else null
+    } ?: return
+    if (row.first !in ReminderTiming.HIGH_PRIORITY || context == null) return
+    val receivedAt = scalarLong("SELECT received_at FROM notification_events WHERE id = ?", id) ?: return
+    val plan = ReminderTiming.first(ReminderTiming.currentDue(row.second, row.third), receivedAt, System.currentTimeMillis()) ?: return
+    scheduleStage(id, plan.first, plan.second)
+  }
+
+  private fun scheduleStage(id: Long, at: Long, stage: Int) {
+    val status = if (context != null && UserReminderScheduler.schedule(context, id, at, insight = true)) "pending" else "permission_missing"
+    execute("UPDATE notification_insights SET reminder_at = ?, reminder_status = ?, reminder_stage = ? WHERE event_id = ?", at, status, stage.toLong(), id)
+  }
+
+  /** What a reminder notification says; null if the item is gone or dismissed. */
+  fun reminderDetails(id: Long): ReminderDetails? = synchronized(connection) {
+    connection.prepare(
+      "SELECT i.action_kind, i.due_at, i.due_has_time, i.action_amount_minor, i.action_currency, i.merchant, i.recurrence, i.approximate, i.reminder_stage, e.title, e.body, e.package_name " +
+        "FROM notification_insights i JOIN notification_events e ON e.id = i.event_id WHERE i.event_id = ? AND i.dismissed = 0 AND i.action_kind IS NOT NULL",
+    ).use { s ->
+      s.bindLong(1, id)
+      if (!s.step()) return@synchronized null
+      val recurrence = s.nullableText(6)
+      ReminderDetails(
+        id, s.getText(0), ReminderTiming.currentDue(s.getLong(1), recurrence), s.getLong(1), s.getLong(2) == 1L,
+        if (s.getColumnType(3) == SQLITE_NULL) null else s.getLong(3), s.nullableText(4), s.nullableText(5), recurrence, s.getLong(7) == 1L,
+        if (s.getColumnType(8) == SQLITE_NULL) 1 else s.getLong(8).toInt(), s.nullableText(9), s.nullableText(10), s.getText(11),
+      )
+    }
+  }
+
+  /** After a reminder is shown: the due-day reminder, or for AutoPay the next cycle. */
+  fun scheduleFollowUp(id: Long) = synchronized(connection) {
+    val details = reminderDetails(id) ?: return@synchronized
+    val now = System.currentTimeMillis()
+    val next = ReminderTiming.followUp(details.dueAt, details.stage, now)
+    when {
+      next != null -> scheduleStage(id, next, 2)
+      details.recurrence != null -> nextCycle(id, details)
+    }
+  }
+
+  /** "Done" on a reminder: no more reminders this time; AutoPay items move on to their next date. */
+  fun completeReminder(id: Long) = synchronized(connection) {
+    UserReminderScheduler.cancel(context, id, insight = true)
+    val details = reminderDetails(id)
+    if (details?.recurrence != null) nextCycle(id, details)
+    else execute("UPDATE notification_insights SET reminder_status = 'done' WHERE event_id = ?", id)
+  }
+
+  fun snoozeReminder(id: Long, minutes: Int) = synchronized(connection) {
+    val stage = scalarLong("SELECT reminder_stage FROM notification_insights WHERE event_id = ?", id)?.toInt() ?: 1
+    scheduleStage(id, System.currentTimeMillis() + minutes * 60_000L, stage)
+  }
+
+  private fun nextCycle(id: Long, details: ReminderDetails) {
+    val following = ReminderTiming.nextDue(details.originalDueAt, details.dueAt, details.recurrence ?: return)
+    val at = ReminderTiming.dayBefore(following)
+    scheduleStage(id, at, 1)
   }
 
   private fun backfillInsights() {
@@ -538,8 +647,8 @@ internal class NotificationRepository private constructor(private val connection
     val result = mutableListOf<UpcomingAction>()
     connection.prepare(
       "SELECT i.event_id, i.action_kind, i.due_at, i.due_has_time, i.action_amount_minor, i.action_currency, i.reminder_at, i.reminder_status, i.merchant, " +
-        "e.package_name, e.title, e.body, e.received_at FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
-        "WHERE i.action_kind IS NOT NULL AND i.dismissed = 0 AND i.due_at >= ? ORDER BY i.due_at ASC, e.received_at DESC LIMIT 100",
+        "e.package_name, e.title, e.body, e.received_at, i.recurrence, i.approximate FROM notification_insights i JOIN notification_events e ON e.id = i.event_id " +
+        "WHERE i.action_kind IS NOT NULL AND i.dismissed = 0 AND (i.due_at >= ? OR i.recurrence IS NOT NULL) ORDER BY e.received_at DESC LIMIT 200",
     ).use { statement ->
       statement.bindLong(1, now - 3 * MILLIS_PER_DAY)
       while (statement.step()) result += UpcomingAction(
@@ -547,12 +656,18 @@ internal class NotificationRepository private constructor(private val connection
         if (statement.getColumnType(4) == SQLITE_NULL) null else statement.getLong(4), statement.nullableText(5),
         if (statement.getColumnType(6) == SQLITE_NULL) null else statement.getLong(6), statement.nullableText(7), statement.nullableText(8),
         statement.getText(9), statement.nullableText(10), statement.nullableText(11), statement.getLong(12),
-      )
+        // AutoPay and mandates roll forward to their next date.
+        recurrence = statement.nullableText(13), approximate = statement.getLong(14) == 1L,
+      ).let { item -> if (item.recurrence != null) item.copy(dueAt = ReminderTiming.currentDue(item.dueAt, item.recurrence, now)) else item }
     }
     // Repeated notifications about the same item (same app, kind, day and title) collapse to the newest.
     // The same bill or renewal reported by different apps (same kind, due day and amount) also shows once.
+    // Newest first, so the newest notice about an item wins; then soonest first for display.
     result.distinctBy { listOf(it.packageName, it.kind, it.dueAt / MILLIS_PER_DAY, (it.title ?: it.body ?: "").lowercase().take(60)) }
       .distinctBy { if (it.amountMinor != null) listOf(it.kind, it.dueAt / MILLIS_PER_DAY, it.amountMinor) else listOf(it.eventId) }
+      // One AutoPay (same merchant and amount) shows once even after several set-up or debit messages.
+      .distinctBy { if (it.recurrence != null) listOf("autopay", InsightExtractor.merchantKey(it.merchant) ?: it.packageName, it.amountMinor) else listOf(it.eventId) }
+      .sortedBy { it.dueAt }
       .take(50)
   }
 
@@ -607,13 +722,14 @@ internal class NotificationRepository private constructor(private val connection
 
   fun setInsightReminder(eventId: Long, at: Long): String = synchronized(connection) {
     val status = if (context != null && UserReminderScheduler.schedule(context, eventId, at, insight = true)) "pending" else "permission_missing"
-    execute("UPDATE notification_insights SET reminder_at = ?, reminder_status = ? WHERE event_id = ?", at, status, eventId)
+    execute("UPDATE notification_insights SET reminder_at = ?, reminder_status = ?, reminder_stage = 1 WHERE event_id = ?", at, status, eventId)
     status
   }
 
   fun clearInsightReminder(eventId: Long) = synchronized(connection) {
     UserReminderScheduler.cancel(context, eventId, insight = true)
-    execute("UPDATE notification_insights SET reminder_at = NULL, reminder_status = NULL WHERE event_id = ?", eventId)
+    // "off" (not NULL) so an automatic reminder is not added again.
+    execute("UPDATE notification_insights SET reminder_at = NULL, reminder_status = 'off', reminder_stage = NULL WHERE event_id = ?", eventId)
   }
 
   fun previewUserRules(ruleJson: String, sampleJson: String): String = synchronized(connection) {
@@ -841,6 +957,15 @@ internal class NotificationRepository private constructor(private val connection
     while (statement.step()) if (statement.getText(1) == "content_fingerprint") found = true
     found
   }.also { if (it) fingerprintColumn = true }
+
+  @Volatile private var recurrenceColumn: Boolean? = null
+
+  /** False while an older database is still migrating (insights are recomputed in early steps). */
+  private fun hasRecurrenceColumn(): Boolean = recurrenceColumn ?: connection.prepare("PRAGMA table_info(notification_insights)").use { statement ->
+    var found = false
+    while (statement.step()) if (statement.getText(1) == "reminder_stage") found = true
+    found
+  }.also { if (it) recurrenceColumn = true }
 
   private fun backfillFingerprints() {
     fingerprintColumn = true
@@ -1094,7 +1219,7 @@ internal class NotificationRepository private constructor(private val connection
 
   companion object {
     private const val DB_NAME = "notifyiq.db"
-    private const val SCHEMA_VERSION = 11
+    private const val SCHEMA_VERSION = 12
     private const val SAME_PAYMENT_WINDOW_MS = 15 * 60 * 1000L
     private const val GAP_HISTORY_MS = 30L * 24 * 60 * 60 * 1000
     private const val DEFAULT_RETENTION_DAYS = 30

@@ -296,6 +296,36 @@ This log distinguishes decisions already present in the supplied development kit
     - Untouched second set: 93.3% on first run, then 96.7% after adding "supermart". The remaining miss is generic "…Stores", left as other/transfer on purpose.
 - **Onboarding (sideloaded installs, Android 13+):** the order is now try access → Allow restricted settings in App info → turn access on, because the ⋮ menu item only appears after a blocked attempt.
 
+
+### R-024 — Smarter Coming up; automatic alarm-style reminders
+
+**Status:** Requested by owner, 2026-11-23 (version 1.14)
+**Decision:**
+- **Dates without a month:** "on 30th", "by the 25th" and "5th of every month" mean the next time that day comes round (today counts). "30th" in a shorter month means its last day, and "next month" moves it a month on. "This month", "month end" and "next month" mean the last day of that month, marked approximate ("This month · by 30 Nov").
+- **Amounts without a currency** after bill/rent/fee/EMI/premium/amount/due/pay ("bill of 2000", "rent 15000") are used for dues only, as INR. Messages that say the bill is already paid are not due.
+- **AutoPay / e-mandate / standing instruction:**
+  - A set-up confirmation, or an executed debit that states the period or says "UPI AutoPay", creates a repeating item (weekly, monthly, quarterly or yearly; set-ups default to monthly).
+  - The next date is the stated one, otherwise one period later, marked approximate.
+  - A plain "auto-debited" message with no period does not guess one; for example Prime could be yearly.
+  - Repeating items roll forward from the original date without drift (31 Jan → 28 Feb → 31 Mar). One AutoPay shows once even after several messages.
+  - Stored as schema v12 columns `recurrence`, `approximate` and `reminder_stage`; insight version 4 recomputes history.
+- **Automatic reminders (on by default; Settings → Reminders)** for bills, renewals and AutoPay, expiries and appointments:
+  - The day before at 9 AM. A fresh message that is already past that time is reminded about at once. A second reminder goes at 9 AM on the due day unless the person taps "Paid / Done".
+  - AutoPay items then schedule the next cycle. "Remind me in 1 hour" snoozes.
+  - Cancelling a reminder on a card stores `off`, so it is never re-added.
+- **Alarm style (on by default):**
+  - A high-importance channel using the alarm sound on the alarm audio stream, with FLAG_INSISTENT so it repeats until the notification shade is opened, plus vibration.
+  - Private on the lock screen (a generic public version).
+  - Off: a pop-up with the normal sound. A "Play a test reminder" button is provided.
+- **Deliberately not used:**
+  - Full-screen intents (USE_FULL_SCREEN_INTENT is limited to alarm and calling apps on Play).
+  - Exact alarms (SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM add Play declarations and a user-granted special permission).
+  - The result: reminders use battery-friendly while-idle alarms and can arrive a few minutes late. Permissions stay at three.
+- **Measured:**
+  - New coming-up set (written before implementation, rules developed with it): 25% before, 20/20 after.
+  - A further 12 unseen cases: 11/12 on first run; the miss ("to be paid this month") was then fixed.
+  - The existing extraction sets are unchanged. The two known subscription-flag misses are in report-only sets and pre-date this change.
+
 ### R-007 — Treat generated visual boards as non-authoritative
 
 **Status:** Accepted interpretation of kit guidance  

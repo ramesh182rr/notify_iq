@@ -80,6 +80,7 @@ internal data class UpcomingAction(
   val eventId: Long, val kind: String, val dueAt: Long, val hasTime: Boolean, val amountMinor: Long?, val currency: String?,
   val reminderAt: Long?, val reminderStatus: String?, val merchant: String?, val packageName: String, val title: String?,
   val body: String?, val receivedAt: Long,
+  val recurrence: String? = null, val approximate: Boolean = false,
 )
 
 internal data class RecurringPayment(

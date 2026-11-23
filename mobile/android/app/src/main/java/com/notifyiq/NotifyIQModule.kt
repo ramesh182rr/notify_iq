@@ -386,6 +386,28 @@ class NotifyIQModule(
   }
 
   @ReactMethod
+  override fun getReminderSettings(promise: Promise) {
+    runCatching { NotificationRepository(appContext).reminderSettings() }
+      .onSuccess { (auto, alarm) -> promise.resolve(Arguments.createMap().apply { putBoolean("auto", auto); putBoolean("alarm", alarm) }) }
+      .onFailure { promise.reject("REMINDER_SETTINGS_UNAVAILABLE", "Reminder settings are unavailable.") }
+  }
+
+  @ReactMethod
+  override fun setReminderSettings(auto: Boolean, alarm: Boolean, promise: Promise) {
+    Thread {
+      runCatching { NotificationRepository(appContext).setReminderSettings(auto, alarm) }
+        .onSuccess { promise.resolve(null) }
+        .onFailure { promise.reject("REMINDER_SETTINGS_FAILED", "Reminder settings could not be saved.") }
+    }.start()
+  }
+
+  /** Shows an example reminder now, so people can hear and see it. Resolves false without notification permission. */
+  @ReactMethod
+  override fun testReminder(alarm: Boolean, promise: Promise) {
+    promise.resolve(UserReminderScheduler.showTest(appContext, alarm))
+  }
+
+  @ReactMethod
   override fun getListenerGaps(days: Double, promise: Promise) {
     try {
       val since = System.currentTimeMillis() - (days.coerceIn(1.0, 30.0) * 24 * 60 * 60 * 1000).toLong()
@@ -434,6 +456,8 @@ class NotifyIQModule(
       promise.resolve(Arguments.createArray().apply {
         NotificationRepository(appContext).upcomingActions().forEach { item -> pushMap(Arguments.createMap().apply {
           putDouble("eventId", item.eventId.toDouble()); putString("kind", item.kind); putDouble("dueAt", item.dueAt.toDouble())
+          if (item.recurrence == null) putNull("recurrence") else putString("recurrence", item.recurrence)
+          putBoolean("approximate", item.approximate)
           putBoolean("hasTime", item.hasTime)
           if (item.amountMinor == null) putNull("amountMinor") else putDouble("amountMinor", item.amountMinor.toDouble())
           if (item.currency == null) putNull("currency") else putString("currency", item.currency)

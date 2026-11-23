@@ -95,6 +95,8 @@ export type MoneyAnalytics = {
   otherCurrencies: ReadonlyArray<string>;
 };
 export type BackupResult = { status: string; count: number };
+/** Automatic day-before reminders for bills, renewals/AutoPay, expiries and appointments; alarm-style sound. */
+export type ReminderSettings = { auto: boolean; alarm: boolean };
 /** A time Android did not let NotifyIQ read notifications. `exact` is false when only the approximate start is known. */
 export type ListenerGap = { id: number; startedAt: number; endedAt: number; recovered: number; exact: boolean; seen: boolean };
 export type AppDirectoryEntry = { packageName: string; label: string; iconUri: string | null };
@@ -104,6 +106,10 @@ export type UpcomingAction = {
   eventId: number;
   kind: string;
   dueAt: number;
+  /** "monthly" etc. for AutoPay/mandates; dueAt is already the next date. */
+  recurrence?: string | null;
+  /** The date was inferred ("this month"), not stated. */
+  approximate?: boolean;
   hasTime: boolean;
   amountMinor: number | null;
   currency: string | null;
@@ -180,6 +186,9 @@ export interface Spec extends TurboModule {
   getListenerGaps(days: number): Promise<ReadonlyArray<ListenerGap>>;
   markListenerGapsSeen(): Promise<void>;
   openSourceApp(eventId: number): Promise<string>;
+  getReminderSettings(): Promise<ReminderSettings>;
+  setReminderSettings(auto: boolean, alarm: boolean): Promise<void>;
+  testReminder(alarm: boolean): Promise<boolean>;
   getInstalledApps(): Promise<ReadonlyArray<AppDirectoryEntry>>;
   getUiPreference(key: string): Promise<string | null>;
   setUiPreference(key: string, value: string): Promise<void>;

@@ -11,8 +11,9 @@ import { BackupSection } from '../privacy/BackupSection';
 import { PrivacyCentreScreen } from '../privacy/PrivacyCentreScreen';
 import { SecuritySection } from '../privacy/SecuritySection';
 import { RulesScreen } from '../rules/RulesScreen';
+import { RemindersSection } from '../reminders/RemindersSection';
 
-export type SettingsPage = 'rules' | 'privacy' | 'backup' | 'security';
+export type SettingsPage = 'rules' | 'reminders' | 'privacy' | 'backup' | 'security';
 
 type Props = {
   theme: AppTheme;
@@ -28,6 +29,7 @@ type Props = {
 
 const pageTitles: Record<SettingsPage, string> = {
   rules: 'Rules',
+  reminders: 'Reminders',
   privacy: 'Notification access & apps',
   backup: 'Backup & new phone',
   security: 'App lock',
@@ -52,6 +54,7 @@ export function SettingsScreen({ theme, page, onPageChange, themePreference, onT
         </Pressable>
         <Text accessibilityRole="header" style={[styles.pageTitle, { color: colors.textPrimary }]}>{pageTitles[page]}</Text>
         {page === 'rules' ? <RulesScreen theme={theme} />
+          : page === 'reminders' ? <RemindersSection theme={theme} />
           : page === 'privacy' ? <PrivacyCentreScreen theme={theme} status={listenerStatus} onOpenSettings={onOpenAccessSettings} />
           : page === 'backup' ? <BackupSection theme={theme} onRestored={onDataChanged} />
           : <SecuritySection theme={theme} />}
@@ -94,6 +97,7 @@ export function SettingsScreen({ theme, page, onPageChange, themePreference, onT
 
       <Text style={[styles.group, { color: colors.textSecondary }]}>ORGANISE</Text>
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {row('reminders', '⏰', 'Reminders', 'Bills, renewals & AutoPay: the day before at 9 AM', () => onPageChange('reminders'))}
         {row('rules', '⚙️', 'Rules', 'Auto-categorise, save, group and remind', () => onPageChange('rules'), true)}
       </View>
 
